@@ -1,16 +1,24 @@
 .PHONY: install build test clean
 
+PYTHON = python3
+VENV_PYTHON = .venv/bin/python
+
+ifeq ($(OS),Windows_NT)
+PYTHON = python
+VENV_PYTHON = .venv/Scripts/python
+endif
+
 .venv:
-	python3 -m venv .venv
-	.venv/bin/pip install -r requirements.txt pyinstaller
+	$(PYTHON) -m venv .venv
+	$(VENV_PYTHON) -m pip install -r requirements.txt pyinstaller
 
 install: .venv
 
 build: .venv
-	MPLBACKEND=Agg .venv/bin/pyinstaller b3-selic-pre.spec
+	MPLBACKEND=Agg $(VENV_PYTHON) -m PyInstaller b3-selic-pre.spec
 
 test: .venv
-	.venv/bin/python -m unittest discover -s tests
+	$(VENV_PYTHON) -m unittest discover -s tests
 
 clean:
 	rm -rf dist/ build/ __pycache__/

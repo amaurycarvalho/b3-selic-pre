@@ -69,6 +69,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          files: |
-            b3-selic-pre-*/
-            b3-selic-pre.desktop
+          files: b3-selic-pre-*/*

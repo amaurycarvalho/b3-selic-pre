@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-17
+
 ### Added
 
 - Exibição da versão na barra de título da janela e flag `--version` no CLI
+
+### Fixed
+
+- Correção do glob de upload no workflow de release para anexar os binários à release (`b3-selic-pre-*/` → `b3-selic-pre-*/*`)
+- Remoção do `b3-selic-pre.desktop` dos assets da release (continha caminhos absolutos locais)
 
 ## [0.2.0] - 2026-06-16
 

@@ -10,7 +10,7 @@ import threading
 import urllib.request
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 

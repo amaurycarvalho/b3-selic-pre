@@ -10,7 +10,9 @@ O sistema SHALL gerar executáveis do `b3-selic-pre` para Windows, Linux e macOS
 #### Scenario: Build em todos os OS
 - **WHEN** o workflow é disparado
 - **THEN** o job `build` executa nos runners `ubuntu-latest`, `windows-latest` e `macos-latest`
-- **THEN** cada runner gera um executável com PyInstaller no formato `--onefile`
+- **THEN** cada runner executa `make install && make build`
+- **THEN** o PyInstaller gera o executável no diretório `dist/`
+- **THEN** o binário é renomeado com prefixo da plataforma (`b3-selic-pre-linux`, `b3-selic-pre-windows.exe`, `b3-selic-pre-macos`)
 
 #### Scenario: Falha em um OS não bloqueia os demais
 - **WHEN** o build falha em um runner específico

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Makefile com targets `install`, `build` e `clean` para builds locais reproduzíveis
+- Workflow de release agora usa `make install && make build` em vez de comandos inline
+- README com seções de instalação (manual, Makefile, binário pré-compilado) e uso nas três modalidades
+
+### Changed
+
+- Versão bumpada para `0.2.3`
+- Makefile: build via `.venv/` local em vez de pip system-wide, evitando PEP 668
+
+### Fixed
+
+- `b3-selic-pre.spec`: adicionados hidden imports `PIL._tkinter_finder`, `matplotlib` e `matplotlib.figure` para resolver erros de módulo não encontrado no executável gerado
+- `copy_chart`: substituída implementação com subprocessos + threads por `pyxclip` (Rust, zero dependências externas), eliminando travamentos do `xclip` e simplificando o código
+
 ## [0.2.2] - 2026-06-17
 
 ### Fixed

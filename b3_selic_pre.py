@@ -10,7 +10,7 @@ import threading
 import urllib.request
 
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -389,92 +389,18 @@ class SelicPreApp:
             return
 
         import io
-        import subprocess
-        import platform
-        import tempfile
-        import os
-        import threading
-
+        import pyxclip
         from PIL import Image
 
         buf = io.BytesIO()
         self.figure.savefig(buf, format="png", dpi=150)
 
-        system = platform.system()
-        png_data = buf.getvalue()
-
-        def worker():
-            success = False
-
-            if system == "Linux":
-                try:
-                    proc = subprocess.Popen(
-                        ["xclip", "-selection", "clipboard",
-                         "-t", "image/png"],
-                        stdin=subprocess.PIPE, stderr=subprocess.PIPE,
-                    )
-                    proc.communicate(png_data)
-                    if proc.returncode == 0:
-                        success = True
-                except FileNotFoundError:
-                    pass
-
-            elif system == "Darwin":
-                tmp = None
-                try:
-                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-                        f.write(png_data)
-                        tmp = f.name
-                    script = (
-                        f'set the clipboard to '
-                        f'(read (POSIX file "{tmp}") as PNG picture)'
-                    )
-                    subprocess.run(
-                        ["osascript", "-e", script],
-                        check=True, capture_output=True,
-                    )
-                    success = True
-                except Exception:
-                    pass
-                finally:
-                    if tmp:
-                        try:
-                            os.unlink(tmp)
-                        except Exception:
-                            pass
-
-            elif system == "Windows":
-                import ctypes
-                img = Image.open(io.BytesIO(png_data))
-                with io.BytesIO() as bmp_buf:
-                    img.convert("RGB").save(bmp_buf, format="BMP")
-                    data = bmp_buf.getvalue()[14:]
-                GMEM_MOVEABLE = 0x0002
-                CF_DIB = 8
-                h = ctypes.windll.kernel32.GlobalAlloc(
-                    GMEM_MOVEABLE, len(data)
-                )
-                if h:
-                    p = ctypes.windll.kernel32.GlobalLock(h)
-                    ctypes.memmove(p, data, len(data))
-                    ctypes.windll.kernel32.GlobalUnlock(h)
-                    if ctypes.windll.user32.OpenClipboard(None):
-                        ctypes.windll.user32.EmptyClipboard()
-                        ctypes.windll.user32.SetClipboardData(CF_DIB, h)
-                        ctypes.windll.user32.CloseClipboard()
-                        success = True
-                    else:
-                        ctypes.windll.kernel32.GlobalFree(h)
-
-            def update_status():
-                if success:
-                    self.set_status("Gráfico copiado para a área de transferência.")
-                else:
-                    self.set_status("Use Exportar PNG para salvar o gráfico.")
-
-            self.root.after(0, update_status)
-
-        threading.Thread(target=worker, daemon=True).start()
+        img = Image.open(buf).convert("RGBA")
+        try:
+            pyxclip.copy((img.width, img.height, img.tobytes()))
+            self.set_status("Gráfico copiado para a área de transferência.")
+        except pyxclip.ClipboardError:
+            self.set_status("Use Exportar PNG para salvar o gráfico.")
 
     def copy_data(self):
         if not self._has_data():

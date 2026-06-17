@@ -4,62 +4,99 @@ Curva de juros (taxa referencial SELIC) conforme a B3
 
 ## Instalação
 
+### 1. Manual (código fonte)
+
 ```bash
 pip install -r requirements.txt
 ```
 
 Requisitos:
+- Python 3.10+
+- matplotlib, Pillow e pyxclip (veja `requirements.txt`)
 
-- Python 3.10+.
-- matplotlib e Pillow (veja `requirements.txt`).
+### 2. Via Makefile (build local)
+
+```bash
+make install   # cria .venv/ e instala dependências
+make build     # gera executável em dist/
+```
+
+O executável será gerado em `dist/b3-selic-pre` (Linux), `dist/b3-selic-pre.exe` (Windows) ou `dist/b3-selic-pre` (macOS).
+
+### 3. Binário pré-compilado
+
+Baixe o binário da plataforma desejada na [página de releases](https://github.com/amaurycarvalho/b3-selic-pre/releases):
+
+| Plataforma | Arquivo |
+|------------|---------|
+| Linux | `b3-selic-pre-linux` |
+| Windows | `b3-selic-pre-windows.exe` |
+| macOS | `b3-selic-pre-macos` |
 
 ## Como usar
 
-### Linha de comando
-
-Consultar a data atual:
+### A partir do código fonte
 
 ```bash
-python3 b3_selic_pre.py
+python3 b3_selic_pre.py                     # consultar data atual
+python3 b3_selic_pre.py 2026-06-10          # data específica
+python3 b3_selic_pre.py 2026-06-10 --yearly # consolidado por ano
+python3 b3_selic_pre.py --gui               # interface gráfica
+python3 b3_selic_pre.py --version           # exibir versão
 ```
 
-Consultar uma data específica:
+### A partir do executável gerado pelo Makefile
 
 ```bash
-python3 b3_selic_pre.py 2026-06-10
+dist/b3-selic-pre                           # consultar data atual
+dist/b3-selic-pre 2026-06-10                # data específica
+dist/b3-selic-pre 2026-06-10 --yearly       # consolidado por ano
+dist/b3-selic-pre --gui                     # interface gráfica
+dist/b3-selic-pre --version                 # exibir versão
 ```
 
-Exibir taxas consolidadas por ano (mínima e máxima de cada ano):
+### A partir do binário pré-compilado
 
 ```bash
-python3 b3_selic_pre.py 2026-06-10 --yearly
+./b3-selic-pre-linux                        # consultar data atual
+./b3-selic-pre-linux 2026-06-10             # data específica
+./b3-selic-pre-linux 2026-06-10 --yearly    # consolidado por ano
+./b3-selic-pre-linux --gui                  # interface gráfica
+./b3-selic-pre-linux --version              # exibir versão
 ```
+
+Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 ### Interface desktop
-
-Abrir a GUI com campo de data, gráfico de linha, zoom/pan, cópia para área de
-transferência e exportação PNG:
-
-```bash
-python3 b3_selic_pre.py --gui
-```
 
 Na interface, informe a data no formato `YYYY-MM-DD` e clique em `Buscar`.
 Marque **Consolidar por ano** para alternar entre a curva completa (DU252 ×
 TAXA, linhas a cada 20 dias) e a visualização anual consolidada (taxa mínima
 em azul, máxima em vermelho).
 
+Recursos disponíveis:
+- Zoom e pan no gráfico
+- Cópia de dados para área de transferência
+- Cópia do gráfico como imagem
+- Exportação do gráfico em PNG
+
 ### Testes
 
-Executar os testes focados nas funções de payload, validação, normalização e
-exportação:
+#### Manual (via Makefile)
 
 ```bash
-python3 -m unittest discover -s tests
+make test
+```
+
+#### CI (pytest)
+
+```bash
+pip install pytest
+pytest
 ```
 
 ## Saiba mais
 
-- [Repositório do projeto](https://github.com/amaurycarvalho/b3-selic-pre);
-- [Taxas referenciais na B3 - Selic x pré](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/consultas/mercado-de-derivativos/precos-referenciais/taxas-referenciais-bm-fbovespa/);
-- [OpenSpec](https://github.com/Fission-AI/OpenSpec/blob/main/docs/getting-started.md).
+- [Repositório do projeto](https://github.com/amaurycarvalho/b3-selic-pre)
+- [Releases com binários pré-compilados](https://github.com/amaurycarvalho/b3-selic-pre/releases)
+- [Taxas referenciais na B3 - Selic x pré](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/consultas/mercado-de-derivativos/precos-referenciais/taxas-referenciais-bm-fbovespa/)

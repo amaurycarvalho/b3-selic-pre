@@ -8,8 +8,12 @@ a = Analysis(
     hiddenimports=[
         'tkinter',
         'PIL',
+        'PIL._tkinter_finder',
+        'matplotlib',
+        'matplotlib.figure',
         'matplotlib.backends.backend_tkagg',
         'ctypes',
+        'pyxclip',
     ],
     hookspath=[],
     hooksconfig={},

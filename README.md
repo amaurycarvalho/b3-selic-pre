@@ -4,12 +4,14 @@ Curva de juros (taxa referencial SELIC) conforme a B3
 
 ## Instalação
 
-Este projeto usa apenas a biblioteca padrão do Python para a consulta e para a
-interface desktop inicial.
+```bash
+pip install -r requirements.txt
+```
 
-Requisito:
+Requisitos:
 
-- Python 3.10+ recomendado.
+- Python 3.10+.
+- matplotlib e Pillow (veja `requirements.txt`).
 
 ## Como usar
 
@@ -27,16 +29,25 @@ Consultar uma data específica:
 python3 b3_selic_pre.py 2026-06-10
 ```
 
+Exibir taxas consolidadas por ano (mínima e máxima de cada ano):
+
+```bash
+python3 b3_selic_pre.py 2026-06-10 --yearly
+```
+
 ### Interface desktop
 
-Abrir a GUI com campo de data, tabela de resultados, cópia para área de
-transferência e exportação CSV:
+Abrir a GUI com campo de data, gráfico de linha, zoom/pan, cópia para área de
+transferência e exportação PNG:
 
 ```bash
 python3 b3_selic_pre.py --gui
 ```
 
 Na interface, informe a data no formato `YYYY-MM-DD` e clique em `Buscar`.
+Marque **Consolidar por ano** para alternar entre a curva completa (DU252 ×
+TAXA, linhas a cada 20 dias) e a visualização anual consolidada (taxa mínima
+em azul, máxima em vermelho).
 
 ### Testes
 

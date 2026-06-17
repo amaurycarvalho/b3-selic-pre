@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=B3 SELIC Pré
+Comment=Consulta taxas referenciais SELIC Pré na B3
+Exec=python3 /home/amaury/Documentos/Sources/Python/b3-selic-pre/b3_selic_pre.py --gui
+Icon=/home/amaury/Documentos/Sources/Python/b3-selic-pre/b3_selic_pre.png
+Terminal=false
+Type=Application
+Categories=Finance;Office;
+StartupNotify=true
+# Nota: se você mover o projeto para outro diretório, atualize os caminhos
+# em Exec e Icon acima. Para instalar no menu de aplicações, copie este
+# arquivo para ~/.local/share/applications/

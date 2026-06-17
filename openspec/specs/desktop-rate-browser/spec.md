@@ -15,16 +15,34 @@ The system SHALL provide a desktop GUI control for entering a B3 reference date 
 - **WHEN** the user enters a date that is not in `YYYY-MM-DD` format
 - **THEN** the system rejects the query and displays a validation message without contacting B3
 
-### Requirement: Tabular result display
-The system SHALL display fetched SELIC Pré rates in a desktop table containing at least `day252`, `day360`, and `rate` columns.
+### Requirement: Chart display of rate data
+The system SHALL display fetched SELIC Pré rates in a matplotlib line chart embedded in the GUI window, replacing the previous tabular view.
 
-#### Scenario: B3 returns rate records
+#### Scenario: Chart replaces table after fetch
 - **WHEN** the B3 response contains one or more rate records
-- **THEN** the system displays each record as a row in the results table
+- **THEN** the chart displays the rate data according to the active view mode (raw or consolidated) and no table is shown
 
-#### Scenario: B3 returns no rate records
+#### Scenario: Empty result shows message on chart area
 - **WHEN** the B3 response contains no rate records
-- **THEN** the system displays an empty-result message and leaves the table without stale rows
+- **THEN** the chart area shows an empty-data message and no chart is rendered
+
+### Requirement: Chart responds to consolidation toggle
+The chart SHALL switch between raw mode (single green line) and consolidated mode (dual lines) when the "Consolidar por ano" checkbox is toggled, without re-fetching data.
+
+#### Scenario: Toggling consolidation updates chart
+- **WHEN** the user checks or unchecks the "Consolidar por ano" checkbox after data has been fetched
+- **THEN** the chart immediately updates to reflect the corresponding mode
+
+### Requirement: Chart image export
+The system SHALL allow users to export the current chart image as a PNG file or copy it to the system clipboard.
+
+#### Scenario: User exports chart with data
+- **WHEN** the chart contains rendered data and the user clicks "Exportar PNG"
+- **THEN** a file-save dialog opens and the chart is saved as a PNG upon confirmation
+
+#### Scenario: User copies chart to clipboard
+- **WHEN** the chart contains rendered data and the user clicks "Copiar gráfico"
+- **THEN** the chart image is copied to the system clipboard
 
 ### Requirement: Request state feedback
 The system SHALL provide visible desktop feedback for loading, successful completion, validation errors, and request failures.
@@ -37,20 +55,23 @@ The system SHALL provide visible desktop feedback for loading, successful comple
 - **WHEN** the B3 request fails or returns unexpected data
 - **THEN** the GUI displays an error message and remains usable for another query
 
-### Requirement: Export displayed rates
-The system SHALL allow users to export or copy the currently displayed rate records in a tabular text format.
-
-#### Scenario: User exports populated results
-- **WHEN** the table contains rate records and the user chooses export or copy
-- **THEN** the system produces tabular text containing headers and all displayed rows
-
-#### Scenario: User exports without results
-- **WHEN** the table contains no rate records and the user chooses export or copy
-- **THEN** the system displays a message that there is no data to export
-
 ### Requirement: CLI behavior preservation
 The system SHALL preserve a command-line path for fetching and printing SELIC Pré rates while adding the desktop GUI.
 
 #### Scenario: User runs the command-line entry point
 - **WHEN** the user runs the existing command-line workflow
 - **THEN** the system prints SELIC Pré rate rows without requiring GUI interaction
+
+### Requirement: Version display in title bar
+The system SHALL display the application version in the GUI window title bar.
+
+#### Scenario: Version shown in title
+- **WHEN** the GUI window is created
+- **THEN** the title bar contains the application version in the format `"B3 SELIC Pré v<version>"`
+
+### Requirement: CLI --version flag
+The system SHALL accept a `--version` flag in CLI mode that prints the application version and exits.
+
+#### Scenario: --version prints version
+- **WHEN** the user runs `b3_selic_pre.py --version`
+- **THEN** the output is `"b3-selic-pre <version>"` and the program exits with code 0

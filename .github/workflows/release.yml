@@ -50,10 +50,13 @@ jobs:
         env:
           MPLBACKEND: Agg
 
+      - name: Rename binary with platform prefix
+        run: mv dist/b3-selic-pre* dist/${{ matrix.artifact_name }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/b3-selic-pre*
+          path: dist/${{ matrix.artifact_name }}
 
   release:
     needs: build

@@ -5,18 +5,24 @@ from unittest import mock
 
 from b3_selic_pre import (
     RateRecord,
+    _brl,
+    _days_ago,
+    average_rate_by_year,
     build_payload,
     build_url,
     consolidate_by_year,
     encode_payload,
+    fetch_historical_rates,
+    fetch_rates_download,
     fetch_reference_rates,
     format_cli_rows,
+    format_evolution_csv,
     format_records_csv,
     format_yearly_rows,
     normalize_records,
     render_chart,
+    render_curve_evolution,
     validate_reference_date,
-    _brl,
 )
 
 
@@ -217,6 +223,108 @@ class B3SelicPreTest(unittest.TestCase):
                 'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
             )
 
+    def test_average_rate_by_year_midpoint(self):
+        records = [
+            RateRecord(day252=1, day360=1, rate="14.65"),
+            RateRecord(day252=2, day360=2, rate="14.70"),
+            RateRecord(day252=365, day360=365, rate="14.50"),
+            RateRecord(day252=366, day360=366, rate="15.10"),
+        ]
+        avg = average_rate_by_year(records)
+        self.assertEqual(avg, {0: 14.675, 1: 14.80})
+
+    def test_average_rate_by_year_empty(self):
+        self.assertEqual(average_rate_by_year([]), {})
+
+    def test_average_rate_by_year_single_record(self):
+        records = [RateRecord(day252=1, day360=1, rate="14.65")]
+        self.assertEqual(average_rate_by_year(records), {0: 14.65})
+
+    def test_days_ago(self):
+        self.assertEqual(_days_ago("2026-06-17", 0), "2026-06-17")
+        self.assertEqual(_days_ago("2026-06-17", 7), "2026-06-10")
+        self.assertEqual(_days_ago("2026-06-17", 28), "2026-05-20")
+
+    def test_fetch_rates_download_parses_csv(self):
+        csv_content = (
+            "Descrição da Taxa;Dias Úteis;Dias Corridos;Preço/Taxa\n"
+            "Selic x pré;1;1;14,40\n"
+            "Selic x pré;4;6;14,37\n"
+        )
+        b64_csv = base64.b64encode(csv_content.encode("latin-1")).decode("latin-1")
+
+        def opener(url, timeout):
+            class R:
+                def read(self):
+                    return b64_csv.encode("latin-1")
+                def __enter__(self):
+                    return self
+                def __exit__(self, *a):
+                    return False
+            return R()
+
+        with mock.patch("urllib.request.urlopen", opener):
+            records = fetch_rates_download("2026-06-09")
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0], RateRecord(day252=1, day360=1, rate="14,40"))
+        self.assertEqual(records[1], RateRecord(day252=4, day360=6, rate="14,37"))
+
+    def test_fetch_historical_rates_returns_5_dates_for_today(self):
+        today = __import__("datetime").date.today().isoformat()
+        csv_content = (
+            "Descrição da Taxa;Dias Úteis;Dias Corridos;Preço/Taxa\n"
+            "Selic x pré;1;1;14,40\n"
+        )
+        b64_csv = base64.b64encode(csv_content.encode("latin-1")).decode("latin-1")
+
+        class FakeDownloadResponse:
+            def __init__(self, body):
+                self._body = body
+            def read(self):
+                return self._body
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+
+        def opener(url, timeout):
+            if "GetDownloadFile" in url:
+                return FakeDownloadResponse(b64_csv.encode("latin-1"))
+            encoded_payload = url.rsplit("/", 1)[-1]
+            payload = json.loads(base64.b64decode(encoded_payload).decode("utf-8"))
+            if payload.get("pageNumber") == 1:
+                return FakeResponse({
+                    "results": [
+                        {"day252": "1", "day360": "1", "rate": "14.65"},
+                        {"day252": "365", "day360": "365", "rate": "14.50"},
+                    ]
+                })
+            return FakeResponse({"results": []})
+
+        with mock.patch("urllib.request.urlopen", opener):
+            results = fetch_historical_rates(
+                today, progress_callback=lambda c, t: None,
+            )
+
+        self.assertEqual(len(results), 5)
+        dates = sorted(results.keys())
+        self.assertEqual(dates[0], _days_ago(today, 28))
+        self.assertEqual(dates[-1], today)
+
+    def test_format_evolution_csv(self):
+        records = [
+            RateRecord(day252=1, day360=1, rate="14.65"),
+            RateRecord(day252=365, day360=365, rate="14.50"),
+        ]
+        date_rates = {"2026-06-17": records, "2026-06-03": records}
+        csv_out = format_evolution_csv(date_rates)
+        self.assertIn("DATA;ANO;TAXA_MEDIA", csv_out)
+        self.assertIn("2026-06-03;0;14.65", csv_out)
+        self.assertIn("2026-06-03;1;14.50", csv_out)
+        self.assertIn("2026-06-17;0;14.65", csv_out)
+        self.assertIn("2026-06-17;1;14.50", csv_out)
+
     def test_format_records_csv_includes_headers_and_rows(self):
         text = format_records_csv(
             [
@@ -282,6 +390,57 @@ class ChartRenderTest(unittest.TestCase):
         self.assertIn(1, ticks)
         self.assertIn(21, ticks)
         self.assertIn(41, ticks)
+
+
+class CurveEvolutionChartTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import matplotlib
+        matplotlib.use("Agg")
+
+    def setUp(self):
+        from matplotlib.figure import Figure
+        self.fig = Figure()
+        self.fig.add_subplot(111)
+
+    def _make_date_rates(self):
+        r0 = [RateRecord(day252=1, day360=1, rate="14.0"),
+              RateRecord(day252=365, day360=365, rate="14.5")]
+        r1 = [RateRecord(day252=1, day360=1, rate="14.2"),
+              RateRecord(day252=365, day360=365, rate="14.3")]
+        return {"2026-06-17": r0, "2026-06-03": r1}
+
+    def test_render_curve_evolution_shows_lines(self):
+        date_rates = self._make_date_rates()
+        render_curve_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        lines = ax.get_lines()
+        self.assertGreaterEqual(len(lines), 2)
+
+    def test_render_curve_evolution_empty_shows_message(self):
+        render_curve_evolution(self.fig, {})
+        ax = self.fig.gca()
+        texts = [t.get_text() for t in ax.texts]
+        self.assertIn("Sem dados", texts)
+
+    def test_render_curve_evolution_has_quiver(self):
+        date_rates = self._make_date_rates()
+        render_curve_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        quivers = [c for c in ax.collections if hasattr(c, 'get_offsets')]
+        self.assertGreaterEqual(len(quivers), 1)
+
+    def test_render_curve_evolution_has_legend(self):
+        date_rates = self._make_date_rates()
+        render_curve_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        self.assertIsNotNone(ax.get_legend())
+
+    def test_render_curve_evolution_xaxis_years(self):
+        date_rates = self._make_date_rates()
+        render_curve_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        self.assertEqual(ax.get_xlim(), (0, 20))
 
 
 if __name__ == "__main__":

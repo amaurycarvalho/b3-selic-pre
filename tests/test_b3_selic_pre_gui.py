@@ -52,11 +52,13 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertIn("falha simulada", self.app.status_var.get())
         self.assertEqual(len(self.app.records), 0)
 
-    def test_consolidate_checkbox_exists_and_defaults_to_off(self):
-        self.assertIsNotNone(self.app.consolidate_cb)
-        self.assertFalse(self.app.consolidate_var.get())
+    def test_radio_buttons_exist_and_raw_is_default(self):
+        self.assertIsNotNone(self.app.view_raw_rb)
+        self.assertIsNotNone(self.app.view_consolidated_rb)
+        self.assertIsNotNone(self.app.view_evolution_rb)
+        self.assertEqual(self.app.view_var.get(), "raw")
 
-    def test_toggle_checkbox_updates_chart(self):
+    def test_toggle_to_consolidated_updates_chart(self):
         records = [
             RateRecord(day252=1, day360=30, rate="14.65"),
             RateRecord(day252=365, day360=365, rate="14.50"),
@@ -68,7 +70,7 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0].get_color(), "green")
 
-        self.app.consolidate_var.set(True)
+        self.app.view_var.set("consolidated")
         self.app.toggle_view()
 
         lines = ax.get_lines()
@@ -77,11 +79,11 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertIn("blue", colors)
         self.assertIn("red", colors)
 
-    def test_fetch_respects_consolidate_toggle(self):
+    def test_fetch_respects_view_mode(self):
         records = [RateRecord(day252=1, day360=30, rate="14.65")]
         self.app.handle_fetch_success(records)
 
-        self.app.consolidate_var.set(True)
+        self.app.view_var.set("consolidated")
         records2 = [
             RateRecord(day252=1, day360=30, rate="14.65"),
             RateRecord(day252=365, day360=365, rate="14.50"),
@@ -172,7 +174,7 @@ class SelicPreAppTest(unittest.TestCase):
             RateRecord(day252=2, day360=60, rate="14.50"),
         ]
         self.app.handle_fetch_success(records)
-        self.app.consolidate_var.set(False)
+        self.app.view_var.set("raw")
 
         expected = format_cli_rows(records)
 
@@ -191,7 +193,7 @@ class SelicPreAppTest(unittest.TestCase):
             RateRecord(day252=366, day360=425, rate="14.80"),
         ]
         self.app.handle_fetch_success(records)
-        self.app.consolidate_var.set(True)
+        self.app.view_var.set("consolidated")
 
         expected = format_yearly_rows(consolidate_by_year(records))
 

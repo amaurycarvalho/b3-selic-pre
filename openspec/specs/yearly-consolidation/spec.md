@@ -15,6 +15,13 @@ The system SHALL provide a function that groups RateRecord instances by year (ca
 - **WHEN** given rate records where all `day360` values fall within the same year band
 - **THEN** a single consolidated row is returned with the min and max of all rates
 
+### Requirement: Average rate computation from consolidated data
+The system SHALL provide a function `average_rate_by_year(records)` that computes the arithmetic mean of `min_rate` and `max_rate` for each year, using the output of `consolidate_by_year`.
+
+#### Scenario: Average rate equals midpoint
+- **WHEN** consolidated data contains `{year: 1, min_rate: 14.0, max_rate: 15.0}`
+- **THEN** `average_rate_by_year` returns `{1: 14.5}`
+
 ### Requirement: CLI yearly consolidation flag
 The CLI SHALL support a `--yearly` flag that, when present, outputs the consolidated-by-year table instead of the raw records.
 
@@ -27,18 +34,18 @@ The CLI SHALL support a `--yearly` flag that, when present, outputs the consolid
 - **THEN** the output is the existing raw CSV format `DU252,DC365,TAXA`
 
 ### Requirement: GUI yearly toggle
-The GUI SHALL provide a checkbox labeled "Consolidar por ano" that switches the chart display between raw mode (green line, TAXA × DU252) and consolidated mode (blue menor_taxa line + red maior_taxa line).
+The GUI SHALL provide radio buttons labeled "Detalhado", "Consolidado", and "Evolução da curva" that switch the chart display between raw mode (green line, TAXA × DU252), consolidated mode (blue menor_taxa line + red maior_taxa line), and evolution mode (5 superposed curves with quiver arrows).
 
-#### Scenario: Toggle is off (default) shows raw chart
-- **WHEN** the checkbox is unchecked
+#### Scenario: Raw mode shows detailed chart
+- **WHEN** the "Detalhado" radio button is selected
 - **THEN** the chart shows a green line plotting TAXA against DU252
 
-#### Scenario: Toggle is on shows consolidated chart
-- **WHEN** the checkbox is checked
+#### Scenario: Consolidated mode shows envelope chart
+- **WHEN** the "Consolidado" radio button is selected
 - **THEN** the chart shows a blue line for menor_taxa and a red line for maior_taxa plotted against the year
 
-#### Scenario: Toggle state is preserved across data fetches
-- **WHEN** the user fetches new data while the toggle is on
+#### Scenario: View state is preserved across data fetches
+- **WHEN** the user fetches new data while consolidated mode is active
 - **THEN** the new data is rendered in consolidated chart mode immediately
 
 ### Requirement: Consolidated chart Y-axis
@@ -49,12 +56,16 @@ The Y-axis SHALL auto-scale to fit both menor_taxa and maior_taxa lines, showing
 - **THEN** the area between the blue and red lines forms a visible band, and the Y-axis range includes both lines with margins
 
 ### Requirement: Export and copy respect current view
-The export/copy operations SHALL use whatever view mode (raw or consolidated) is currently active in the table.
+The export/copy operations SHALL use whatever view mode (raw, consolidated, or evolution) is currently active.
 
 #### Scenario: Copy in consolidated mode copies consolidated CSV
-- **WHEN** the toggle is on and the user clicks "Copiar tabela"
+- **WHEN** consolidated mode is active and the user clicks "Copiar dados"
 - **THEN** the clipboard receives consolidated CSV with columns ANO,MENOR_TAXA,MAIOR_TAXA
 
 #### Scenario: Copy in raw mode copies raw CSV
-- **WHEN** the toggle is off and the user clicks "Copiar tabela"
+- **WHEN** raw mode is active and the user clicks "Copiar dados"
 - **THEN** the clipboard receives raw CSV with columns day252,day360,rate
+
+#### Scenario: Copy in evolution mode copies evolution CSV
+- **WHEN** evolution mode is active and the user clicks "Copiar dados"
+- **THEN** the clipboard receives CSV with columns DATA;ANO;TAXA_MEDIA in semicolon-delimited format

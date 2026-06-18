@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-18
+
+### Changed
+
+- **Eixo X do gráfico Detalhado**: rótulo alterado de "DU252" para "Dias úteis" (tanto no modo Detalhado quanto na Evolução Detalhada)
+- **Grid trimestral**: marcas principais (major) passaram de 90 DU para aproximadamente 66 DU (trimestre ≈ 66 dias úteis), com nearest-match aos dados reais (tolerância 44 DU); marcas secundárias (minor) ajustadas para aproximadamente 22 DU (≈ mês, tolerância 22 DU), excluindo posições ocupadas pelo major — garante que as linhas de grid coincidam com dados existentes
+- **Setas quiver na Evolução Detalhada**: adicionadas setas de direção da taxa nos mesmos pontos do grid secundário (minor ticks, ~22 DU), coincidindo com as linhas tracejadas; posições calculadas via nearest-match aos dados da data mais recente, não mais à união de todas as datas históricas
+- **Setas quiver na Evolução Consolidada**: substituídas as posições fixas `QUIVER_YEARS` pelo mesmo padrão — setas em todos os minor ticks (~1 ano), com lookup nearest-match por data
+- **Evolução Consolidada**: grid (major ~3 anos, minor ~1 ano) e quiver agora usam `_nearest_ticks` com tolerância 1, mesma lógica da evolução detalhada; constantes `QUIVER_YEARS` e `QUIVER_DU252` removidas
+- **Helper `_nearest_ticks`**: função extraída para eliminar duplicação da lógica de nearest-match entre todas as funções de renderização
+- **Modo Consolidado**: grid (major ~3 anos, minor ~1 ano) também migrado de ticks exatos para `_nearest_ticks` com tolerância 1, consistente com as demais funções
+- **Base de dados única para grid**: `render_detailed_evolution` e `render_curve_evolution` agora usam apenas os dados da data mais recente (em vez da união entre datas) para calcular ticks e setas, garantindo consistência com os gráficos base
+
 ## [0.5.0] - 2026-06-18
 
 ### Added

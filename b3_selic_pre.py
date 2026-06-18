@@ -14,7 +14,7 @@ import concurrent.futures
 import urllib.request
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -276,8 +276,9 @@ def render_chart(fig, records, consolidated=False):
                 linestyle="-", linewidth=1.5, label="Maior taxa")
         ax.set_xlabel("Ano")
         ax.set_xlim(0, 20)
-        major_3yr = list(range(0, 21, 3))
-        minor_1yr = sorted(set(range(0, 21)) - set(major_3yr))
+        all_years = sorted(set(g["year"] for g in grouped))
+        major_3yr = _nearest_ticks(all_years, range(0, 21, 3), 1)
+        minor_1yr = _nearest_ticks(all_years, range(0, 21), 1, set(major_3yr))
         ax.set_xticks(major_3yr)
         ax.set_xticks(minor_1yr, minor=True)
         ax.legend()
@@ -286,12 +287,13 @@ def render_chart(fig, records, consolidated=False):
         rates = [float(r.rate.replace(",", ".")) for r in records]
         ax.plot(days, rates, color="green", marker=".",
                 linestyle="-", linewidth=1.5)
-        ax.set_xlabel("DU252")
+        ax.set_xlabel("Dias úteis")
         ax.set_xlim(0, 756)
-        major_90du = list(range(90, 757, 90))
-        minor_20du = sorted(set(range(1, 757, 20)) - set(major_90du))
-        ax.set_xticks(major_90du)
-        ax.set_xticks(minor_20du, minor=True)
+        all_days = sorted(set(r.day252 for r in records))
+        major_66du = _nearest_ticks(all_days, range(66, 757, 66), 44)
+        minor_22du = _nearest_ticks(all_days, range(1, 757, 22), 22, set(major_66du))
+        ax.set_xticks(major_66du)
+        ax.set_xticks(minor_22du, minor=True)
 
     ax.set_ylabel("TAXA (%)")
     ax.grid(True, which="major", alpha=0.3)
@@ -299,7 +301,15 @@ def render_chart(fig, records, consolidated=False):
     fig.tight_layout()
 
 
-QUIVER_YEARS = [0, 1, 2, 3, 5, 10, 15, 20]
+def _nearest_ticks(all_values, targets, tolerance, exclude_set=None):
+    result = []
+    seen = set(exclude_set) if exclude_set else set()
+    for target in targets:
+        nearest = min(all_values, key=lambda d: abs(d - target))
+        if abs(nearest - target) <= tolerance and nearest not in seen:
+            result.append(nearest)
+            seen.add(nearest)
+    return result
 
 
 def render_curve_evolution(fig, date_rates):
@@ -332,12 +342,17 @@ def render_curve_evolution(fig, date_rates):
         ax.plot(years, vals, color=colors[i], alpha=alphas[i],
                 linewidth=linewidths[i], label=date_str)
 
-    for j, year in enumerate(QUIVER_YEARS):
+    all_years = sorted(average_rate_by_year(date_rates[dates_sorted[-1]]).keys())
+    major_3yr = _nearest_ticks(all_years, range(0, 21, 3), 1)
+    minor_1yr = _nearest_ticks(all_years, range(0, 21), 1, set(major_3yr))
+
+    for year in minor_1yr:
         rates_seq = []
         for date_str in dates_sorted:
-            rates = average_rate_by_year(date_rates[date_str])
-            rates_seq.append(rates.get(year))
-        rates_seq = [r for r in rates_seq if r is not None]
+            yearly_rates = average_rate_by_year(date_rates[date_str])
+            nearest = min(yearly_rates.keys(), key=lambda y: abs(y - year))
+            if abs(nearest - year) <= 1:
+                rates_seq.append(yearly_rates[nearest])
         if len(rates_seq) < 2:
             continue
         X = [year + t * 0.06 for t in range(len(rates_seq) - 1)]
@@ -350,8 +365,6 @@ def render_curve_evolution(fig, date_rates):
 
     ax.set_xlabel("Ano")
     ax.set_xlim(0, 20)
-    major_3yr = list(range(0, 21, 3))
-    minor_1yr = sorted(set(range(0, 21)) - set(major_3yr))
     ax.set_xticks(major_3yr)
     ax.set_xticks(minor_1yr, minor=True)
     ax.set_ylabel("TAXA (%)")
@@ -371,7 +384,7 @@ def render_detailed_evolution(fig, date_rates):
     if not date_rates:
         ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
                 transform=ax.transAxes, fontsize=14, color="gray")
-        ax.set_xlabel("DU252")
+        ax.set_xlabel("Dias úteis")
         ax.set_ylabel("TAXA")
         fig.tight_layout()
         return
@@ -389,12 +402,36 @@ def render_detailed_evolution(fig, date_rates):
         ax.plot(days, rates, color=colors[i], alpha=alphas[i],
                 linewidth=linewidths[i], label=date_str)
 
-    ax.set_xlabel("DU252")
+    date_rate_map = {
+        date_str: {r.day252: float(r.rate.replace(",", ".")) for r in date_rates[date_str]}
+        for date_str in dates_sorted
+    }
+
+    all_day_values = sorted(set(r.day252 for r in date_rates[dates_sorted[-1]]))
+    major_66du = _nearest_ticks(all_day_values, range(66, 757, 66), 44)
+    minor_22du = _nearest_ticks(all_day_values, range(1, 757, 22), 22, set(major_66du))
+
+    for pos in minor_22du:
+        rates_seq = []
+        for date_str in dates_sorted:
+            day_rates = date_rate_map[date_str]
+            nearest = min(day_rates.keys(), key=lambda d: abs(d - pos))
+            if abs(nearest - pos) <= 22:
+                rates_seq.append(day_rates[nearest])
+        if len(rates_seq) < 2:
+            continue
+        X = [pos + t * 0.06 for t in range(len(rates_seq) - 1)]
+        Y = rates_seq[:-1]
+        U = [0.06] * (len(rates_seq) - 1)
+        V = [rates_seq[t + 1] - rates_seq[t] for t in range(len(rates_seq) - 1)]
+        ax.quiver(X, Y, U, V, angles="xy", scale_units="xy", scale=1,
+                  color=plt.cm.Greens(np.linspace(0.3, 0.9, len(rates_seq) - 1)),
+                  width=0.004, zorder=5)
+
+    ax.set_xlabel("Dias úteis")
     ax.set_xlim(0, 756)
-    major_90du = list(range(90, 757, 90))
-    minor_20du = sorted(set(range(1, 757, 20)) - set(major_90du))
-    ax.set_xticks(major_90du)
-    ax.set_xticks(minor_20du, minor=True)
+    ax.set_xticks(major_66du)
+    ax.set_xticks(minor_22du, minor=True)
     ax.set_ylabel("TAXA (%)")
     ax.legend(fontsize=8)
     ax.grid(True, which="major", alpha=0.3)

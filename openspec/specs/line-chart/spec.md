@@ -5,15 +5,19 @@ Provide an interactive line chart for visualizing SELIC Pré rates in both raw f
 ## Requirements
 
 ### Requirement: Raw mode line chart
-The system SHALL render a line chart with DU252 on the X-axis and TAXA on the Y-axis when consolidation is off, using a green line.
+The system SHALL render a line chart with "Dias úteis" on the X-axis and TAXA on the Y-axis when consolidation is off, using a green line.
 
 #### Scenario: Raw chart is displayed on fetch
 - **WHEN** the user fetches rates and the consolidate toggle is off
-- **THEN** the chart shows a single green line plotting TAXA against DU252 for all fetched records
+- **THEN** the chart shows a single green line plotting TAXA against Dias úteis for all fetched records
 
-#### Scenario: Raw chart X-axis uses 20-day scale
+#### Scenario: Raw chart x-axis label shows "Dias úteis"
 - **WHEN** the raw chart is displayed
-- **THEN** the X-axis shows tick marks at 20-day intervals starting at 1 (1, 21, 41, ...)
+- **THEN** the X-axis label shows "Dias úteis"
+
+#### Scenario: Raw chart X-axis uses quarterly (~66 DU) scale
+- **WHEN** the raw chart is displayed
+- **THEN** the X-axis shows major tick marks at approximately 66-DU intervals with nearest-match to real data (tolerance 44), and dashed minor grid lines at approximately 22-DU intervals with nearest-match to real data (tolerance 22, excluding major positions)
 
 ### Requirement: Consolidated mode dual-line chart
 The system SHALL render a chart with year on the X-axis and TAXA on the Y-axis when consolidation is on, showing menor_taxa in blue and maior_taxa in red.

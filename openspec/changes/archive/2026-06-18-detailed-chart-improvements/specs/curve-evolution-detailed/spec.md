@@ -1,11 +1,7 @@
-## Purpose
+## MODIFIED Requirements
 
-Allow users to visualize how the SELIC Pré interest rate curve has moved over time by superimposing multiple detailed rate lines (Dias úteis × TAXA) with gradient coloring, one per historical date.
-
-## Requirements
-
-### Requirement: Detailed evolution chart rendering (Dias úteis × TAXA)
-The system SHALL provide a function `render_detailed_evolution(fig, date_rates)` that plots 5 superposed lines of individual rate records (Dias úteis × TAXA) with gradient coloring, a date legend, and quiver arrows at minor tick positions showing rate change direction.
+### Requirement: Detailed evolution chart rendering (DU252 × TAXA)
+The system SHALL provide a function `render_detailed_evolution(fig, date_rates)` that plots 5 superposed lines of individual rate records (Dias úteis × TAXA) with gradient coloring, a date legend, and quiver arrows at quarterly positions showing rate change direction.
 
 #### Scenario: Five detailed lines are plotted with green gradient
 - **WHEN** `render_detailed_evolution` is called with data for 5 dates
@@ -23,14 +19,8 @@ The system SHALL provide a function `render_detailed_evolution(fig, date_rates)`
 - **WHEN** `render_detailed_evolution` is called with data containing rates at minor tick positions (~22 DU intervals)
 - **THEN** the chart shows quiver arrows at those minor tick positions indicating the rate change direction between consecutive dates, using nearest-match per date for rate lookup (tolerance 22)
 
-#### Scenario: Y-axis auto-scales to fit all data
-- **WHEN** the detailed evolution chart is rendered
-- **THEN** the Y-axis range is automatically set to include all 5 curves with margins
+## REMOVED Requirements
 
-#### Scenario: Legend identifies each date
-- **WHEN** the detailed evolution chart is rendered
-- **THEN** the legend contains 5 entries showing each date in ISO format (YYYY-MM-DD)
-
-#### Scenario: Empty data shows placeholder
-- **WHEN** `render_detailed_evolution` is called with an empty `date_rates` dict
-- **THEN** the chart shows "Sem dados" centered text
+### Requirement: X-axis ranges from DU252 0 to 756
+**Reason**: Replaced by more specific scenarios covering label, tick marks, and quiver arrows
+**Migration**: X-axis range remains 0–756, label changed to "Dias úteis", ticks changed to ~66 DU major with nearest-match

@@ -81,9 +81,9 @@ Dois modos base selecionáveis por radio button, com opção adicional de evolu�
 
 | Modo | Descrição |
 |------|-----------|
-| **Detalhado** | Curva completa DU252 × taxa (linha verde), com grid trimestral (90 DU) e ticks finos a cada 20 DU |
+| **Detalhado** | Curva completa Dias úteis × taxa (linha verde), com grid trimestral (~66 DU) e ticks finos a cada ~22 DU |
 | **Consolidado** | Envelope anual consolidado (taxa mínima em azul, máxima em vermelho), com grid trienal (3 anos) e ticks finos a cada ano |
-| **Evolução da curva** ☐ | Checkbox que sobrepõe 5 curvas históricas (hoje, 7, 14, 21, 28 dias atrás) com gradiente de cor e flechas quiver nos anos-chave, combinável com qualquer modo base |
+| **Evolução da curva** ☐ | Checkbox que sobrepõe 5 curvas históricas (hoje, 7, 14, 21, 28 dias atrás) com gradiente de cor e flechas quiver nos ticks secundários (~22 DU / ~1 ano), combinável com qualquer modo base |
 
 Na interface, informe a data no formato `YYYY-MM-DD` e clique em `Buscar`.
 Use o botão `📅` ao lado do campo de data para abrir um calendário popup.

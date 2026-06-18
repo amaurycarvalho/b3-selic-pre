@@ -391,7 +391,7 @@ class ChartRenderTest(unittest.TestCase):
         self.assertIn("blue", colors)
         self.assertIn("red", colors)
 
-    def test_render_chart_raw_xaxis_20_day_minor_ticks(self):
+    def test_render_chart_raw_xaxis_22_day_minor_ticks(self):
         records = [RateRecord(day252=i, day360=i, rate="15.0") for i in range(1, 61)]
         render_chart(self.fig, records, consolidated=False)
         ax = self.fig.gca()
@@ -399,21 +399,26 @@ class ChartRenderTest(unittest.TestCase):
         loc = ax.xaxis.get_minor_locator()
         self.assertIsInstance(loc, FixedLocator)
         self.assertIn(1, loc.locs)
-        self.assertIn(21, loc.locs)
-        self.assertIn(41, loc.locs)
+        self.assertIn(23, loc.locs)
+        self.assertIn(45, loc.locs)
 
-    def test_render_chart_raw_has_90du_major_ticks(self):
-        records = [RateRecord(day252=i, day360=i, rate="15.0") for i in [1, 90, 180]]
+    def test_render_chart_raw_has_66du_major_ticks(self):
+        records = [RateRecord(day252=i, day360=i, rate="15.0") for i in [1, 60, 120]]
         render_chart(self.fig, records, consolidated=False)
         ax = self.fig.gca()
         ticks = ax.get_xticks()
-        self.assertIn(90, ticks)
-        self.assertIn(180, ticks)
+        self.assertIn(60, ticks)
+        self.assertIn(120, ticks)
 
     def test_render_chart_consolidated_has_3yr_major_ticks(self):
         records = [
             RateRecord(day252=1, day360=1, rate="14.65"),
             RateRecord(day252=365, day360=365, rate="14.50"),
+            RateRecord(day252=730, day360=730, rate="14.00"),
+            RateRecord(day252=1095, day360=1095, rate="13.50"),
+            RateRecord(day252=1460, day360=1460, rate="13.00"),
+            RateRecord(day252=1825, day360=1825, rate="12.50"),
+            RateRecord(day252=2190, day360=2190, rate="12.00"),
         ]
         render_chart(self.fig, records, consolidated=True)
         ax = self.fig.gca()
@@ -435,8 +440,12 @@ class CurveEvolutionChartTest(unittest.TestCase):
 
     def _make_date_rates(self):
         r0 = [RateRecord(day252=1, day360=1, rate="14.0"),
+              RateRecord(day252=60, day360=60, rate="14.0"),
+              RateRecord(day252=120, day360=120, rate="14.0"),
               RateRecord(day252=365, day360=365, rate="14.5")]
         r1 = [RateRecord(day252=1, day360=1, rate="14.2"),
+              RateRecord(day252=60, day360=60, rate="14.2"),
+              RateRecord(day252=120, day360=120, rate="14.2"),
               RateRecord(day252=365, day360=365, rate="14.3")]
         return {"2026-06-17": r0, "2026-06-03": r1}
 
@@ -501,26 +510,41 @@ class CurveEvolutionChartTest(unittest.TestCase):
         ax = self.fig.gca()
         self.assertIsNotNone(ax.get_legend())
 
-    def test_render_detailed_evolution_xaxis_du252(self):
+    def test_render_detailed_evolution_xaxis_dias_uteis(self):
         date_rates = self._make_date_rates()
         render_detailed_evolution(self.fig, date_rates)
         ax = self.fig.gca()
+        self.assertEqual(ax.get_xlabel(), "Dias úteis")
         self.assertAlmostEqual(ax.get_xlim()[0], 0, delta=1)
         self.assertAlmostEqual(ax.get_xlim()[1], 756, delta=1)
 
     def test_render_curve_evolution_has_3yr_major_ticks(self):
-        date_rates = self._make_date_rates()
+        r0 = [RateRecord(day252=d, day360=d, rate="14.0") for d in [1, 365, 730, 1095, 1460, 1825, 2190]]
+        r1 = [RateRecord(day252=d, day360=d, rate="14.5") for d in [1, 365, 730, 1095, 1460, 1825, 2190]]
+        date_rates = {"2026-06-17": r0, "2026-06-03": r1}
         render_curve_evolution(self.fig, date_rates)
         ax = self.fig.gca()
         ticks = ax.get_xticks()
         self.assertIn(3, ticks)
 
-    def test_render_detailed_evolution_has_90du_major_ticks(self):
+    def test_render_detailed_evolution_has_quiver(self):
+        r0 = [RateRecord(day252=60, day360=60, rate="14.0"),
+              RateRecord(day252=1, day360=1, rate="14.0")]
+        r1 = [RateRecord(day252=60, day360=60, rate="14.2"),
+              RateRecord(day252=1, day360=1, rate="14.2")]
+        date_rates = {"2026-06-17": r0, "2026-06-03": r1}
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        quivers = [c for c in ax.collections if hasattr(c, 'get_offsets')]
+        self.assertGreaterEqual(len(quivers), 1)
+
+    def test_render_detailed_evolution_has_66du_major_ticks(self):
         date_rates = self._make_date_rates()
         render_detailed_evolution(self.fig, date_rates)
         ax = self.fig.gca()
         ticks = ax.get_xticks()
-        self.assertIn(90, ticks)
+        self.assertIn(60, ticks)
+        self.assertIn(120, ticks)
 
 
 class ShortcutTest(unittest.TestCase):

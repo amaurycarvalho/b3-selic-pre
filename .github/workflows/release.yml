@@ -50,6 +50,7 @@ jobs:
         run: make build
 
       - name: Rename binary with platform prefix
+        shell: bash
         run: |
           mv dist/b3-selic-pre "dist/${{ matrix.artifact_name }}" 2>/dev/null || true
           mv dist/b3-selic-pre.app "dist/${{ matrix.artifact_name }}.app" 2>/dev/null || true

@@ -1,16 +1,22 @@
 import base64
 import json
+import os
 import unittest
 from unittest import mock
 
 from b3_selic_pre import (
     RateRecord,
+    SHORTCUT_CHECK_PATH,
     _brl,
     _days_ago,
+    _detect_desktop_dir,
+    _icon_source,
+    _resolve_executable,
     average_rate_by_year,
     build_payload,
     build_url,
     consolidate_by_year,
+    create_shortcut,
     encode_payload,
     fetch_historical_rates,
     fetch_rates_download,
@@ -19,9 +25,11 @@ from b3_selic_pre import (
     format_evolution_csv,
     format_records_csv,
     format_yearly_rows,
+    main,
     normalize_records,
     render_chart,
     render_curve_evolution,
+    shortcut_exists,
     validate_reference_date,
 )
 
@@ -441,6 +449,111 @@ class CurveEvolutionChartTest(unittest.TestCase):
         render_curve_evolution(self.fig, date_rates)
         ax = self.fig.gca()
         self.assertEqual(ax.get_xlim(), (0, 20))
+
+
+class ShortcutTest(unittest.TestCase):
+    def test_detect_desktop_dir_xdg_user_dir(self):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "/home/user/Desktop"
+            result = _detect_desktop_dir()
+            self.assertEqual(result, "/home/user/Desktop")
+
+    def test_detect_desktop_dir_xdg_fallback_to_user_dirs(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/Desktop"\n')), \
+             mock.patch("os.path.isfile", return_value=True):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_detect_desktop_dir_fallback(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=False):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_resolve_executable_script_mode(self):
+        with mock.patch("sys.frozen", False, create=True), \
+             mock.patch("sys.argv", ["/app/b3_selic_pre.py"]), \
+             mock.patch("sys.executable", "/usr/bin/python3"):
+            result = _resolve_executable()
+            self.assertEqual(result, "/usr/bin/python3 /app/b3_selic_pre.py")
+
+    def test_resolve_executable_frozen_mode(self):
+        with mock.patch("sys.frozen", True, create=True), \
+             mock.patch("sys.executable", "/usr/local/bin/b3-selic-pre"):
+            result = _resolve_executable()
+            self.assertEqual(result, "/usr/local/bin/b3-selic-pre")
+
+    def test_icon_source_script_mode(self):
+        with mock.patch("sys.frozen", False, create=True), \
+             mock.patch("b3_selic_pre._SCRIPT_DIR", "/app"):
+            result = _icon_source()
+            self.assertEqual(result, "/app/icons/b3_selic_pre.png")
+
+    def test_icon_source_frozen_mode(self):
+        with mock.patch("sys.frozen", True, create=True), \
+             mock.patch("sys._MEIPASS", "/bundle", create=True):
+            result = _icon_source()
+            self.assertEqual(result, "/bundle/b3_selic_pre.png")
+
+    def test_shortcut_exists_returns_true_when_file_exists(self):
+        with mock.patch("os.path.isfile", return_value=True):
+            self.assertTrue(shortcut_exists())
+
+    def test_shortcut_exists_returns_false_when_file_missing(self):
+        with mock.patch("os.path.isfile", return_value=False):
+            self.assertFalse(shortcut_exists())
+
+    def test_create_shortcut_writes_desktop_files(self):
+        writes = {}
+
+        def fake_makedirs(path, exist_ok=False):
+            pass
+
+        def fake_chmod(path, mode):
+            pass
+
+        fake_open = mock.mock_open()
+        fake_open.return_value.__enter__.return_value.write.side_effect = \
+            lambda content: writes.setdefault("content", content)
+
+        def fake_copy2(src, dst):
+            writes["icon_copied"] = (src, dst)
+
+        with mock.patch("os.makedirs", fake_makedirs), \
+             mock.patch("builtins.open", fake_open), \
+             mock.patch("os.chmod", fake_chmod), \
+             mock.patch("shutil.copy2", fake_copy2), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("b3_selic_pre._resolve_executable",
+                        return_value="/usr/bin/python3 /app/b3_selic_pre.py"), \
+             mock.patch("b3_selic_pre._icon_source",
+                        return_value="/app/icons/b3_selic_pre.png"), \
+             mock.patch("b3_selic_pre._detect_desktop_dir",
+                        return_value="/home/user/Desktop"):
+            create_shortcut()
+
+        self.assertIn("icon_copied", writes)
+        self.assertIn("Name=Taxas Referenciais SELIC (B3)", writes["content"])
+        self.assertIn("Categories=Finance;Office;", writes["content"])
+        self.assertIn("/usr/bin/python3 /app/b3_selic_pre.py --gui",
+                      writes["content"])
+
+    def test_main_create_shortcut_calls_create_shortcut(self):
+        with mock.patch("b3_selic_pre.create_shortcut") as mock_cs, \
+             mock.patch("b3_selic_pre.print") as mock_print:
+            main(["--create-shortcut"])
+
+        mock_cs.assert_called_once()
+        mock_print.assert_called_once_with(
+            "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"
+        )
 
 
 if __name__ == "__main__":

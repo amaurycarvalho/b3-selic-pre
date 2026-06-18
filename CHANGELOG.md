@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-18
+
+### Added
+
+- `--create-shortcut`: novo parâmetro CLI que cria atalho desktop e sai
+- `create_shortcut()`: função que gera `.desktop` FreeDesktop com nome "Taxas Referenciais SELIC (B3)" e categoria `Finance;Office;`
+- `_detect_desktop_dir()`: detecção do diretório Desktop via `xdg-user-dir` → `~/.config/user-dirs.dirs` → `~/Desktop` (suporte a locale pt-BR)
+- `_resolve_executable()`: resolução do executável para script Python (`python3 + script`) ou binário compilado PyInstaller (`sys.executable`)
+- `_icon_source()`: resolução do caminho do ícone em modo script (`_SCRIPT_DIR/icons/`) ou frozen (`sys._MEIPASS`)
+- `shortcut_exists()`: verifica se atalho já está instalado em `~/.local/share/applications/`
+- **Botão "Criar Atalho Desktop"** na GUI (top_frame, lado direito), aparece automaticamente se não existir atalho e se auto-destrói após criar
+- **Instalação do ícone**: cópia de `b3_selic_pre.png` para `~/.local/share/icons/` com referência absoluta no `.desktop`
+- **Instalação em dois locais**: `.desktop` gerado em `~/Desktop/` e `~/.local/share/applications/`
+
+### Changed
+
+- Versão bumpada para `0.4.0`
+- `b3-selic-pre.desktop` na raiz do projeto: `Name` atualizado para "Taxas Referenciais SELIC (B3)", caminhos substituídos por referências simbólicas (`b3-selic-pre --gui`, `Icon=b3-selic-pre`)
+- `b3-selic-pre.spec`: `upx` desabilitado no macOS (evita warnings); `console` desabilitado no macOS (.app sem terminal); adicionado `info_plist` com `NSHighResolutionCapable`, `CFBundleShortVersionString` e `CFBundleVersion`
+
 ## [0.3.0] - 2026-06-17
 
 ### Added

@@ -42,6 +42,8 @@ python3 b3_selic_pre.py                     # consultar data atual
 python3 b3_selic_pre.py 2026-06-10          # data específica
 python3 b3_selic_pre.py 2026-06-10 --yearly # consolidado por ano
 python3 b3_selic_pre.py --gui               # interface gráfica
+python3 b3_selic_pre.py --create-shortcut   # criar atalho no desktop (Linux)
+python3 b3_selic_pre.py --help              # exibir ajuda com todos os parâmetros
 python3 b3_selic_pre.py --version           # exibir versão
 ```
 
@@ -52,6 +54,8 @@ dist/b3-selic-pre                           # consultar data atual
 dist/b3-selic-pre 2026-06-10                # data específica
 dist/b3-selic-pre 2026-06-10 --yearly       # consolidado por ano
 dist/b3-selic-pre --gui                     # interface gráfica
+dist/b3-selic-pre --create-shortcut         # criar atalho no desktop (Linux)
+dist/b3-selic-pre --help                    # exibir ajuda com todos os parâmetros
 dist/b3-selic-pre --version                 # exibir versão
 ```
 
@@ -62,6 +66,8 @@ dist/b3-selic-pre --version                 # exibir versão
 ./b3-selic-pre-linux 2026-06-10             # data específica
 ./b3-selic-pre-linux 2026-06-10 --yearly    # consolidado por ano
 ./b3-selic-pre-linux --gui                  # interface gráfica
+./b3-selic-pre-linux --create-shortcut      # criar atalho no desktop (Linux)
+./b3-selic-pre-linux --help                 # exibir ajuda com todos os parâmetros
 ./b3-selic-pre-linux --version              # exibir versão
 ```
 
@@ -91,6 +97,7 @@ Recursos disponíveis:
 - Cópia de dados para área de transferência
 - Cópia do gráfico como imagem
 - Exportação do gráfico em PNG
+- Criação de atalho no desktop (botão "Criar Atalho Desktop" ou `--create-shortcut`)
 
 ### Testes
 

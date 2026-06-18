@@ -6,12 +6,15 @@ from datetime import date, datetime
 import io
 import json
 import os
+import shutil
+import subprocess
+import sys
 import threading
 import concurrent.futures
 import urllib.request
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -358,6 +361,89 @@ def format_evolution_csv(date_rates):
     return output.getvalue()
 
 
+def _detect_desktop_dir():
+    try:
+        result = subprocess.run(
+            ["xdg-user-dir", "DESKTOP"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            path = result.stdout.strip()
+            if path:
+                return path
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    user_dirs = os.path.expanduser("~/.config/user-dirs.dirs")
+    if os.path.isfile(user_dirs):
+        for line in open(user_dirs):
+            if line.startswith("XDG_DESKTOP_DIR="):
+                raw = line.split("=", 1)[1].strip().strip('"')
+                path = os.path.expandvars(raw)
+                if path:
+                    return path
+
+    return os.path.expanduser("~/Desktop")
+
+
+def _resolve_executable():
+    if getattr(sys, "frozen", False):
+        return sys.executable
+    script = os.path.abspath(sys.argv[0])
+    return f"{sys.executable} {script}"
+
+
+def _icon_source():
+    if getattr(sys, "frozen", False):
+        return os.path.join(sys._MEIPASS, "b3_selic_pre.png")
+    return os.path.join(_SCRIPT_DIR, "icons", "b3_selic_pre.png")
+
+
+SHORTCUT_CHECK_PATH = os.path.expanduser(
+    "~/.local/share/applications/b3-selic-pre.desktop"
+)
+
+
+def shortcut_exists():
+    return os.path.isfile(SHORTCUT_CHECK_PATH)
+
+
+def create_shortcut():
+    exec_line = _resolve_executable() + " --gui"
+    icon_src = _icon_source()
+    desktop_dir = _detect_desktop_dir()
+
+    icons_dst = os.path.expanduser("~/.local/share/icons")
+    os.makedirs(icons_dst, exist_ok=True)
+    if os.path.isfile(icon_src):
+        shutil.copy2(icon_src, os.path.join(icons_dst, "b3-selic-pre.png"))
+
+    icon_path = os.path.join(icons_dst, "b3-selic-pre.png")
+
+    content = (
+        "[Desktop Entry]\n"
+        f"Name=Taxas Referenciais SELIC (B3)\n"
+        "Comment=Consulta taxas referenciais SELIC Pré na B3\n"
+        f"Exec={exec_line}\n"
+        f"Icon={icon_path}\n"
+        "Terminal=false\n"
+        "Type=Application\n"
+        "Categories=Finance;Office;\n"
+        "StartupNotify=true\n"
+    )
+
+    dests = [
+        os.path.join(desktop_dir, "b3-selic-pre.desktop"),
+        os.path.expanduser("~/.local/share/applications/b3-selic-pre.desktop"),
+    ]
+    for path in dests:
+        parent = os.path.dirname(path)
+        os.makedirs(parent, exist_ok=True)
+        with open(path, "w") as f:
+            f.write(content)
+        os.chmod(path, 0o755)
+
+
 class DatePicker:
     def __init__(self, parent, date_var):
         import tkinter as tk
@@ -454,7 +540,7 @@ class SelicPreApp:
         root.title(f"B3 SELIC Pré v{__version__}")
         root.geometry("800x560")
 
-        icon_path = os.path.join(_SCRIPT_DIR, "b3_selic_pre.png")
+        icon_path = os.path.join(_SCRIPT_DIR, "icons/b3_selic_pre.png")
         if os.path.exists(icon_path):
             img = tk.PhotoImage(file=icon_path)
             self.icon_img = img
@@ -480,6 +566,14 @@ class SelicPreApp:
 
         self.fetch_button = ttk.Button(top_frame, text="Buscar", command=self.fetch_rates)
         self.fetch_button.pack(side=tk.LEFT)
+
+        self.shortcut_button = None
+        if not shortcut_exists():
+            self.shortcut_button = ttk.Button(
+                top_frame, text="Criar Atalho Desktop",
+                command=self._create_shortcut,
+            )
+            self.shortcut_button.pack(side=tk.RIGHT)
 
         chart_frame = ttk.Frame(root, padding=(12, 0, 12, 8))
         chart_frame.pack(fill=tk.BOTH, expand=True)
@@ -554,6 +648,13 @@ class SelicPreApp:
 
     def _open_calendar(self):
         DatePicker(self.root, self.date_var)
+
+    def _create_shortcut(self):
+        create_shortcut()
+        if self.shortcut_button:
+            self.shortcut_button.pack_forget()
+            self.shortcut_button = None
+        self.set_status("Atalho criado em ~/Desktop/ e ~/.local/share/applications/.")
 
     def _update_button_states(self):
         has_single = bool(self.records)
@@ -776,6 +877,11 @@ def parse_args(argv=None):
         help="Exibe taxas consolidadas por ano (ANO, MENOR TAXA, MAIOR TAXA).",
     )
     parser.add_argument(
+        "--create-shortcut",
+        action="store_true",
+        help="Cria atalho no desktop e menu de aplicações e sai.",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"b3-selic-pre {__version__}",
@@ -786,6 +892,10 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.create_shortcut:
+        create_shortcut()
+        print("Atalho criado em ~/Desktop/ e ~/.local/share/applications/")
+        return
     if args.gui:
         launch_gui()
         return

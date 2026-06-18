@@ -21,3 +21,15 @@ The system SHALL resolve the icon path relative to the script file location, not
 #### Scenario: Script launched from another directory
 - **WHEN** the user runs `python3 /path/to/b3_selic_pre.py --gui` from a different working directory
 - **THEN** the icon is still found and displayed correctly
+
+### Requirement: Icon copy for shortcut
+When creating a desktop shortcut, the system SHALL copy `b3_selic_pre.png` to `~/.local/share/icons/` for stable reference by the `.desktop` file.
+
+#### Scenario: Icon copied during shortcut creation
+- **WHEN** the user creates a shortcut (via CLI `--create-shortcut` or GUI button)
+- **THEN** the icon file `b3_selic_pre.png` is copied to `~/.local/share/icons/b3-selic-pre.png`
+
+#### Scenario: Icon source resolution in frozen mode
+- **WHEN** the application is running as a compiled PyInstaller binary
+- **AND** the user creates a shortcut
+- **THEN** the icon is resolved from the PyInstaller bundle directory (`sys._MEIPASS`)

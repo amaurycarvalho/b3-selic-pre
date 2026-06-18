@@ -7,8 +7,10 @@ from b3_selic_pre import (
     RateRecord,
     SelicPreApp,
     consolidate_by_year,
+    create_shortcut,
     format_cli_rows,
     format_yearly_rows,
+    shortcut_exists,
 )
 
 
@@ -212,6 +214,49 @@ class SelicPreAppTest(unittest.TestCase):
 
         mock_clear.assert_not_called()
         mock_append.assert_not_called()
+
+    def _make_app_with_shortcut(self, exists):
+        import tkinter as tk
+        from tkinter import TclError
+        try:
+            root = tk.Tk()
+        except TclError as exc:
+            self.skipTest(f"tkinter display unavailable: {exc}")
+        root.withdraw()
+        with mock.patch("b3_selic_pre.shortcut_exists", return_value=exists), \
+             mock.patch("b3_selic_pre.os.path.exists", return_value=False):
+            app = SelicPreApp(root)
+        return root, app
+
+    def test_shortcut_button_shown_when_no_shortcut(self):
+        root, app = self._make_app_with_shortcut(False)
+        try:
+            self.assertIsNotNone(app.shortcut_button)
+            self.assertEqual(
+                str(app.shortcut_button.cget("text")),
+                "Criar Atalho Desktop",
+            )
+        finally:
+            root.destroy()
+
+    def test_shortcut_button_hidden_when_shortcut_exists(self):
+        root, app = self._make_app_with_shortcut(True)
+        try:
+            self.assertIsNone(app.shortcut_button)
+        finally:
+            root.destroy()
+
+    def test_shortcut_button_callback_creates_shortcut(self):
+        root, app = self._make_app_with_shortcut(False)
+        try:
+            self.assertIsNotNone(app.shortcut_button)
+            with mock.patch("b3_selic_pre.create_shortcut") as mock_cs:
+                app._create_shortcut()
+            mock_cs.assert_called_once()
+            self.assertIsNone(app.shortcut_button)
+            self.assertIn("Atalho criado", app.status_var.get())
+        finally:
+            root.destroy()
 
 
 if __name__ == "__main__":

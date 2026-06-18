@@ -14,7 +14,7 @@ import concurrent.futures
 import urllib.request
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -276,7 +276,10 @@ def render_chart(fig, records, consolidated=False):
                 linestyle="-", linewidth=1.5, label="Maior taxa")
         ax.set_xlabel("Ano")
         ax.set_xlim(0, 20)
-        ax.set_xticks(range(0, 21))
+        major_3yr = list(range(0, 21, 3))
+        minor_1yr = sorted(set(range(0, 21)) - set(major_3yr))
+        ax.set_xticks(major_3yr)
+        ax.set_xticks(minor_1yr, minor=True)
         ax.legend()
     else:
         days = [r.day252 for r in records]
@@ -285,10 +288,14 @@ def render_chart(fig, records, consolidated=False):
                 linestyle="-", linewidth=1.5)
         ax.set_xlabel("DU252")
         ax.set_xlim(0, 756)
-        ax.set_xticks(range(1, 757, 20))
+        major_90du = list(range(90, 757, 90))
+        minor_20du = sorted(set(range(1, 757, 20)) - set(major_90du))
+        ax.set_xticks(major_90du)
+        ax.set_xticks(minor_20du, minor=True)
 
     ax.set_ylabel("TAXA (%)")
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, which="major", alpha=0.3)
+    ax.grid(True, which="minor", alpha=0.15, linestyle="--")
     fig.tight_layout()
 
 
@@ -343,10 +350,55 @@ def render_curve_evolution(fig, date_rates):
 
     ax.set_xlabel("Ano")
     ax.set_xlim(0, 20)
-    ax.set_xticks(range(0, 21))
+    major_3yr = list(range(0, 21, 3))
+    minor_1yr = sorted(set(range(0, 21)) - set(major_3yr))
+    ax.set_xticks(major_3yr)
+    ax.set_xticks(minor_1yr, minor=True)
     ax.set_ylabel("TAXA (%)")
     ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, which="major", alpha=0.3)
+    ax.grid(True, which="minor", alpha=0.15, linestyle="--")
+    fig.tight_layout()
+
+
+def render_detailed_evolution(fig, date_rates):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    ax = fig.gca()
+    ax.clear()
+
+    if not date_rates:
+        ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
+                transform=ax.transAxes, fontsize=14, color="gray")
+        ax.set_xlabel("DU252")
+        ax.set_ylabel("TAXA")
+        fig.tight_layout()
+        return
+
+    dates_sorted = sorted(date_rates.keys())
+    n = len(dates_sorted)
+    colors = plt.cm.Greens(np.linspace(0.3, 0.9, n))
+    alphas = np.linspace(0.3, 1.0, n)
+    linewidths = np.linspace(0.8, 2.5, n)
+
+    for i, date_str in enumerate(dates_sorted):
+        records = date_rates[date_str]
+        days = [r.day252 for r in records]
+        rates = [float(r.rate.replace(",", ".")) for r in records]
+        ax.plot(days, rates, color=colors[i], alpha=alphas[i],
+                linewidth=linewidths[i], label=date_str)
+
+    ax.set_xlabel("DU252")
+    ax.set_xlim(0, 756)
+    major_90du = list(range(90, 757, 90))
+    minor_20du = sorted(set(range(1, 757, 20)) - set(major_90du))
+    ax.set_xticks(major_90du)
+    ax.set_xticks(minor_20du, minor=True)
+    ax.set_ylabel("TAXA (%)")
+    ax.legend(fontsize=8)
+    ax.grid(True, which="major", alpha=0.3)
+    ax.grid(True, which="minor", alpha=0.15, linestyle="--")
     fig.tight_layout()
 
 
@@ -549,6 +601,7 @@ class SelicPreApp:
         self.date_var = tk.StringVar(value=default_reference_date())
         self.status_var = tk.StringVar(value="Informe uma data e clique em Buscar.")
         self.view_var = tk.StringVar(value="raw")
+        self.evolution_var = tk.BooleanVar(value=False)
         self.historical_data = None
 
         top_frame = ttk.Frame(root, padding=12)
@@ -626,11 +679,11 @@ class SelicPreApp:
             value="consolidated", command=self.toggle_view,
         )
         self.view_consolidated_rb.pack(side=tk.LEFT, padx=(4, 0))
-        self.view_evolution_rb = ttk.Radiobutton(
-            bottom_frame, text="Evolução da curva", variable=self.view_var,
-            value="evolution", command=self.toggle_view,
+        self.evolution_cb = ttk.Checkbutton(
+            bottom_frame, text="Evolução da curva",
+            variable=self.evolution_var, command=self.toggle_evolution,
         )
-        self.view_evolution_rb.pack(side=tk.LEFT, padx=(4, 0))
+        self.evolution_cb.pack(side=tk.LEFT, padx=(4, 0))
 
         ttk.Label(bottom_frame, textvariable=self.status_var).pack(
             side=tk.LEFT,
@@ -666,16 +719,18 @@ class SelicPreApp:
         self.export_button.configure(state=state)
 
     def _redraw_chart(self):
+        show_evolution = self.evolution_var.get()
         view = self.view_var.get()
-        if view == "evolution":
-            if self.historical_data:
+
+        if show_evolution and self.historical_data:
+            if view == "consolidated":
                 render_curve_evolution(self.figure, self.historical_data)
                 self.figure.gca().set_title(
-                    "B3 SELIC Pré — Evolução da Curva", fontsize=14, y=0.92)
+                    "B3 SELIC Pré — Evolução Consolidada", fontsize=14, y=0.92)
             else:
-                render_chart(self.figure, [])
+                render_detailed_evolution(self.figure, self.historical_data)
                 self.figure.gca().set_title(
-                    "B3 SELIC Pré", fontsize=14, y=0.92)
+                    "B3 SELIC Pré — Evolução Detalhada", fontsize=14, y=0.92)
         elif view == "consolidated":
             render_chart(self.figure, self.records, consolidated=True)
             self.figure.gca().set_title(
@@ -687,31 +742,25 @@ class SelicPreApp:
         self.canvas.draw_idle()
 
     def toggle_view(self):
-        view = self.view_var.get()
-        if view == "evolution":
-            today = date.today().isoformat()
-            if self.date_var.get().strip() != today:
-                self.date_var.set(today)
-            if not self.historical_data:
-                if self.records:
-                    self.set_status("Clique em Buscar para carregar dados históricos.")
-                else:
-                    self.set_status("Informe uma data e clique em Buscar para ver a evolução da curva.")
         self._redraw_chart()
+
+    def toggle_evolution(self):
+        if self.evolution_var.get():
+            if self.historical_data:
+                self._redraw_chart()
+            else:
+                today = date.today().isoformat()
+                if self.date_var.get().strip() != today:
+                    self.date_var.set(today)
+                self._fetch_historical_rates(today)
+        else:
+            self._redraw_chart()
 
     def fetch_rates(self):
         try:
             reference_date = validate_reference_date(self.date_var.get().strip())
         except ValueError as exc:
             self.set_status(str(exc))
-            return
-
-        if self.view_var.get() == "evolution":
-            today = date.today().isoformat()
-            if reference_date != today:
-                self.date_var.set(today)
-                reference_date = today
-            self._fetch_historical_rates(reference_date)
             return
 
         parsed = datetime.strptime(reference_date, "%Y-%m-%d").date()
@@ -817,7 +866,7 @@ class SelicPreApp:
         if not self._has_data():
             return
 
-        if self.view_var.get() == "evolution" and self.historical_data:
+        if self.evolution_var.get() and self.historical_data:
             csv_text = format_evolution_csv(self.historical_data)
         elif self.view_var.get() == "consolidated":
             consolidated = consolidate_by_year(self.records)

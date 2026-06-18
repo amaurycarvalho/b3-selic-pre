@@ -29,6 +29,7 @@ from b3_selic_pre import (
     normalize_records,
     render_chart,
     render_curve_evolution,
+    render_detailed_evolution,
     shortcut_exists,
     validate_reference_date,
 )
@@ -390,14 +391,35 @@ class ChartRenderTest(unittest.TestCase):
         self.assertIn("blue", colors)
         self.assertIn("red", colors)
 
-    def test_render_chart_raw_xaxis_20_day_ticks(self):
+    def test_render_chart_raw_xaxis_20_day_minor_ticks(self):
         records = [RateRecord(day252=i, day360=i, rate="15.0") for i in range(1, 61)]
         render_chart(self.fig, records, consolidated=False)
         ax = self.fig.gca()
+        from matplotlib.ticker import FixedLocator
+        loc = ax.xaxis.get_minor_locator()
+        self.assertIsInstance(loc, FixedLocator)
+        self.assertIn(1, loc.locs)
+        self.assertIn(21, loc.locs)
+        self.assertIn(41, loc.locs)
+
+    def test_render_chart_raw_has_90du_major_ticks(self):
+        records = [RateRecord(day252=i, day360=i, rate="15.0") for i in [1, 90, 180]]
+        render_chart(self.fig, records, consolidated=False)
+        ax = self.fig.gca()
         ticks = ax.get_xticks()
-        self.assertIn(1, ticks)
-        self.assertIn(21, ticks)
-        self.assertIn(41, ticks)
+        self.assertIn(90, ticks)
+        self.assertIn(180, ticks)
+
+    def test_render_chart_consolidated_has_3yr_major_ticks(self):
+        records = [
+            RateRecord(day252=1, day360=1, rate="14.65"),
+            RateRecord(day252=365, day360=365, rate="14.50"),
+        ]
+        render_chart(self.fig, records, consolidated=True)
+        ax = self.fig.gca()
+        ticks = ax.get_xticks()
+        self.assertIn(3, ticks)
+        self.assertIn(6, ticks)
 
 
 class CurveEvolutionChartTest(unittest.TestCase):
@@ -449,6 +471,56 @@ class CurveEvolutionChartTest(unittest.TestCase):
         render_curve_evolution(self.fig, date_rates)
         ax = self.fig.gca()
         self.assertEqual(ax.get_xlim(), (0, 20))
+
+    def test_render_detailed_evolution_shows_lines(self):
+        date_rates = self._make_date_rates()
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        lines = ax.get_lines()
+        self.assertGreaterEqual(len(lines), 2)
+
+    def test_render_detailed_evolution_empty_shows_message(self):
+        render_detailed_evolution(self.fig, {})
+        ax = self.fig.gca()
+        texts = [t.get_text() for t in ax.texts]
+        self.assertIn("Sem dados", texts)
+
+    def test_render_detailed_evolution_uses_green_gradient(self):
+        date_rates = self._make_date_rates()
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        lines = ax.get_lines()
+        for line in lines:
+            r, g, b, _ = line.get_color()
+            self.assertGreater(g, r)
+            self.assertGreater(g, b)
+
+    def test_render_detailed_evolution_has_legend(self):
+        date_rates = self._make_date_rates()
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        self.assertIsNotNone(ax.get_legend())
+
+    def test_render_detailed_evolution_xaxis_du252(self):
+        date_rates = self._make_date_rates()
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        self.assertAlmostEqual(ax.get_xlim()[0], 0, delta=1)
+        self.assertAlmostEqual(ax.get_xlim()[1], 756, delta=1)
+
+    def test_render_curve_evolution_has_3yr_major_ticks(self):
+        date_rates = self._make_date_rates()
+        render_curve_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        ticks = ax.get_xticks()
+        self.assertIn(3, ticks)
+
+    def test_render_detailed_evolution_has_90du_major_ticks(self):
+        date_rates = self._make_date_rates()
+        render_detailed_evolution(self.fig, date_rates)
+        ax = self.fig.gca()
+        ticks = ax.get_xticks()
+        self.assertIn(90, ticks)
 
 
 class ShortcutTest(unittest.TestCase):

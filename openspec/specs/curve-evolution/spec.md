@@ -69,3 +69,10 @@ The evolution chart SHALL display a legend mapping each line color/alpha to its 
 #### Scenario: Legend shows date labels
 - **WHEN** the evolution chart is rendered
 - **THEN** the legend contains 5 entries showing each date in ISO format (YYYY-MM-DD)
+
+### Requirement: Detailed evolution rendering as alternative view
+The system SHALL provide `render_detailed_evolution(fig, date_rates)` alongside the existing `render_curve_evolution` as an alternative rendering path for curve evolution data, selected based on the active radio button when evolution is enabled.
+
+#### Scenario: Detailed evolution is selected via radio button
+- **WHEN** evolution checkbox is ON and "Detalhado" radio is selected
+- **THEN** `render_detailed_evolution` is called instead of `render_curve_evolution`

@@ -57,8 +57,9 @@ class SelicPreAppTest(unittest.TestCase):
     def test_radio_buttons_exist_and_raw_is_default(self):
         self.assertIsNotNone(self.app.view_raw_rb)
         self.assertIsNotNone(self.app.view_consolidated_rb)
-        self.assertIsNotNone(self.app.view_evolution_rb)
+        self.assertIsNotNone(self.app.evolution_cb)
         self.assertEqual(self.app.view_var.get(), "raw")
+        self.assertEqual(self.app.evolution_var.get(), False)
 
     def test_toggle_to_consolidated_updates_chart(self):
         records = [

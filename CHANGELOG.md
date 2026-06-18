@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-18
+
+### Added
+
+- **Grid trimestral no gráfico Detalhado**: linhas verticais sólidas a cada 90 DU (≈ trimestre) como ticks principais (major, alpha=0.3), aplicadas tanto no modo Detalhado quanto na Evolução Detalhada
+- **Grid trienal no gráfico Consolidado**: linhas verticais sólidas a cada 3 anos como ticks principais (major, alpha=0.3), aplicadas tanto no modo Consolidado quanto na Evolução Consolidada
+- `ax.grid` dividido em `which='major'` (sólido, alpha=0.3) e `which='minor'` (tracejado, alpha=0.15, linestyle="--") nas 4 funções de renderização — o grid trimestral/trienal (major) é mais proeminente que o mensal/anual (minor)
+
+### Changed
+
+- **Radiobutton "Evolução da curva" → Checkbox**: "Evolução da curva" convertido de `ttk.Radiobutton` para `ttk.Checkbutton`, desacoplado dos modos base "Detalhado" e "Consolidado". O checkbox pode ser marcado/desmarcado independentemente do radiobutton ativo.
+- **Evolução detalhada**: nova função `render_detailed_evolution` que plota 5 linhas gradiente verde no eixo DU252 × TAXA (uma curva por data histórica), exibida quando o checkbox está marcado e o radiobutton "Detalhado" está selecionado.
+- **Evolução consolidada**: `render_curve_evolution` mantida (5 curvas azuis + flechas quiver), exibida quando o checkbox está marcado e "Consolidado" está selecionado.
+- **Lazy one-time fetch**: ao marcar o checkbox pela primeira vez na execução, o sistema automaticamente busca dados históricos (5 datas, data-base = hoje) sem exigir clique em "Buscar". Ao desmarcar/remarcar, apenas alterna a exibição sem novas requisições.
+- **"Copiar dados" segue o checkbox**: evolution ON → copia CSV de evolução; OFF → copia base (detalhado ou consolidado conforme o radio).
+- Versão bumpada para `0.5.0`
+
+### Removed
+
+- Radiobutton "Evolução da curva" removido (substituído por checkbox)
+- Modo `view_var = "evolution"` removido do grupo de radiobuttons
+
 ## [0.4.0] - 2026-06-18
 
 ### Added

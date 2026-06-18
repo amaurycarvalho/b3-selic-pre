@@ -2,6 +2,8 @@
 
 Curva de juros (taxa referencial SELIC) conforme a B3
 
+[![Spec-Driven Development](https://img.shields.io/badge/SDD-OpenSpec-yellow)](openspec/specs/project-constitution/spec.md)
+
 ## Instalação
 
 ### 1. Manual (código fonte)

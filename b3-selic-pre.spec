@@ -69,7 +69,7 @@ if sys.platform == 'darwin':
         exe,
         name='b3-selic-pre.app',
         icon=icon_file,
-        bundle_identifier='com.amaurycarvalho.b3-selic-pre',
+        bundle_identifier='com.github.amaurycarvalho.b3-selic-pre',
         info_plist={
             'CFBundleShortVersionString': '0.4.0',
             'CFBundleVersion': '0.4.0',

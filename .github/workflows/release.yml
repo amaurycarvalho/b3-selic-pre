@@ -50,12 +50,14 @@ jobs:
         run: make build
 
       - name: Rename binary with platform prefix
-        run: mv dist/b3-selic-pre* dist/${{ matrix.artifact_name }}
+        run: |
+          mv dist/b3-selic-pre "dist/${{ matrix.artifact_name }}" 2>/dev/null || true
+          mv dist/b3-selic-pre.app "dist/${{ matrix.artifact_name }}.app" 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}*
 
   release:
     needs: build

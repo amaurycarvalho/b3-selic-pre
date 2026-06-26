@@ -14,7 +14,7 @@ import concurrent.futures
 import urllib.request
 
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -346,21 +346,24 @@ def render_curve_evolution(fig, date_rates):
     major_3yr = _nearest_ticks(all_years, range(0, 21, 3), 1)
     minor_1yr = _nearest_ticks(all_years, range(0, 21), 1, set(major_3yr))
 
-    for year in minor_1yr:
+    for tick_idx, year in enumerate(all_years):
         rates_seq = []
         for date_str in dates_sorted:
             yearly_rates = average_rate_by_year(date_rates[date_str])
-            nearest = min(yearly_rates.keys(), key=lambda y: abs(y - year))
-            if abs(nearest - year) <= 1:
-                rates_seq.append(yearly_rates[nearest])
+            if year in yearly_rates:
+                rates_seq.append(yearly_rates[year])
         if len(rates_seq) < 2:
             continue
-        X = [year + t * 0.06 for t in range(len(rates_seq) - 1)]
-        Y = rates_seq[:-1]
-        U = [0.06] * (len(rates_seq) - 1)
-        V = [rates_seq[t + 1] - rates_seq[t] for t in range(len(rates_seq) - 1)]
+        trans_idx = (tick_idx - 1) % 5
+        if trans_idx >= len(rates_seq) - 1:
+            continue
+        n_transitions = len(rates_seq) - 1
+        X = [year + trans_idx * 0.06]
+        Y = [rates_seq[trans_idx]]
+        U = [0.06]
+        V = [rates_seq[trans_idx + 1] - rates_seq[trans_idx]]
         ax.quiver(X, Y, U, V, angles='xy', scale_units='xy', scale=1,
-                  color=plt.cm.Blues(np.linspace(0.3, 0.9, len(rates_seq) - 1)),
+                  color=plt.cm.Blues(np.linspace(0.3, 0.9, n_transitions))[trans_idx],
                   width=0.004, zorder=5)
 
     ax.set_xlabel("Ano")
@@ -411,7 +414,7 @@ def render_detailed_evolution(fig, date_rates):
     major_66du = _nearest_ticks(all_day_values, range(66, 757, 66), 44)
     minor_22du = _nearest_ticks(all_day_values, range(1, 757, 22), 22, set(major_66du))
 
-    for pos in minor_22du:
+    for tick_idx, pos in enumerate(minor_22du):
         rates_seq = []
         for date_str in dates_sorted:
             day_rates = date_rate_map[date_str]
@@ -420,12 +423,16 @@ def render_detailed_evolution(fig, date_rates):
                 rates_seq.append(day_rates[nearest])
         if len(rates_seq) < 2:
             continue
-        X = [pos + t * 0.06 for t in range(len(rates_seq) - 1)]
-        Y = rates_seq[:-1]
-        U = [0.06] * (len(rates_seq) - 1)
-        V = [rates_seq[t + 1] - rates_seq[t] for t in range(len(rates_seq) - 1)]
+        trans_idx = (tick_idx - 1) % 5
+        if trans_idx >= len(rates_seq) - 1:
+            continue
+        n_transitions = len(rates_seq) - 1
+        X = [pos + trans_idx * 0.06]
+        Y = [rates_seq[trans_idx]]
+        U = [0.06]
+        V = [rates_seq[trans_idx + 1] - rates_seq[trans_idx]]
         ax.quiver(X, Y, U, V, angles="xy", scale_units="xy", scale=1,
-                  color=plt.cm.Greens(np.linspace(0.3, 0.9, len(rates_seq) - 1)),
+                  color=plt.cm.Greens(np.linspace(0.3, 0.9, n_transitions))[trans_idx],
                   width=0.004, zorder=5)
 
     ax.set_xlabel("Dias úteis")

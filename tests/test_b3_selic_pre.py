@@ -528,11 +528,10 @@ class CurveEvolutionChartTest(unittest.TestCase):
         self.assertIn(3, ticks)
 
     def test_render_detailed_evolution_has_quiver(self):
-        r0 = [RateRecord(day252=60, day360=60, rate="14.0"),
-              RateRecord(day252=1, day360=1, rate="14.0")]
-        r1 = [RateRecord(day252=60, day360=60, rate="14.2"),
-              RateRecord(day252=1, day360=1, rate="14.2")]
-        date_rates = {"2026-06-17": r0, "2026-06-03": r1}
+        records = [RateRecord(day252=d, day360=d, rate=f"{13.0 + d % 5 * 0.5:.1f}")
+                   for d in range(1, 757, 44)]
+        dates = ["2026-06-03", "2026-06-10", "2026-06-17", "2026-06-24", "2026-07-01"]
+        date_rates = {d: records for d in dates}
         render_detailed_evolution(self.fig, date_rates)
         ax = self.fig.gca()
         quivers = [c for c in ax.collections if hasattr(c, 'get_offsets')]

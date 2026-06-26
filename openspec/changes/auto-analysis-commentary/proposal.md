@@ -4,7 +4,7 @@ O programa exibe gráficos de taxas SELIC Pré, mas não oferece nenhuma interpr
 
 ## What Changes
 
-- Adicionar módulo `analyze.py` com motor de inferência baseado em regras, composto por 11 camadas de análise:
+- Adicionar subpacote `application/analyze/` com motor de inferência baseado em regras, composto por 11 camadas de análise:
   1. Forma da curva (ascendente/descendente/plana)
   2. Inclinação (regressão linear)
   3. Convexidade (regressão quadrática)
@@ -16,7 +16,7 @@ O programa exibe gráficos de taxas SELIC Pré, mas não oferece nenhuma interpr
   9. Rotação da curva (Bear/Bull Steepening/Flattening)
   10. Intensidade do movimento (delta médio absoluto)
   11. Score agregado (peso das regras ativadas)
-- Adicionar painel lateral direito collapsível na GUI (`SelicPreApp`) para exibir o relatório textual
+- Adicionar painel lateral direito collapsível na GUI (`SelicPreApp` em `presentation/gui.py`) para exibir o relatório textual
 - Integrar a análise no fluxo de redraw do gráfico (`_redraw_chart`), atualizando o relatório automaticamente a cada nova visualização
 - Thresholds ajustáveis por parâmetro nas funções do motor
 
@@ -31,8 +31,8 @@ O programa exibe gráficos de taxas SELIC Pré, mas não oferece nenhuma interpr
 
 ## Impact
 
-- Arquivo novo: `b3_selic_pre/analyze.py` (módulo do motor de inferência)
-- Arquivo modificado: `b3_selic_pre.py` (adição do painel lateral e integração no `_redraw_chart`)
-- Nenhuma dependência externa nova (numpy já é dependência transitória do matplotlib; pode ser explicitada no `requirements.txt`)
+- Pacote novo: `src/b3_selic_pre/application/analyze/` com `__init__.py`, `_thresholds.py`, `_metrics.py`, `_metrics_evolution.py`, `_rules.py`, `_report.py`
+- Arquivo modificado: `src/b3_selic_pre/presentation/gui.py` (adição do painel lateral e integração no `_redraw_chart`)
+- Nenhuma dependência externa nova (numpy já é dependência transitória do matplotlib; pode ser explicitada no `pyproject.toml`)
 - Nenhuma mudança na API pública, CLI, ou formato de exportação de dados
 - Nenhuma mudança nos specs existentes

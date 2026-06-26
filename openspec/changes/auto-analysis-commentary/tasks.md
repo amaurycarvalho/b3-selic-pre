@@ -1,12 +1,12 @@
-## 1. Estrutura do módulo analyze
+## 1. Estrutura do subpacote analyze
 
-- [ ] 1.1 Criar diretório `b3_selic_pre/` com `__init__.py` vazio
-- [ ] 1.2 Criar `b3_selic_pre/_thresholds.py` com dataclass `AnalysisThresholds` e valores default
-- [ ] 1.3 Criar `b3_selic_pre/_metrics.py` com funções de extração de métricas (curva detalhada)
-- [ ] 1.4 Criar `b3_selic_pre/_metrics_evolution.py` com funções de métricas para modo evolução
-- [ ] 1.5 Criar `b3_selic_pre/_rules.py` com definição de todas as regras das 11 camadas
-- [ ] 1.6 Criar `b3_selic_pre/_report.py` com composição do relatório final (seções, score)
-- [ ] 1.7 Criar `b3_selic_pre/analyze.py` como facade pública
+- [ ] 1.1 Criar diretório `src/b3_selic_pre/application/analyze/` com `__init__.py`
+- [ ] 1.2 Criar `src/b3_selic_pre/application/analyze/_thresholds.py` com dataclass `AnalysisThresholds` e valores default
+- [ ] 1.3 Criar `src/b3_selic_pre/application/analyze/_metrics.py` com funções de extração de métricas (curva detalhada)
+- [ ] 1.4 Criar `src/b3_selic_pre/application/analyze/_metrics_evolution.py` com funções de métricas para modo evolução
+- [ ] 1.5 Criar `src/b3_selic_pre/application/analyze/_rules.py` com definição de todas as regras das 11 camadas
+- [ ] 1.6 Criar `src/b3_selic_pre/application/analyze/_report.py` com composição do relatório final (seções, score)
+- [ ] 1.7 Criar `src/b3_selic_pre/application/analyze/__init__.py` como facade pública (`analyze()`)
 
 ## 2. Métricas do gráfico detalhado
 
@@ -55,27 +55,27 @@
 
 ## 7. Facade pública
 
-- [ ] 7.1 Implementar `analyze(records, historical_data, view_mode, evolution_active, thresholds=None)` → `AnalysisReport`
+- [ ] 7.1 Implementar `analyze(records, historical_data, view_mode, evolution_active, thresholds=None)` → `AnalysisReport` no `__init__.py` do subpacote
 - [ ] 7.2 Roteamento: modo detalhado usa métricas detalhadas; consolidado usa envelope; evolution usa evolution
 - [ ] 7.3 Caso sem dados retorna `AnalysisReport` vazio
 
-## 8. Painel lateral na GUI
+## 8. Painel lateral na GUI (`presentation/gui.py`)
 
 - [ ] 8.1 Adicionar `ttk.PanedWindow` no `SelicPreApp.__init__` separando gráfico (esquerda) e sidebar (direita)
 - [ ] 8.2 Criar frame da sidebar com botão toggle (▶/▼ "Análise") e widget `tk.Text` readonly com scrollbar
 - [ ] 8.3 Implementar toggle expandir/recolher (largura 0 ↔ ~280px)
-- [ ] 8.4 Integrar chamada a `analyze()` no `_redraw_chart` e atualizar o widget de texto
+- [ ] 8.4 Importar `analyze` de `b3_selic_pre.application.analyze`, chamar no `_redraw_chart` e atualizar o widget de texto
 - [ ] 8.5 Atualizar geometria da janela para acomodar sidebar
 
 ## 9. Dependências e limpeza
 
-- [ ] 9.1 Adicionar `numpy>=1.20.0` ao `requirements.txt`
-- [ ] 9.2 Verificar que `b3_selic_pre/__init__.py` existe
+- [ ] 9.1 Adicionar `numpy>=1.20.0` ao `dependencies` no `pyproject.toml`
+- [ ] 9.2 Verificar que `src/b3_selic_pre/application/analyze/__init__.py` expõe a facade corretamente
 - [ ] 9.3 Rodar testes existentes e garantir que não quebraram
 
 ## 10. Testes do motor de análise
 
-- [ ] 10.1 Criar `tests/test_analyze.py`
+- [ ] 10.1 Criar `tests/test_analyze.py` (ou `tests/application/test_analyze.py`)
 - [ ] 10.2 Testar extração de métricas com dados sintéticos
 - [ ] 10.3 Testar todas as 11 regras individualmente (curva ascendente, descendente, plana, etc.)
 - [ ] 10.4 Testar relatório completo com dados simulados

@@ -1,12 +1,12 @@
 ## Context
 
-O programa atualmente é um arquivo único (`b3_selic_pre.py`, ~1007 linhas) com funções de fetch, formatação, renderização de gráficos (matplotlib) e uma GUI (tkinter). Não há qualquer análise textual dos dados. O usuário vê os gráficos mas precisa interpretá-los manualmente.
+O programa segue uma arquitetura limpa (clean architecture) com camadas `domain/`, `application/`, `presentation/`, `infrastructure/` sob `src/b3_selic_pre/`. A GUI (`SelicPreApp`) está em `presentation/gui.py` e os gráficos em `presentation/charts.py`. As regras de negócio de consolidação estão em `application/use_cases.py`. Não há qualquer análise textual dos dados — o usuário vê os gráficos mas precisa interpretá-los manualmente.
 
-A base de dados são `RateRecord` objects (day252, day360, rate) — uma lista plana por data, ou um dict de 5 listas no modo evolução. As funções de consolidação já existem (`consolidate_by_year`, `average_rate_by_year`), mas não há camada de interpretação semântica.
+A base de dados são `RateRecord` objects (day252, day360, rate) — uma lista plana por data, ou um dict de 5 listas no modo evolução. As funções de consolidação já existem (`consolidate_by_year`, `average_rate_by_year` em `application/use_cases.py`), mas não há camada de interpretação semântica.
 
 O design precisa:
 - Ser 100% determinístico (mesmos dados → mesmo relatório)
-- Ser modular (preparando para futuro refactoring para clean architecture)
+- Ser modular, inserindo-se na camada de aplicação como um subpacote `application/analyze/`
 - Ter thresholds ajustáveis por parâmetro
 - Exibir o relatório em painel lateral collapsível
 
@@ -25,23 +25,22 @@ O design precisa:
 - Não alterar formatos de exportação
 - Não alterar os gráficos existentes
 - Não introduzir ML ou modelos probabilísticos
-- Não fazer refactoring para clean architecture (será change futura)
+- Esta change não realiza refactoring arquitetural — o código já está em clean architecture
 
 ## Decisions
 
-### 1. Módulo separado `analyze.py`
-**Decisão:** Criar `b3_selic_pre/analyze.py` com o motor completo.
-- `metrics.py` → extração de métricas
-- `rules.py` → regras propriamente ditas
-- `report.py` → formatação do relatório
+### 1. Subpacote `application/analyze/`
+**Decisão:** Criar `src/b3_selic_pre/application/analyze/` como um subpacote com o motor completo, seguindo o padrão de camada de aplicação da arquitetura atual.
 
 Estrutura:
 ```
-b3_selic_pre/
-  analyze.py       # facade: analyze(records, historical, view_mode, ...)
-  _metrics.py      # funções de extração de métricas
-  _rules.py        # definição das regras e thresholds
-  _report.py       # composição do relatório final
+src/b3_selic_pre/application/analyze/
+  __init__.py          # facade: analyze(records, historical, view_mode, ...)
+  _thresholds.py       # dataclass AnalysisThresholds com valores default
+  _metrics.py          # extração de métricas para modo detalhado
+  _metrics_evolution.py  # extração de métricas para modo evolução
+  _rules.py            # definição das regras das 11 camadas
+  _report.py           # composição do relatório final (seções, score)
 ```
 
 ### 2. Dataclasses tipadas para métricas e regras
@@ -89,16 +88,17 @@ class AnalysisThresholds:
     # ... todos os thresholds
 ```
 
-### 4. Painel lateral tkinter collapsível
+### 4. Painel lateral tkinter collapsível em `presentation/gui.py`
 Usar `ttk.PanedWindow` com um frame à direita que contém:
 - Um botão toggle (▶/▼ "Análise") no topo
 - Um `tk.Text` widget (readonly) com scrollbar para o relatório
 - O painel inicia recolhido (0 pixels de largura) e expande para ~280px ao clicar
 
+A importação do facade será: `from b3_selic_pre.application.analyze import analyze`
 O texto é atualizado via `_redraw_chart` → chama `analyze()` → preenche o widget.
 
 ### 5. NumPy explícito
-Adicionar `numpy>=1.20.0` ao `requirements.txt`. Na prática já está presente como dependência do matplotlib, mas explicitar é boa prática.
+Adicionar `numpy>=1.20.0` ao `dependencies` no `pyproject.toml`. Na prática já está presente como dependência do matplotlib, mas explicitar é boa prática.
 
 ## Risks / Trade-offs
 

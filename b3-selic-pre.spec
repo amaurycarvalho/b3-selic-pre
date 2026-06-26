@@ -2,26 +2,21 @@
 import sys
 import os
 
-# Detect the operating system at build time
 if sys.platform == 'win32':
-    icon_file = 'icons/b3_selic_pre.ico'
+    icon_file = 'src/b3_selic_pre/icons/b3_selic_pre.ico'
 elif sys.platform == 'darwin':
-    icon_file = 'icons/b3_selic_pre.icns'
+    icon_file = 'src/b3_selic_pre/icons/b3_selic_pre.icns'
 else:
-    icon_file = None  # Linux / Unix standard paths do not embed icons
+    icon_file = None
 
-# UPX does not support macOS binaries and may cause warnings
 upx_enabled = sys.platform != 'darwin'
-
-# Console window: useful for CLI on Linux/Windows, but macOS .app should not
-# open a terminal when launched from Finder
 console_enabled = sys.platform != 'darwin'
 
 a = Analysis(
-    ['b3_selic_pre.py'],
+    ['src/b3_selic_pre/__main__.py'],
     pathex=[],
     binaries=[],
-    datas=[('icons/b3_selic_pre.png', '.')],
+    datas=[('src/b3_selic_pre/icons/b3_selic_pre.png', 'b3_selic_pre')],
     hiddenimports=[
         'tkinter',
         'PIL',
@@ -65,7 +60,6 @@ exe = EXE(
     icon=icon_file,
 )
 
-# For macOS bundle packaging (.app container)
 if sys.platform == 'darwin':
     app = BUNDLE(
         exe,
@@ -78,4 +72,3 @@ if sys.platform == 'darwin':
             'NSHighResolutionCapable': True,
         },
     )
-

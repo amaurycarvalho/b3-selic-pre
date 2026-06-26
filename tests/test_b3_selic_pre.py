@@ -4,37 +4,45 @@ import os
 import unittest
 from unittest import mock
 
-from b3_selic_pre import (
-    RateRecord,
-    SHORTCUT_CHECK_PATH,
+from b3_selic_pre.domain.models import RateRecord
+from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
+from b3_selic_pre.application.formatting import (
     _brl,
-    _days_ago,
-    _detect_desktop_dir,
-    _icon_source,
-    _interpolate_rates,
-    _resolve_executable,
-    average_rate_by_year,
-    build_payload,
-    build_url,
-    consolidate_by_year,
-    create_shortcut,
-    encode_payload,
-    fetch_historical_rates,
-    fetch_rates_download,
-    fetch_reference_rates,
     format_cli_rows,
     format_evolution_csv,
     format_records_csv,
     format_yearly_rows,
-    main,
+)
+from b3_selic_pre.application.use_cases import (
+    _days_ago,
+    average_rate_by_year,
+    consolidate_by_year,
+    validate_reference_date,
+)
+from b3_selic_pre.infrastructure.b3_client import (
+    build_payload,
+    build_url,
+    encode_payload,
+    fetch_historical_rates,
+    fetch_rates_download,
+    fetch_reference_rates,
     normalize_records,
+)
+from b3_selic_pre.infrastructure.desktop import (
+    _detect_desktop_dir,
+    _icon_source,
+    _resolve_executable,
+    create_shortcut,
+    shortcut_exists,
+)
+from b3_selic_pre.presentation.charts import (
+    _interpolate_rates,
+    render_3d_evolution,
     render_chart,
     render_curve_evolution,
     render_detailed_evolution,
-    render_3d_evolution,
-    shortcut_exists,
-    validate_reference_date,
 )
+from b3_selic_pre.presentation.cli import main
 
 
 class FakeResponse:
@@ -68,12 +76,10 @@ class B3SelicPreTest(unittest.TestCase):
         payload = build_payload("2026-06-10")
         encoded = encode_payload(payload)
         decoded = json.loads(base64.b64decode(encoded).decode("utf-8"))
-
         self.assertEqual(decoded, payload)
 
     def test_build_url_contains_encoded_payload(self):
         payload = build_payload("2026-06-10")
-
         self.assertTrue(
             build_url(payload).startswith(
                 "https://sistemaswebb3-derivativos.b3.com.br/"
@@ -106,7 +112,6 @@ class B3SelicPreTest(unittest.TestCase):
                 ]
             }
         )
-
         self.assertEqual(records, [RateRecord(day252=1, day360=2, rate="14.65")])
 
     def test_normalize_records_rejects_missing_results(self):
@@ -136,7 +141,6 @@ class B3SelicPreTest(unittest.TestCase):
             opener=opener,
             page_size=2,
         )
-
         self.assertEqual(
             records,
             [
@@ -150,7 +154,6 @@ class B3SelicPreTest(unittest.TestCase):
 
     def test_format_cli_rows_outputs_csv_with_header(self):
         text = format_cli_rows([RateRecord(day252=1, day360=2, rate="14.65")])
-
         self.assertEqual(text, "DU252,DC365,TAXA\n1,2,14.65\n")
 
     def test_consolidate_by_year_groups_by_day360_divided_by_365(self):
@@ -215,8 +218,6 @@ class B3SelicPreTest(unittest.TestCase):
         self.assertEqual(format_yearly_rows([]), "ANO,MENOR_TAXA,MAIOR_TAXA\n")
 
     def test_main_yearly_flag_uses_consolidated_output(self):
-        from b3_selic_pre import main
-
         records_arg = []
 
         def fake_fetch(date):
@@ -226,8 +227,8 @@ class B3SelicPreTest(unittest.TestCase):
                 RateRecord(day252=365, day360=365, rate="14.50"),
             ]
 
-        with mock.patch("b3_selic_pre.fetch_reference_rates", fake_fetch), \
-             mock.patch("b3_selic_pre.print") as mock_print:
+        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
+             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
             main(["2026-01-01", "--yearly"])
             self.assertEqual(records_arg, ["2026-01-01"])
             mock_print.assert_called_once_with(
@@ -276,7 +277,6 @@ class B3SelicPreTest(unittest.TestCase):
 
         with mock.patch("urllib.request.urlopen", opener):
             records = fetch_rates_download("2026-06-09")
-
         self.assertEqual(len(records), 2)
         self.assertEqual(records[0], RateRecord(day252=1, day360=1, rate="14,40"))
         self.assertEqual(records[1], RateRecord(day252=4, day360=6, rate="14,37"))
@@ -317,7 +317,6 @@ class B3SelicPreTest(unittest.TestCase):
             results = fetch_historical_rates(
                 today, progress_callback=lambda c, t: None,
             )
-
         self.assertEqual(len(results), 5)
         dates = sorted(results.keys())
         self.assertEqual(dates[0], _days_ago(today, 28))
@@ -343,7 +342,6 @@ class B3SelicPreTest(unittest.TestCase):
                 RateRecord(day252=21, day360=30, rate="14.70"),
             ]
         )
-
         self.assertEqual(
             text,
             "day252,day360,rate\n"
@@ -397,8 +395,8 @@ class ChartRenderTest(unittest.TestCase):
         records = [RateRecord(day252=i, day360=i, rate="15.0") for i in range(1, 61)]
         render_chart(self.fig, records, consolidated=False)
         ax = self.fig.gca()
-        from matplotlib.ticker import FixedLocator
         loc = ax.xaxis.get_minor_locator()
+        from matplotlib.ticker import FixedLocator
         self.assertIsInstance(loc, FixedLocator)
         self.assertIn(1, loc.locs)
         self.assertIn(23, loc.locs)
@@ -631,10 +629,8 @@ class ShortcutTest(unittest.TestCase):
             self.assertEqual(result, "/usr/local/bin/b3-selic-pre")
 
     def test_icon_source_script_mode(self):
-        with mock.patch("sys.frozen", False, create=True), \
-             mock.patch("b3_selic_pre._SCRIPT_DIR", "/app"):
-            result = _icon_source()
-            self.assertEqual(result, "/app/icons/b3_selic_pre.png")
+        result = _icon_source()
+        self.assertTrue(result.endswith("b3_selic_pre/icons/b3_selic_pre.png"))
 
     def test_icon_source_frozen_mode(self):
         with mock.patch("sys.frozen", True, create=True), \
@@ -671,14 +667,13 @@ class ShortcutTest(unittest.TestCase):
              mock.patch("os.chmod", fake_chmod), \
              mock.patch("shutil.copy2", fake_copy2), \
              mock.patch("os.path.isfile", return_value=True), \
-             mock.patch("b3_selic_pre._resolve_executable",
+             mock.patch("b3_selic_pre.infrastructure.desktop._resolve_executable",
                         return_value="/usr/bin/python3 /app/b3_selic_pre.py"), \
-             mock.patch("b3_selic_pre._icon_source",
+             mock.patch("b3_selic_pre.infrastructure.desktop._icon_source",
                         return_value="/app/icons/b3_selic_pre.png"), \
-             mock.patch("b3_selic_pre._detect_desktop_dir",
+             mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
                         return_value="/home/user/Desktop"):
             create_shortcut()
-
         self.assertIn("icon_copied", writes)
         self.assertIn("Name=Taxas Referenciais SELIC (B3)", writes["content"])
         self.assertIn("Categories=Finance;Office;", writes["content"])
@@ -686,10 +681,9 @@ class ShortcutTest(unittest.TestCase):
                       writes["content"])
 
     def test_main_create_shortcut_calls_create_shortcut(self):
-        with mock.patch("b3_selic_pre.create_shortcut") as mock_cs, \
-             mock.patch("b3_selic_pre.print") as mock_print:
+        with mock.patch("b3_selic_pre.presentation.cli.create_shortcut") as mock_cs, \
+             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
             main(["--create-shortcut"])
-
         mock_cs.assert_called_once()
         mock_print.assert_called_once_with(
             "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"

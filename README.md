@@ -6,15 +6,15 @@ Curva de juros (taxa referencial SELIC) conforme a B3
 
 ## Instalação
 
-### 1. Manual (código fonte)
+### 1. Via PyPI (código fonte)
 
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
 Requisitos:
 - Python 3.10+
-- matplotlib, Pillow e pyxclip (veja `requirements.txt`)
+- matplotlib, Pillow e pyxclip
 
 ### 2. Via Makefile (build local)
 
@@ -40,13 +40,20 @@ Baixe o binário da plataforma desejada na [página de releases](https://github.
 ### A partir do código fonte
 
 ```bash
-python3 b3_selic_pre.py                     # consultar data atual
-python3 b3_selic_pre.py 2026-06-10          # data específica
-python3 b3_selic_pre.py 2026-06-10 --yearly # consolidado por ano
-python3 b3_selic_pre.py --gui               # interface gráfica
-python3 b3_selic_pre.py --create-shortcut   # criar atalho no desktop (Linux)
-python3 b3_selic_pre.py --help              # exibir ajuda com todos os parâmetros
-python3 b3_selic_pre.py --version           # exibir versão
+b3-selic-pre                              # consultar data atual
+b3-selic-pre 2026-06-10                   # data específica
+b3-selic-pre 2026-06-10 --yearly          # consolidado por ano
+b3-selic-pre --gui                        # interface gráfica
+b3-selic-pre --create-shortcut            # criar atalho no desktop (Linux)
+b3-selic-pre --help                       # exibir ajuda com todos os parâmetros
+b3-selic-pre --version                    # exibir versão
+```
+
+Ou via módulo Python:
+
+```bash
+python3 -m b3_selic_pre                   # consultar data atual
+python3 -m b3_selic_pre --gui             # interface gráfica
 ```
 
 ### A partir do executável gerado pelo Makefile

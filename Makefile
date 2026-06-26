@@ -10,7 +10,8 @@ endif
 
 .venv:
 	$(PYTHON) -m venv .venv
-	$(VENV_PYTHON) -m pip install -r requirements.txt pyinstaller
+	$(VENV_PYTHON) -m pip install -e .
+	$(VENV_PYTHON) -m pip install pyinstaller
 
 install: .venv
 
@@ -18,7 +19,7 @@ build: .venv
 	MPLBACKEND=Agg $(VENV_PYTHON) -m PyInstaller b3-selic-pre.spec
 
 test: .venv
-	$(VENV_PYTHON) -m unittest discover -s tests
+	$(VENV_PYTHON) -m pytest
 
 clean:
-	rm -rf dist/ build/ __pycache__/
+	rm -rf dist/ build/ __pycache__/ src/*.egg-info/

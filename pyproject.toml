@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "b3-selic-pre"
+version = "0.7.1"
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.0.0",
+    "Pillow>=10.0.0",
+    "pyxclip>=0.2.0",
+]
+
+[project.scripts]
+b3-selic-pre = "b3_selic_pre.presentation.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+b3_selic_pre = ["icons/*.png"]

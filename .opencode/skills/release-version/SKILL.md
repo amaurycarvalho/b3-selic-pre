@@ -26,9 +26,9 @@ Update the application release version across the codebase and regenerate all ch
      ```
    - Do NOT proceed with any of the steps below.
 
-2. **Update app_version in b3_selic_pre.py**
+2. **Update app_version in __init__.py**
 
-   Read `b3_selic_pre.py` and find the line containing `__version__ =`.
+   Read `src/b3_selic_pre/__init__.py` and find the line containing `__version__ =`.
 
    Replace the current value with the new version string:
 
@@ -57,7 +57,7 @@ Update the application release version across the codebase and regenerate all ch
 4. **Verify consistency**
 
    Read back the modified files and confirm:
-   - `b3_selic_pre.py` has `__version__ = "<new-version>"`
+   - `src/b3_selic_pre/__init__.py` has `__version__ = "<new-version>"`
    - `b3-selic-pre.spec` has the correct `'CFBundleShortVersionString':` and `'CFBundleVersion':`  fields
 
 **Output On Success**
@@ -66,7 +66,7 @@ Update the application release version across the codebase and regenerate all ch
 Release version updated to <version>
 
 Files updated:
-- b3_selic_pre.py (__version__)
+- src/b3_selic_pre/__init__.py (__version__)
 - b3-selic-pre.spec
 
 Commentary: openspec-changelog skill can now be used manually to update the changelog files.

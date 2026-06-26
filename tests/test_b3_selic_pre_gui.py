@@ -3,22 +3,17 @@ import tempfile
 import unittest
 from unittest import mock
 
-from b3_selic_pre import (
-    RateRecord,
-    SelicPreApp,
-    consolidate_by_year,
-    create_shortcut,
-    format_cli_rows,
-    format_yearly_rows,
-    shortcut_exists,
-)
+from b3_selic_pre.domain.models import RateRecord
+from b3_selic_pre.application.use_cases import consolidate_by_year
+from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
+from b3_selic_pre.infrastructure.desktop import create_shortcut, shortcut_exists
+from b3_selic_pre.presentation.gui import SelicPreApp
 
 
 class SelicPreAppTest(unittest.TestCase):
     def setUp(self):
         import tkinter as tk
         from tkinter import TclError
-
         try:
             self.root = tk.Tk()
         except TclError as exc:
@@ -31,25 +26,20 @@ class SelicPreAppTest(unittest.TestCase):
 
     def test_invalid_date_shows_validation_without_fetching(self):
         self.app.date_var.set("10/06/2026")
-
-        with mock.patch("b3_selic_pre.fetch_reference_rates") as fetch:
+        with mock.patch("b3_selic_pre.presentation.gui.fetch_reference_rates") as fetch:
             self.app.fetch_rates()
-
         fetch.assert_not_called()
         self.assertIn("YYYY-MM-DD", self.app.status_var.get())
 
     def test_success_and_empty_and_error_flows(self):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
-
         self.app.handle_fetch_success(records)
         self.assertIn("1 registro", self.app.status_var.get())
         self.assertIsNotNone(self.app.figure)
         self.assertEqual(len(self.app.records), 1)
-
         self.app.handle_fetch_success([])
         self.assertIn("Nenhum registro", self.app.status_var.get())
         self.assertEqual(len(self.app.records), 0)
-
         self.app.handle_fetch_error(RuntimeError("falha simulada"))
         self.assertIn("falha simulada", self.app.status_var.get())
         self.assertEqual(len(self.app.records), 0)
@@ -69,15 +59,12 @@ class SelicPreAppTest(unittest.TestCase):
             RateRecord(day252=365, day360=365, rate="14.50"),
         ]
         self.app.handle_fetch_success(records)
-
         ax = self.app.figure.gca()
         lines = ax.get_lines()
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0].get_color(), "green")
-
         self.app.view_var.set("consolidated")
         self.app.toggle_view()
-
         ax = self.app.figure.gca()
         lines = ax.get_lines()
         self.assertEqual(len(lines), 2)
@@ -88,14 +75,12 @@ class SelicPreAppTest(unittest.TestCase):
     def test_fetch_respects_view_mode(self):
         records = [RateRecord(day252=1, day360=30, rate="14.65")]
         self.app.handle_fetch_success(records)
-
         self.app.view_var.set("consolidated")
         records2 = [
             RateRecord(day252=1, day360=30, rate="14.65"),
             RateRecord(day252=365, day360=365, rate="14.50"),
         ]
         self.app.handle_fetch_success(records2)
-
         ax = self.app.figure.gca()
         lines = ax.get_lines()
         self.assertEqual(len(lines), 2)
@@ -103,7 +88,6 @@ class SelicPreAppTest(unittest.TestCase):
     def test_export_png(self):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
         self.app.handle_fetch_success(records)
-
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as file:
             export_path = file.name
         try:
@@ -112,7 +96,6 @@ class SelicPreAppTest(unittest.TestCase):
                 return_value=export_path,
             ):
                 self.app.export_chart()
-
             self.assertTrue(os.path.getsize(export_path) > 0)
         finally:
             os.unlink(export_path)
@@ -130,7 +113,6 @@ class SelicPreAppTest(unittest.TestCase):
     def test_buttons_enabled_after_data_loaded(self):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
         self.app.handle_fetch_success(records)
-
         self.assertEqual(
             str(self.app.copy_button.cget("state")),
             "normal",
@@ -143,7 +125,6 @@ class SelicPreAppTest(unittest.TestCase):
     def test_buttons_disabled_after_error_clears_data(self):
         self.app.handle_fetch_success([RateRecord(day252=1, day360=2, rate="14.65")])
         self.app.handle_fetch_error(RuntimeError("falha simulada"))
-
         self.assertEqual(
             str(self.app.copy_button.cget("state")),
             "disabled",
@@ -159,7 +140,6 @@ class SelicPreAppTest(unittest.TestCase):
     def test_data_button_enabled_after_data_loaded(self):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
         self.app.handle_fetch_success(records)
-
         self.assertEqual(
             str(self.app.data_button.cget("state")),
             "normal",
@@ -168,7 +148,6 @@ class SelicPreAppTest(unittest.TestCase):
     def test_data_button_disabled_after_error_clears_data(self):
         self.app.handle_fetch_success([RateRecord(day252=1, day360=2, rate="14.65")])
         self.app.handle_fetch_error(RuntimeError("falha simulada"))
-
         self.assertEqual(
             str(self.app.data_button.cget("state")),
             "disabled",
@@ -181,13 +160,10 @@ class SelicPreAppTest(unittest.TestCase):
         ]
         self.app.handle_fetch_success(records)
         self.app.view_var.set("raw")
-
         expected = format_cli_rows(records)
-
         with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
             with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
                 self.app.copy_data()
-
         mock_clear.assert_called_once()
         mock_append.assert_called_once_with(expected)
         self.assertIn("Dados copiados", self.app.status_var.get())
@@ -200,13 +176,10 @@ class SelicPreAppTest(unittest.TestCase):
         ]
         self.app.handle_fetch_success(records)
         self.app.view_var.set("consolidated")
-
         expected = format_yearly_rows(consolidate_by_year(records))
-
         with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
             with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
                 self.app.copy_data()
-
         mock_clear.assert_called_once()
         mock_append.assert_called_once_with(expected)
         self.assertIn("Dados copiados", self.app.status_var.get())
@@ -215,7 +188,6 @@ class SelicPreAppTest(unittest.TestCase):
         with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
             with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
                 self.app.copy_data()
-
         mock_clear.assert_not_called()
         mock_append.assert_not_called()
 
@@ -227,8 +199,8 @@ class SelicPreAppTest(unittest.TestCase):
         except TclError as exc:
             self.skipTest(f"tkinter display unavailable: {exc}")
         root.withdraw()
-        with mock.patch("b3_selic_pre.shortcut_exists", return_value=exists), \
-             mock.patch("b3_selic_pre.os.path.exists", return_value=False):
+        with mock.patch("b3_selic_pre.presentation.gui.shortcut_exists", return_value=exists), \
+             mock.patch("b3_selic_pre.presentation.gui.os.path.exists", return_value=False):
             app = SelicPreApp(root)
         return root, app
 
@@ -272,13 +244,13 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertEqual(self.app.var_3d.get(), False)
 
     def test_3d_triggers_3d_render_dispatch(self):
-        from b3_selic_pre import render_3d_evolution
+        from b3_selic_pre.presentation.charts import render_3d_evolution
         records = [RateRecord(day252=1, day360=1, rate="14.0")]
         self.app.historical_data = {"2026-06-17": records}
         self.app.evolution_var.set(True)
         self.app.toggle_evolution()
         self.app.var_3d.set(True)
-        with mock.patch("b3_selic_pre.render_3d_evolution") as mock_3d:
+        with mock.patch("b3_selic_pre.presentation.gui.render_3d_evolution") as mock_3d:
             self.app._redraw_chart()
         mock_3d.assert_called_once()
 
@@ -286,7 +258,7 @@ class SelicPreAppTest(unittest.TestCase):
         root, app = self._make_app_with_shortcut(False)
         try:
             self.assertIsNotNone(app.shortcut_button)
-            with mock.patch("b3_selic_pre.create_shortcut") as mock_cs:
+            with mock.patch("b3_selic_pre.presentation.gui.create_shortcut") as mock_cs:
                 app._create_shortcut()
             mock_cs.assert_called_once()
             self.assertIsNone(app.shortcut_button)

@@ -13,5 +13,5 @@
 
 ## 3. Visual verification
 
-- [ ] 3.1 Launch the application and toggle curve evolution chart to visually confirm arrow layout
-- [ ] 3.2 Toggle detailed evolution chart to visually confirm arrow layout
+- [x] 3.1 Launch the application and toggle curve evolution chart to visually confirm arrow layout
+- [x] 3.2 Toggle detailed evolution chart to visually confirm arrow layout

@@ -40,6 +40,7 @@ The system SHALL provide a function `render_curve_evolution(fig, date_rates)` th
 #### Scenario: Quiver arrows at key maturities
 - **WHEN** the evolution chart is rendered
 - **THEN** quiver arrows are drawn at maturities 0, 1, 2, 3, 5, 10, 15, 20 showing consecutive rate transitions from oldest to newest date
+- **AND** at most one arrow is drawn per tick position, cycling through transitions by offset (offset 1, step 5)
 
 #### Scenario: Arrow direction indicates rate movement
 - **WHEN** rates increased between consecutive dates at a given maturity

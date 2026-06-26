@@ -22,6 +22,7 @@ The system SHALL provide a function `render_detailed_evolution(fig, date_rates)`
 #### Scenario: Quiver arrows show rate change direction at minor tick positions
 - **WHEN** `render_detailed_evolution` is called with data containing rates at minor tick positions (~22 DU intervals)
 - **THEN** the chart shows quiver arrows at those minor tick positions indicating the rate change direction between consecutive dates, using nearest-match per date for rate lookup (tolerance 22)
+- **AND** at most one arrow is drawn per tick position, cycling through transitions by offset (oldest curve at offset 1, step 5)
 
 #### Scenario: Y-axis auto-scales to fit all data
 - **WHEN** the detailed evolution chart is rendered

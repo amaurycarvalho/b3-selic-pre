@@ -132,7 +132,7 @@ class SelicPreApp:
         self.evolution_var = tk.BooleanVar(value=False)
         self.var_3d = tk.BooleanVar(value=False)
         self.historical_data = None
-        self._sidebar_visible = False
+        self.sidebar_var = tk.BooleanVar(value=False)
         top_frame = ttk.Frame(root, padding=12)
         top_frame.pack(fill=tk.X)
         ttk.Label(top_frame, text="Data (YYYY-MM-DD):").pack(side=tk.LEFT)
@@ -152,10 +152,12 @@ class SelicPreApp:
                 command=self._create_shortcut,
             )
             self.shortcut_button.pack(side=tk.RIGHT)
-        paned = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
-        chart_frame = ttk.Frame(paned)
-        paned.add(chart_frame, weight=1)
+        middle_frame = ttk.Frame(root)
+        middle_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
+        middle_frame.columnconfigure(0, weight=1)
+        middle_frame.rowconfigure(0, weight=1)
+        chart_frame = ttk.Frame(middle_frame)
+        chart_frame.grid(row=0, column=0, sticky="nsew")
         self.figure = Figure(figsize=(7, 4), dpi=100)
         self.figure.add_subplot(111)
         render_chart(self.figure, [])
@@ -165,11 +167,8 @@ class SelicPreApp:
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self.toolbar = NavigationToolbar2Tk(self.canvas, chart_frame)
         self.toolbar.update()
-        sidebar_frame = ttk.Frame(paned, width=0)
-        paned.add(sidebar_frame, weight=0)
-        self.sidebar_frame = sidebar_frame
-        self._build_sidebar(sidebar_frame)
-        self.paned = paned
+        self.sidebar_frame = ttk.Frame(middle_frame, width=280)
+        self._build_sidebar(self.sidebar_frame)
         bottom_frame = ttk.Frame(root, padding=12)
         bottom_frame.pack(fill=tk.X)
         self.data_button = ttk.Button(
@@ -212,6 +211,11 @@ class SelicPreApp:
         )
         self.cb_3d.pack(side=tk.LEFT, padx=(4, 0))
         self.cb_3d.configure(state=tk.DISABLED)
+        self.sidebar_cb = ttk.Checkbutton(
+            bottom_frame, text="Análise",
+            variable=self.sidebar_var, command=self._toggle_sidebar,
+        )
+        self.sidebar_cb.pack(side=tk.LEFT, padx=(4, 0))
         ttk.Label(bottom_frame, textvariable=self.status_var).pack(
             side=tk.LEFT,
             padx=(16, 0),
@@ -220,12 +224,8 @@ class SelicPreApp:
         )
 
     def _build_sidebar(self, parent):
-        self.sidebar_toggle = self.ttk.Button(
-            parent, text="▶ Análise", command=self._toggle_sidebar,
-        )
-        self.sidebar_toggle.pack(fill=self.tk.X, padx=4, pady=(4, 0))
         text_frame = self.ttk.Frame(parent)
-        text_frame.pack(fill=self.tk.BOTH, expand=True, padx=4, pady=4)
+        text_frame.pack(fill=self.tk.BOTH, expand=True, padx=4, pady=(0, 4))
         self.sidebar_text = self.tk.Text(
             text_frame, wrap=self.tk.WORD, state=self.tk.DISABLED,
             width=36, font=("TkDefaultFont", 9),
@@ -239,14 +239,11 @@ class SelicPreApp:
         scrollbar.pack(side=self.tk.RIGHT, fill=self.tk.Y)
 
     def _toggle_sidebar(self):
-        self._sidebar_visible = not self._sidebar_visible
-        if self._sidebar_visible:
-            self.sidebar_frame.configure(width=280)
-            self.paned.sashpos(0, self.paned.winfo_width() - 280)
-            self.sidebar_toggle.configure(text="▼ Análise")
+        if self.sidebar_var.get():
+            self.sidebar_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+            self._update_analysis()
         else:
-            self.sidebar_frame.configure(width=0)
-            self.sidebar_toggle.configure(text="▶ Análise")
+            self.sidebar_frame.grid_forget()
 
     def set_loading(self, is_loading):
         state = self.tk.DISABLED if is_loading else self.tk.NORMAL
@@ -317,7 +314,7 @@ class SelicPreApp:
         self._update_analysis()
 
     def _update_analysis(self):
-        if not self._sidebar_visible:
+        if not self.sidebar_var.get():
             return
         report = analyze(
             records=self.records,

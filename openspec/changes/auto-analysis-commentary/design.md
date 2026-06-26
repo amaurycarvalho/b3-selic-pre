@@ -1,109 +1,155 @@
-## Context
+## Design
 
-O programa segue uma arquitetura limpa (clean architecture) com camadas `domain/`, `application/`, `presentation/`, `infrastructure/` sob `src/b3_selic_pre/`. A GUI (`SelicPreApp`) está em `presentation/gui.py` e os gráficos em `presentation/charts.py`. As regras de negócio de consolidação estão em `application/use_cases.py`. Não há qualquer análise textual dos dados — o usuário vê os gráficos mas precisa interpretá-los manualmente.
-
-A base de dados são `RateRecord` objects (day252, day360, rate) — uma lista plana por data, ou um dict de 5 listas no modo evolução. As funções de consolidação já existem (`consolidate_by_year`, `average_rate_by_year` em `application/use_cases.py`), mas não há camada de interpretação semântica.
-
-O design precisa:
-- Ser 100% determinístico (mesmos dados → mesmo relatório)
-- Ser modular, inserindo-se na camada de aplicação como um subpacote `application/analyze/`
-- Ter thresholds ajustáveis por parâmetro
-- Exibir o relatório em painel lateral collapsível
-
-## Goals / Non-Goals
-
-**Goals:**
-- Implementar motor de inferência rule-based com 11 camadas de análise
-- Exibir relatório textual em painel lateral direito collapsível na GUI
-- Integrar automaticamente no ciclo de redraw do gráfico
-- Thresholds parametrizáveis (valores default sensíveis, ajustáveis pelo chamador)
-- Manter a base de código funcional pura para o motor (sem side effects)
-- numpy explicitado como dependência
-
-**Non-Goals:**
-- Não alterar a API de linha de comando
-- Não alterar formatos de exportação
-- Não alterar os gráficos existentes
-- Não introduzir ML ou modelos probabilísticos
-- Esta change não realiza refactoring arquitetural — o código já está em clean architecture
-
-## Decisions
-
-### 1. Subpacote `application/analyze/`
-**Decisão:** Criar `src/b3_selic_pre/application/analyze/` como um subpacote com o motor completo, seguindo o padrão de camada de aplicação da arquitetura atual.
-
-Estrutura:
-```
-src/b3_selic_pre/application/analyze/
-  __init__.py          # facade: analyze(records, historical, view_mode, ...)
-  _thresholds.py       # dataclass AnalysisThresholds com valores default
-  _metrics.py          # extração de métricas para modo detalhado
-  _metrics_evolution.py  # extração de métricas para modo evolução
-  _rules.py            # definição das regras das 11 camadas
-  _report.py           # composição do relatório final (seções, score)
-```
-
-### 2. Dataclasses tipadas para métricas e regras
-```python
-@dataclass
-class CurveShape:     # ascendente, descendente, plana
-@dataclass
-class SlopeInfo:       # muito forte, forte, moderada, fraca, nula, negativa
-@dataclass
-class Convexity:       # linear, côncava, convexa, em S
-@dataclass
-class Volatility:      # muito baixa a muito alta
-@dataclass
-class Oscillation:     # número de inversões
-@dataclass
-class EnvelopeMetrics: # spread médio, spread por ano
-@dataclass
-class EvolutionTrend:  # alta contínua, queda contínua, instabilidade
-@dataclass
-class Diffusion:       # disseminado, concentrado curto, concentrado longo
-@dataclass
-class Rotation:        # bear/bull steepening/flattening
-@dataclass
-class Intensity:       # delta médio absoluto classificado
-
-@dataclass
-class AnalysisReport:
-    statements: list[str]
-    score: int
-    score_label: str
-```
-
-### 3. Thresholds como parâmetros, não globais
-Todas as funções de métricas e regras aceitam um dataclass `AnalysisThresholds` com valores default sensíveis.
+### Data Model
 
 ```python
-@dataclass(frozen=True)
+@dataclass
 class AnalysisThresholds:
-    curva_ascendente_min: float = 0.20
-    curva_descendente_min: float = 0.20
-    curva_plana_max: float = 0.15
-    spread_muito_estreito: float = 0.05
-    spread_padrao_min: float = 0.05
-    spread_padrao_max: float = 0.30
-    # ... todos os thresholds
+    indice_tendencia_asc: float = 0.20
+    indice_tendencia_desc: float = -0.20
+    indice_tendencia_plano: float = 0.05
+    vale_posicao_max: float = 0.35
+    pico_posicao_min: float = 0.65
+    delta_segmento_relevante: float = 0.005
+    suavidade_suave: float = 0.15
+    suavidade_serrilhada: float = 0.35
+    segmento_curto_max: float = 0.25
+    segmento_longo_min: float = 0.50
+    vale_recuperacao_min: float = 0.35
+    mudanca_estrutural_min: float = 0.15
+
+@dataclass
+class MetricResults:
+    segmentos: list[SegmentoInfo]
+    indice_tendencia: float
+    indice_suavidade: float
+    extremos: list[ExtremoInfo]
+    mudancas_inclinacao: list[MudancaInclinacaoInfo]
+    pontos_inflexao: list[PontoInflexaoInfo]
+
+@dataclass
+class SegmentoInfo:
+    nome: str          # "curto", "médio", "longo"
+    inicio: int
+    fim: int
+    variacao: float
+    classificacao: str # "ascendente", "descendente", "estável"
+
+@dataclass
+class ExtremoInfo:
+    tipo: str          # "máximo" or "mínimo"
+    indice: int
+    valor: float
+
+@dataclass
+class MudancaInclinacaoInfo:
+    indice: int
+    angulo_anterior: float
+    angulo_posterior: float
+
+@dataclass
+class PontoInflexaoInfo:
+    indice: int
+    concavidade_anterior: str
+    concavidade_posterior: str
+
+@dataclass
+class RuleResult:
+    rule_id: str            # "R001"–"R014"
+    inference: str          # inference code, e.g. "tendencia_global_asc"
+    score: int              # +2, +1, 0, −1
+    activated: bool
+    evidence: str           # human-readable justification
 ```
 
-### 4. Painel lateral tkinter collapsível em `presentation/gui.py`
-Usar `ttk.PanedWindow` com um frame à direita que contém:
-- Um botão toggle (▶/▼ "Análise") no topo
-- Um `tk.Text` widget (readonly) com scrollbar para o relatório
-- O painel inicia recolhido (0 pixels de largura) e expande para ~280px ao clicar
+### Inference Engine Architecture
 
-A importação do facade será: `from b3_selic_pre.application.analyze import analyze`
-O texto é atualizado via `_redraw_chart` → chama `analyze()` → preenche o widget.
+The engine follows a pipeline: **raw data** → **metric extraction** → **rule evaluation** → **report generation**.
 
-### 5. NumPy explícito
-Adicionar `numpy>=1.20.0` ao `dependencies` no `pyproject.toml`. Na prática já está presente como dependência do matplotlib, mas explicitar é boa prática.
+```
+               ┌──────────────────┐
+               │  Raw data (taxas) │
+               └────────┬─────────┘
+                        │
+                        ▼
+               ┌──────────────────┐
+               │  _metrics.py     │
+               │  (extraction)    │
+               │  - IndiceTenden. │
+               │  - 3 segmentos   │
+               │  - suavidade     │
+               │  - extremos      │
+               │  - inflexão      │
+               └────────┬─────────┘
+                        │ MetricResults
+                        ▼
+               ┌──────────────────┐
+               │  _rules.py       │
+               │  (14 regras)     │
+               │  R001–R014       │
+               │  cada uma c/     │
+               │  score ±2/±1/0   │
+               └────────┬─────────┘
+                        │ list[RuleResult]
+                        ▼
+               ┌──────────────────┐
+               │  _report.py      │
+               │  (montagem)      │
+               │  4 blocos        │
+               │  + score total   │
+               │  + classificação │
+               └────────┬─────────┘
+                        │ str (relatório)
+                        ▼
+               ┌──────────────────┐
+               │  gui.py          │
+               │  (exibição)      │
+               │  painel lateral  │
+               └──────────────────┘
+```
 
-## Risks / Trade-offs
+### Report Structure
 
-- **Performance**: A análise roda no mesmo thread do redraw. Para datasets típicos (~756 records, 5 datas) a execução é sub-milissegundo. Risco aceitável.
-- **Largura da janela**: O painel lateral expande a janela. A geometria atual é 800x560; com painel será ~1100x560. O usuário pode redimensionar.
-- **Precisão das regressões**: Regressão linear/quadrática com numpy tem precisão numérica padrão. Para curvas com poucos pontos (modo consolidado tem ~20 anos) os coeficientes são estáveis. Risco baixo.
-- **Manutenção**: 11 camadas de regras é volumoso. A estrutura de dataclasses e funções puras mitiga isso. Cada regra é uma função isolada e testável.
-- **Falsos positivos**: Regras com limiares fixos podem classificar errado em cenários atípicos. Mitigação: thresholds ajustáveis e score final que pondera múltiplas regras.
+O relatório possui 4 blocos fixos:
+
+1. **Tendência Geral** — R001, R002, R003 (direção global da curva)
+2. **Forma Geométrica** — R004, R005, R010, R011, R012, R013 (vales, picos, suavidade, mudanças estruturais)
+3. **Segmentos** — R006, R007, R008, R009, R014 (recuperação e análise segmentada)
+4. **Conclusão** — score total e classificação textual
+
+### Score Classification
+
+| Score  | Classificação                     |
+|--------|-----------------------------------|
+| 0–2    | Mercado estável                   |
+| 3–4    | Mudança moderada                  |
+| 5–7    | Curva estruturalmente ascendente  |
+| 8–10   | Reprecificação relevante          |
+| 11+    | Mudança estrutural expressiva     |
+
+### GUI Component
+
+- `Checkbutton` no `bottom_frame`: texto "Análise", vinculado ao `BooleanVar(self.sidebar_var)`
+- `Text` widget à direita do canvas: altura igual ao canvas, largura 60 caracteres, com scrollbar
+- Visibilidade controlada por `grid()` / `grid_remove()` no método `_toggle_sidebar`
+- Conteúdo atualizado via `_update_analysis()` chamado dentro de `_redraw_chart`
+- Placeholder `"não implementada"` para os modos "consolidado" e "evolução"
+
+### Thresholds
+
+Todos os thresholds são expostos no dataclass `AnalysisThresholds` e podem ser sobrescritos na chamada. A aplicação usa valores default definidos em `_thresholds.py`.
+
+### Test Strategy
+
+- Testes unitários para métricas (`_metrics.py`)
+- Testes unitários para cada regra (`_rules.py`)
+- Teste de integração para relatório (`_report.py`)
+- Teste de fumaça para o facade (`__init__.py`)
+- Arquivo: `tests/test_analyze.py` com 25 testes
+
+### Risks
+
+- **Falsos positivos em regras:** scores baixos (0–2) minimizam alarmes falsos; classificação "estável" é segura.
+- **Thresholds fixos:** podem não se adaptar a todos os regimes de mercado; resolvido expondo thresholds como parâmetros ajustáveis.
+- **Desempenho:** o cálculo é O(n) e não impacta o redraw do gráfico (n < 1000 pontos).
+- **Manutenção:** regras isoladas em funções puras facilitam adicionar/remover regras sem efeito colateral.

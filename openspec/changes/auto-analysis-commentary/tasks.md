@@ -1,84 +1,67 @@
-## 1. Estrutura do subpacote analyze
+# Tasks: `auto-analysis-commentary`
 
-- [x] 1.1 Criar diretório `src/b3_selic_pre/application/analyze/` com `__init__.py`
-- [x] 1.2 Criar `src/b3_selic_pre/application/analyze/_thresholds.py` com dataclass `AnalysisThresholds` e valores default
-- [x] 1.3 Criar `src/b3_selic_pre/application/analyze/_metrics.py` com funções de extração de métricas (curva detalhada)
-- [x] 1.4 Criar `src/b3_selic_pre/application/analyze/_metrics_evolution.py` com funções de métricas para modo evolução
-- [x] 1.5 Criar `src/b3_selic_pre/application/analyze/_rules.py` com definição de todas as regras das 11 camadas
-- [x] 1.6 Criar `src/b3_selic_pre/application/analyze/_report.py` com composição do relatório final (seções, score)
-- [x] 1.7 Criar `src/b3_selic_pre/application/analyze/__init__.py` como facade pública (`analyze()`)
+## Task List
 
-## 2. Métricas do gráfico detalhado
+- [x] **1. Adapt change artifacts to clean architecture**
+  - [x] 1.1 Read current codebase structure
+  - [x] 1.2 Update proposal.md paths to `src/b3_selic_pre/application/analyze/` and `src/b3_selic_pre/presentation/gui.py`
+  - [x] 1.3 Update design.md example code, structure, and file references
+  - [x] 1.4 Update tasks.md to reflect clean architecture
 
-- [x] 2.1 Implementar `extract_detailed_metrics(records, thresholds)` → `DetailedMetrics`
-- [x] 2.2 Calcular taxa inicial, final, máxima, mínima
-- [x] 2.3 Implementar regressão linear para slope (numpy polyfit degree 1)
-- [x] 2.4 Implementar regressão quadrática para convexidade (numpy polyfit degree 2)
-- [x] 2.5 Calcular desvio padrão das diferenças sucessivas (volatilidade)
-- [x] 2.6 Contar inversões de direção (oscilações)
+- [x] **2. Implement analysis engine: thresholds**
+  - [x] 2.1 Create `_thresholds.py` with `AnalysisThresholds` dataclass
+  - [x] 2.2 Define all thresholds for the 14 rules
 
-## 3. Métricas do envelope consolidado
+- [x] **3. Implement analysis engine: metric extraction**
+  - [x] 3.1 Create `_metrics.py` with `extract_metrics()` function
+  - [x] 3.2 Implement `IndiceTendencia` calculation
+  - [x] 3.3 Implement 3-segment segmentation (curto/médio/longo)
+  - [x] 3.4 Implement `IndiceSuavidade` calculation
+  - [x] 3.5 Implement local extrema detection
+  - [x] 3.6 Implement slope change detection
+  - [x] 3.7 Implement inflection point detection
 
-- [x] 3.1 Implementar `extract_envelope_metrics(records, thresholds)` → `EnvelopeMetrics`
-- [x] 3.2 Calcular spread médio entre min e max por ano
-- [x] 3.3 Detectar tendência do spread (crescente/decrescente ao longo dos anos)
+- [x] **4. Implement analysis engine: rules**
+  - [x] 4.1 Create `_rules.py` with `evaluate_rules()` function
+  - [x] 4.2 Implement R001 (Tendência Global Ascendente)
+  - [x] 4.3 Implement R002 (Tendência Global Descendente)
+  - [x] 4.4 Implement R003 (Curva Plana)
+  - [x] 4.5 Implement R004 (Vale)
+  - [x] 4.6 Implement R005 (Pico)
+  - [x] 4.7 Implement R006 (Recuperação Sustentada)
+  - [x] 4.8 Implement R007 (Segmento Curto)
+  - [x] 4.9 Implement R008 (Segmento Médio)
+  - [x] 4.10 Implement R009 (Segmento Longo)
+  - [x] 4.11 Implement R010 (Curva Suave)
+  - [x] 4.12 Implement R011 (Curva Serrilhada)
+  - [x] 4.13 Implement R012 (Mudança Estrutural)
+  - [x] 4.14 Implement R013 (Movimento Monótono)
+  - [x] 4.15 Implement R014 (Curva em Recuperação)
 
-## 4. Métricas da evolução consolidada
+- [x] **5. Implement analysis engine: report**
+  - [x] 5.1 Create `_report.py` with `build_report()` function
+  - [x] 5.2 Implement 4-block report structure
+  - [x] 5.3 Implement score classification (5 níveis)
+  - [x] 5.4 Implement `format_report()` with score header
 
-- [x] 4.1 Implementar `extract_evolution_metrics(historical_data)` → `EvolutionMetrics`
-- [x] 4.2 Calcular deltas entre as 5 datas para cada ano
-- [x] 4.3 Detectar tendência (alta contínua, queda contínua, instabilidade)
-- [x] 4.4 Analisar difusão do movimento (quantos anos subiram/desceram)
-- [x] 4.5 Classificar rotação da curva (bear/bull steepening/flattening)
-- [x] 4.6 Calcular intensidade do movimento (delta médio absoluto)
+- [x] **6. Implement analysis engine: facade**
+  - [x] 6.1 Update `__init__.py` facade with `analyze()` function
+  - [x] 6.2 Route `raw` view mode to new rules engine
+  - [x] 6.3 Return placeholder for `consolidado`/`evolucao` modes
 
-## 5. Regras e textos
+- [x] **7. Add analysis sidebar to GUI**
+  - [x] 7.1 Add `sidebar_var` (BooleanVar) and sidebar Checkbutton in bottom_frame
+  - [x] 7.2 Add sidebar Text widget and Scrollbar
+  - [x] 7.3 Implement `_toggle_sidebar` using grid/forget
+  - [x] 7.4 Implement `_update_analysis` to fetch and display report
+  - [x] 7.5 Integrate sidebar update into `_redraw_chart`
+  - [x] 7.6 Remove top pady from sidebar panel frame for vertical alignment
 
-- [x] 5.1 Implementar regra de forma da curva (ascendente/descendente/plana)
-- [x] 5.2 Implementar regra de classificação da inclinação
-- [x] 5.3 Implementar regra de classificação da convexidade
-- [x] 5.4 Implementar regra de classificação da volatilidade
-- [x] 5.5 Implementar regra de oscilações
-- [x] 5.6 Implementar regra de spread do envelope
-- [x] 5.7 Implementar regra de tendência do envelope
-- [x] 5.8 Implementar regra de tendência da evolução
-- [x] 5.9 Implementar regra de difusão do movimento
-- [x] 5.10 Implementar regra de rotação da curva
-- [x] 5.11 Implementar regra de intensidade do movimento
-- [x] 5.12 Implementar regra de score agregado com pesos
+- [x] **8. Write tests**
+  - [x] 8.1 Write tests for metric extraction
+  - [x] 8.2 Write tests for each rule group
+  - [x] 8.3 Write tests for report generation
+  - [x] 8.4 Write smoke test for facade
 
-## 6. Composição do relatório
-
-- [x] 6.1 Implementar `build_report(statements, score, score_label)` → `AnalysisReport`
-- [x] 6.2 Organizar statements nas seções: Formato da Curva, Dispersão e Consenso, Evolução Recente, Qualidade do Movimento, Conclusão
-- [x] 6.3 Implementar `format_report(report)` → string formatada com seções e score
-
-## 7. Facade pública
-
-- [x] 7.1 Implementar `analyze(records, historical_data, view_mode, evolution_active, thresholds=None)` → `AnalysisReport` no `__init__.py` do subpacote
-- [x] 7.2 Roteamento: modo detalhado usa métricas detalhadas; consolidado usa envelope; evolution usa evolution
-- [x] 7.3 Caso sem dados retorna `AnalysisReport` vazio
-
-## 8. Painel lateral na GUI (`presentation/gui.py`)
-
-- [x] 8.1 Adicionar `ttk.PanedWindow` no `SelicPreApp.__init__` separando gráfico (esquerda) e sidebar (direita)
-- [x] 8.2 Criar frame da sidebar com botão toggle (▶/▼ "Análise") e widget `tk.Text` readonly com scrollbar
-- [x] 8.3 Implementar toggle expandir/recolher (largura 0 ↔ ~280px)
-- [x] 8.4 Importar `analyze` de `b3_selic_pre.application.analyze`, chamar no `_redraw_chart` e atualizar o widget de texto
-- [x] 8.5 Atualizar geometria da janela para acomodar sidebar
-
-## 9. Dependências e limpeza
-
-- [x] 9.1 Adicionar `numpy>=1.20.0` ao `dependencies` no `pyproject.toml`
-- [x] 9.2 Verificar que `src/b3_selic_pre/application/analyze/__init__.py` expõe a facade corretamente
-- [x] 9.3 Rodar testes existentes e garantir que não quebraram
-
-## 10. Testes do motor de análise
-
-- [x] 10.1 Criar `tests/test_analyze.py`
-- [x] 10.2 Testar extração de métricas com dados sintéticos
-- [x] 10.3 Testar todas as 11 regras individualmente (curva ascendente, descendente, plana, etc.)
-- [x] 10.4 Testar relatório completo com dados simulados
-- [x] 10.5 Testar caso sem dados (lista vazia)
-- [x] 10.6 Testar thresholds customizados
-- [x] 10.7 Testar integração com GUI (sidebar exibe texto)
+- [x] **9. Update pyproject.toml**
+  - [x] 9.1 Add explicit numpy dependency

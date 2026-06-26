@@ -16,7 +16,7 @@ a = Analysis(
     ['src/b3_selic_pre/__main__.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/b3_selic_pre/icons/b3_selic_pre.png', 'b3_selic_pre')],
+    datas=[('src/b3_selic_pre/icons/b3_selic_pre.png', '.')],
     hiddenimports=[
         'tkinter',
         'PIL',

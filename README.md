@@ -13,6 +13,7 @@ pip install .
 ```
 
 Requisitos:
+
 - Python 3.10+
 - matplotlib, Pillow e pyxclip
 
@@ -29,31 +30,33 @@ O executável será gerado em `dist/b3-selic-pre` (Linux), `dist/b3-selic-pre.ex
 
 Baixe o binário da plataforma desejada na [página de releases](https://github.com/amaurycarvalho/b3-selic-pre/releases):
 
-| Plataforma | Arquivo |
-|------------|---------|
-| Linux | `b3-selic-pre-linux` |
-| Windows | `b3-selic-pre-windows.exe` |
-| macOS | `b3-selic-pre-macos` |
+| Plataforma | Arquivo                    |
+| ---------- | -------------------------- |
+| Linux      | `b3-selic-pre-linux`       |
+| Windows    | `b3-selic-pre-windows.exe` |
+| macOS      | `b3-selic-pre-macos`       |
 
 ## Como usar
 
 ### A partir do código fonte
 
+Via o binário após `make build`:
+
 ```bash
-b3-selic-pre                              # consultar data atual
-b3-selic-pre 2026-06-10                   # data específica
-b3-selic-pre 2026-06-10 --yearly          # consolidado por ano
-b3-selic-pre --gui                        # interface gráfica
-b3-selic-pre --create-shortcut            # criar atalho no desktop (Linux)
-b3-selic-pre --help                       # exibir ajuda com todos os parâmetros
-b3-selic-pre --version                    # exibir versão
+.venv/bin/b3-selic-pre                              # consultar data atual
+.venv/bin/b3-selic-pre 2026-06-10                   # data específica
+.venv/bin/b3-selic-pre 2026-06-10 --yearly          # consolidado por ano
+.venv/bin/b3-selic-pre --gui                        # interface gráfica
+.venv/bin/b3-selic-pre --create-shortcut            # criar atalho no desktop (Linux)
+.venv/bin/b3-selic-pre --help                       # exibir ajuda com todos os parâmetros
+.venv/bin/b3-selic-pre --version                    # exibir versão
 ```
 
 Ou via módulo Python:
 
 ```bash
-python3 -m b3_selic_pre                   # consultar data atual
-python3 -m b3_selic_pre --gui             # interface gráfica
+.venv/bin/python3 -m b3_selic_pre                   # consultar data atual
+.venv/bin/python3 -m b3_selic_pre --gui             # interface gráfica
 ```
 
 ### A partir do executável gerado pelo Makefile
@@ -68,7 +71,7 @@ dist/b3-selic-pre --help                    # exibir ajuda com todos os parâmet
 dist/b3-selic-pre --version                 # exibir versão
 ```
 
-### A partir do binário pré-compilado
+### A partir do binário pré-compilado do repositório
 
 ```bash
 ./b3-selic-pre-linux                        # consultar data atual
@@ -88,10 +91,10 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 Dois modos base selecionáveis por radio button, com opção adicional de evolução:
 
-| Modo | Descrição |
-|------|-----------|
-| **Detalhado** | Curva completa Dias úteis × taxa (linha verde), com grid trimestral (~66 DU) e ticks finos a cada ~22 DU |
-| **Consolidado** | Envelope anual consolidado (taxa mínima em azul, máxima em vermelho), com grid trienal (3 anos) e ticks finos a cada ano |
+| Modo                    | Descrição                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Detalhado**           | Curva completa Dias úteis × taxa (linha verde), com grid trimestral (~66 DU) e ticks finos a cada ~22 DU                                                                                    |
+| **Consolidado**         | Envelope anual consolidado (taxa mínima em azul, máxima em vermelho), com grid trienal (3 anos) e ticks finos a cada ano                                                                    |
 | **Evolução da curva** ☐ | Checkbox que sobrepõe 5 curvas históricas (hoje, 7, 14, 21, 28 dias atrás) com gradiente de cor e flechas quiver nos ticks secundários (~22 DU / ~1 ano), combinável com qualquer modo base |
 
 Na interface, informe a data no formato `YYYY-MM-DD` e clique em `Buscar`.
@@ -102,6 +105,7 @@ Use o botão `📅` ao lado do campo de data para abrir um calendário popup.
 **Evolução da curva**: ao marcar o checkbox, a data é automaticamente alterada para a data atual. O sistema busca as 5 curvas (28, 21, 14, 7, 0 dias atrás) em paralelo e as sobrepõe ao gráfico do modo base ativo.
 
 Recursos disponíveis:
+
 - Zoom e pan no gráfico
 - Cópia de dados para área de transferência
 - Cópia do gráfico como imagem

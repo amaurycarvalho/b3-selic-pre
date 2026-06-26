@@ -11,21 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [auto-analysis-commentary](openspec/changes/auto-analysis-commentary/) Rule-based inference engine that analyzes SELIC Pré rate curves and generates natural-language reports in a collapsible side panel
 
-## [0.7.0] - 2026-06-26
+## [0.7.1] - 2026-06-26
 
-### [grafico-3d-evolucao-curva](openspec/changes/archive/2026-06-26-grafico-3d-evolucao-curva/) 3D surface visualization of curve evolution
+### [clean-arch-pyproject](openspec/changes/archive/2026-06-26-clean-arch-pyproject/) Reestruturar monolito para Clean Architecture com src/ layout e pyproject.toml
 
-#### Added
+#### Changed
 
-- Add a "3D" checkbox alongside the existing "Evolução da curva" checkbox in the GUI (disabled when evolution is OFF)
-- When evolution is ON and 3D is ON, render the 5 curves as a 3D surface plot using `plot_surface` instead of the standard 2D line chart
-- The 3D view works with both "Detalhado" and "Consolidado" radio states — raw rate data or yearly averages
-- Each curve occupies a distinct Z position (today=0, 28d ago=4)
-- The 5 individual curves are drawn as black lines overlaid on the surface, with decreasing linewidth (today thickest, oldest thinnest)
-- Surface uses a unified colormap (RdYlGn_r — red=high rate, yellow=mid, green=low) where color represents rate magnitude
-- Requires `mpl_toolkits.mplot3d` for 3D projection support
+- Decompor `b3_selic_pre.py` em pacote `src/b3_selic_pre/` com camadas domain, application, infrastructure, presentation
+- Criar `pyproject.toml` unificando metadados, dependências e entry point — substitui `requirements.txt`
+- Mover `icons/` para dentro do pacote como `package_data`
+- Atualizar `b3-selic-pre.spec` para apontar para o novo entry point (`__main__.py`)
+- Atualizar `Makefile` para usar `pip install -e .` e `python -m b3_selic_pre`
+- Atualizar `.github/workflows/test.yml` e `release.yml` para o novo build
+- Atualizar `README.md` com novos comandos de uso
+- Atualizar skills OpenSpec (release-version, release-push) com novos paths
+- Atualizar todos os imports e `mock.patch` nos testes (`tests/`)
+- **BREAKING**: `python3 b3_selic_pre.py` → `python3 -m b3_selic_pre` (ou `b3-selic-pre` via entry point)
 
-[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.7.0...HEAD
-[0.7.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.7.0
+[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.7.1
 
 See [CHANGELOG Archive](CHANGELOG-ARCHIVE.md) for older releases.

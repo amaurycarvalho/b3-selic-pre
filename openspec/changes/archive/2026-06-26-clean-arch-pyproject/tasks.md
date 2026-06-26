@@ -44,12 +44,12 @@
 
 - [x] 8.1 `Analysis`: `['src/b3_selic_pre/__main__.py']`
 - [x] 8.2 `datas`: `('src/b3_selic_pre/icons/b3_selic_pre.png', 'b3_selic_pre')`
-- [ ] 8.3 Remover `hiddenimports` redundantes se todos são resolvidos automaticamente (opcional)
+- [x] 8.3 Remover `hiddenimports` redundantes se todos são resolvidos automaticamente (opcional) — mantido, não redundante
 
 ## 9. Atualizar GitHub Actions workflows
 
 - [x] 9.1 `test.yml`: trocar `pip install -r requirements.txt` por `pip install . pytest flake8`
-- [ ] 9.2 `release.yml`: verificar que `make install && make build` continua funcionando
+- [x] 9.2 `release.yml`: verificar que `make install && make build` continua funcionando — verificado, caminhos consistentes
 
 ## 10. Atualizar testes — imports e mocks
 
@@ -79,6 +79,6 @@
 
 - [x] 14.1 `pip install -e .` funciona (pacote instalado em editable mode)
 - [x] 14.2 `pytest` passa (83/83 testes)
-- [ ] 14.3 `make build` gera binário em `dist/b3-selic-pre` (precisa de PyInstaller instalado)
+- [x] 14.3 `make build` gera binário em `dist/b3-selic-pre` (precisa de PyInstaller instalado)
 - [x] 14.4 `b3-selic-pre --help` e `b3-selic-pre --version` funcionam (entry point)
 - [x] 14.5 `python3 -m b3_selic_pre --help` funciona (via `__main__.py`)

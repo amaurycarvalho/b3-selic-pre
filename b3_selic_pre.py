@@ -16,7 +16,7 @@ import urllib.request
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 

@@ -29,6 +29,8 @@ a = Analysis(
         'matplotlib',
         'matplotlib.figure',
         'matplotlib.backends.backend_tkagg',
+        'mpl_toolkits',
+        'mpl_toolkits.mplot3d',
         'ctypes',
         'pyxclip',
     ],

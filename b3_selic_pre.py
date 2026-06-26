@@ -13,6 +13,8 @@ import threading
 import concurrent.futures
 import urllib.request
 
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
 
 __version__ = "0.7.0"
 
@@ -254,8 +256,8 @@ def format_yearly_rows(consolidated):
 
 
 def render_chart(fig, records, consolidated=False):
-    ax = fig.gca()
-    ax.clear()
+    fig.clf()
+    ax = fig.add_subplot(111)
 
     if not records:
         ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
@@ -316,8 +318,8 @@ def render_curve_evolution(fig, date_rates):
     import numpy as np
     import matplotlib.pyplot as plt
 
-    ax = fig.gca()
-    ax.clear()
+    fig.clf()
+    ax = fig.add_subplot(111)
 
     if not date_rates:
         ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
@@ -381,8 +383,8 @@ def render_detailed_evolution(fig, date_rates):
     import numpy as np
     import matplotlib.pyplot as plt
 
-    ax = fig.gca()
-    ax.clear()
+    fig.clf()
+    ax = fig.add_subplot(111)
 
     if not date_rates:
         ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
@@ -444,6 +446,123 @@ def render_detailed_evolution(fig, date_rates):
     ax.grid(True, which="major", alpha=0.3)
     ax.grid(True, which="minor", alpha=0.15, linestyle="--")
     fig.tight_layout()
+
+
+def _interpolate_rates(records, common_x):
+    import numpy as np
+    days = [r.day252 for r in records]
+    rates = [float(r.rate.replace(",", ".")) for r in records]
+    return np.interp(common_x, days, rates, left=np.nan, right=np.nan)
+
+
+def render_3d_evolution(fig, date_rates, consolidated=False):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    fig.clf()
+
+    if not date_rates:
+        ax = fig.add_subplot(111)
+        ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
+                transform=ax.transAxes, fontsize=14, color="gray")
+        ax.set_xlabel("Ano" if consolidated else "Dias úteis")
+        ax.set_ylabel("Taxa")
+        fig.tight_layout()
+        return
+
+    ax = fig.add_subplot(111, projection='3d')
+
+    dates_sorted = sorted(date_rates.keys(), reverse=True)
+    n = len(dates_sorted)
+    z_indices = list(range(n))
+
+    if consolidated:
+        all_years = set()
+        per_date_rates = []
+        for date_str in dates_sorted:
+            rates = average_rate_by_year(date_rates[date_str])
+            per_date_rates.append(rates)
+            all_years.update(rates.keys())
+        years = sorted(y for y in all_years if 0 <= y <= 20)
+
+        X, Y = np.meshgrid(years, z_indices)
+        Z = np.array([
+            [per_date_rates[i].get(y, np.nan) for y in years]
+            for i in range(n)
+        ])
+
+        ax.set_xlabel("Ano")
+
+        for i in range(n - 1, -1, -1):
+            rates = per_date_rates[i]
+            x_vals = sorted(y for y in rates if 0 <= y <= 20)
+            y_vals = [rates[y] for y in x_vals]
+            ax.plot(x_vals, [z_indices[i]] * len(x_vals), y_vals,
+                    color="black", linewidth=(n - 1 - i) * 0.425 + 0.8, alpha=0.7)
+    else:
+        all_days = set()
+        per_date_data = []
+        for date_str in dates_sorted:
+            records = date_rates[date_str]
+            days = [r.day252 for r in records if r.day252 <= 756]
+            rates = [float(r.rate.replace(",", ".")) for r in records if r.day252 <= 756]
+            per_date_data.append((days, rates))
+            all_days.update(days)
+
+        max_day = max(all_days) if all_days else 0
+        common_x = np.linspace(0, max_day, num=200)
+
+        X, Y = np.meshgrid(common_x, z_indices)
+        Z = np.array([
+            np.interp(common_x, days, rates, left=np.nan, right=np.nan)
+            for days, rates in per_date_data
+        ])
+
+        ax.set_xlabel("Dias úteis")
+
+        for i in range(n - 1, -1, -1):
+            days, rates = per_date_data[i]
+            if not days:
+                continue
+            ax.plot(days, [z_indices[i]] * len(days), rates,
+                    color="black", linewidth=(n - 1 - i) * 0.425 + 0.8, alpha=0.7)
+
+    if consolidated:
+        ax.set_xlim(0, 20)
+    else:
+        ax.set_xlim(0, 756)
+
+    z_arr = np.array(z_indices)
+    y_fine = np.linspace(z_arr.min(), z_arr.max(), n * 20)
+    X_fine = np.full((len(y_fine), X.shape[1]), np.nan)
+    Y_fine = np.tile(y_fine, (X.shape[1], 1)).T
+    Z_fine = np.full((len(y_fine), Z.shape[1]), np.nan)
+    for j in range(Z.shape[1]):
+        col = Z[:, j]
+        good = ~np.isnan(col)
+        if good.sum() >= 2:
+            Z_fine[:, j] = np.interp(y_fine, z_arr[good], col[good])
+            X_fine[:, j] = np.interp(y_fine, z_arr[good], X[good, j])
+        elif good.sum() == 1:
+            Z_fine[:, j] = col[good][0]
+            X_fine[:, j] = X[good, j].mean()
+        else:
+            Z_fine[:, j] = np.nan
+            X_fine[:, j] = np.nan
+
+    surf = ax.plot_surface(X_fine, Y_fine, Z_fine, cmap="RdYlGn_r", alpha=0.85,
+                           linewidth=0, antialiased=True)
+
+    plt.colorbar(surf, ax=ax, label="Taxa %", shrink=0.6)
+
+    ax.set_ylabel("Período")
+    ax.set_zlabel("Taxa %")
+    ax.view_init(elev=25, azim=-60)
+
+    ax.set_yticks(z_indices)
+    ax.set_yticklabels(dates_sorted, fontsize=8)
+
+    fig.subplots_adjust(left=0.1, right=0.8, top=0.9, bottom=0.1)
 
 
 def format_evolution_csv(date_rates):
@@ -646,6 +765,7 @@ class SelicPreApp:
         self.status_var = tk.StringVar(value="Informe uma data e clique em Buscar.")
         self.view_var = tk.StringVar(value="raw")
         self.evolution_var = tk.BooleanVar(value=False)
+        self.var_3d = tk.BooleanVar(value=False)
         self.historical_data = None
 
         top_frame = ttk.Frame(root, padding=12)
@@ -677,8 +797,8 @@ class SelicPreApp:
 
         self.figure = Figure(figsize=(7, 4), dpi=100)
         self.figure.add_subplot(111)
-        self.ax = self.figure.gca()
         render_chart(self.figure, [])
+        self.ax = self.figure.gca()
         self.ax.set_title("B3 SELIC Pré", fontsize=14)
 
         self.canvas = FigureCanvasTkAgg(self.figure, master=chart_frame)
@@ -728,6 +848,12 @@ class SelicPreApp:
             variable=self.evolution_var, command=self.toggle_evolution,
         )
         self.evolution_cb.pack(side=tk.LEFT, padx=(4, 0))
+        self.cb_3d = ttk.Checkbutton(
+            bottom_frame, text="3D",
+            variable=self.var_3d, command=self._redraw_chart,
+        )
+        self.cb_3d.pack(side=tk.LEFT, padx=(4, 0))
+        self.cb_3d.configure(state=tk.DISABLED)
 
         ttk.Label(bottom_frame, textvariable=self.status_var).pack(
             side=tk.LEFT,
@@ -764,10 +890,18 @@ class SelicPreApp:
 
     def _redraw_chart(self):
         show_evolution = self.evolution_var.get()
+        show_3d = self.var_3d.get()
         view = self.view_var.get()
 
         if show_evolution and self.historical_data:
-            if view == "consolidated":
+            if show_3d:
+                c = view == "consolidated"
+                render_3d_evolution(self.figure, self.historical_data, consolidated=c)
+                mode = "Consolidada" if c else "Detalhada"
+                self.figure.gca().set_title(
+                    f"B3 SELIC Pré — Evolução 3D {mode}", fontsize=14, y=1.06,
+                    ha="center")
+            elif view == "consolidated":
                 render_curve_evolution(self.figure, self.historical_data)
                 self.figure.gca().set_title(
                     "B3 SELIC Pré — Evolução Consolidada", fontsize=14, y=0.92)
@@ -783,6 +917,17 @@ class SelicPreApp:
             render_chart(self.figure, self.records, consolidated=False)
             self.figure.gca().set_title(
                 "B3 SELIC Pré", fontsize=14, y=0.92)
+        if show_evolution and self.historical_data and show_3d:
+            t = self.figure.gca().title
+            self.canvas.draw()
+            renderer = self.canvas.get_renderer()
+            if renderer is not None:
+                bbox = t.get_window_extent(renderer=renderer)
+                ax_box = self.figure.gca().get_position()
+                fig_w, _ = self.figure.get_size_inches()
+                w_ax = (bbox.width / self.figure.dpi) / (ax_box.width * fig_w)
+                if w_ax > 0:
+                    t.set_x(0.5 - 0.7 * w_ax)
         self.canvas.draw_idle()
 
     def toggle_view(self):
@@ -790,6 +935,7 @@ class SelicPreApp:
 
     def toggle_evolution(self):
         if self.evolution_var.get():
+            self.cb_3d.configure(state=self.tk.NORMAL)
             if self.historical_data:
                 self._redraw_chart()
             else:
@@ -798,6 +944,8 @@ class SelicPreApp:
                     self.date_var.set(today)
                 self._fetch_historical_rates(today)
         else:
+            self.var_3d.set(False)
+            self.cb_3d.configure(state=self.tk.DISABLED)
             self._redraw_chart()
 
     def fetch_rates(self):
@@ -946,6 +1094,12 @@ def launch_gui():
 
     root = tk.Tk()
     SelicPreApp(root)
+
+    def on_closing():
+        root.quit()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
 
 

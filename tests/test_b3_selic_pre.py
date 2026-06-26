@@ -11,6 +11,7 @@ from b3_selic_pre import (
     _days_ago,
     _detect_desktop_dir,
     _icon_source,
+    _interpolate_rates,
     _resolve_executable,
     average_rate_by_year,
     build_payload,
@@ -30,6 +31,7 @@ from b3_selic_pre import (
     render_chart,
     render_curve_evolution,
     render_detailed_evolution,
+    render_3d_evolution,
     shortcut_exists,
     validate_reference_date,
 )
@@ -544,6 +546,49 @@ class CurveEvolutionChartTest(unittest.TestCase):
         ticks = ax.get_xticks()
         self.assertIn(60, ticks)
         self.assertIn(120, ticks)
+
+    def test_render_3d_evolution_detailed_creates_surface(self):
+        date_rates = self._make_date_rates()
+        render_3d_evolution(self.fig, date_rates, consolidated=False)
+        self.assertGreater(len(self.fig.axes), 0)
+        ax = self.fig.axes[0]
+        self.assertGreater(len(ax.collections), 0)
+        self.assertGreater(len(ax.lines), 0)
+
+    def test_render_3d_evolution_consolidated_creates_surface(self):
+        date_rates = self._make_date_rates()
+        render_3d_evolution(self.fig, date_rates, consolidated=True)
+        self.assertGreater(len(self.fig.axes), 0)
+        ax = self.fig.axes[0]
+        self.assertGreater(len(ax.collections), 0)
+        self.assertGreater(len(ax.lines), 0)
+
+    def test_render_3d_evolution_empty_shows_message(self):
+        render_3d_evolution(self.fig, {})
+        ax = self.fig.gca()
+        texts = [t.get_text() for t in ax.texts]
+        self.assertIn("Sem dados", texts)
+
+    def test_render_3d_evolution_empty_consolidated_shows_message(self):
+        render_3d_evolution(self.fig, {}, consolidated=True)
+        ax = self.fig.gca()
+        texts = [t.get_text() for t in ax.texts]
+        self.assertIn("Sem dados", texts)
+
+    def test_interpolate_rates_with_mismatched_grids(self):
+        import numpy as np
+        records = [
+            RateRecord(day252=1, day360=1, rate="14.0"),
+            RateRecord(day252=60, day360=60, rate="15.0"),
+            RateRecord(day252=120, day360=120, rate="16.0"),
+        ]
+        common_x = [0, 1, 60, 120, 150]
+        result = _interpolate_rates(records, common_x)
+        self.assertTrue(np.isnan(result[0]))
+        self.assertEqual(result[1], 14.0)
+        self.assertEqual(result[2], 15.0)
+        self.assertEqual(result[3], 16.0)
+        self.assertTrue(np.isnan(result[4]))
 
 
 class ShortcutTest(unittest.TestCase):

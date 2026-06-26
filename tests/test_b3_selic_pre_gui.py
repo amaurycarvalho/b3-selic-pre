@@ -58,8 +58,10 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertIsNotNone(self.app.view_raw_rb)
         self.assertIsNotNone(self.app.view_consolidated_rb)
         self.assertIsNotNone(self.app.evolution_cb)
+        self.assertIsNotNone(self.app.cb_3d)
         self.assertEqual(self.app.view_var.get(), "raw")
         self.assertEqual(self.app.evolution_var.get(), False)
+        self.assertEqual(self.app.var_3d.get(), False)
 
     def test_toggle_to_consolidated_updates_chart(self):
         records = [
@@ -76,6 +78,7 @@ class SelicPreAppTest(unittest.TestCase):
         self.app.view_var.set("consolidated")
         self.app.toggle_view()
 
+        ax = self.app.figure.gca()
         lines = ax.get_lines()
         self.assertEqual(len(lines), 2)
         colors = [line.get_color() for line in lines]
@@ -246,6 +249,38 @@ class SelicPreAppTest(unittest.TestCase):
             self.assertIsNone(app.shortcut_button)
         finally:
             root.destroy()
+
+    def test_3d_checkbox_disabled_when_evolution_off(self):
+        self.assertEqual(str(self.app.cb_3d.cget("state")), "disabled")
+
+    def test_3d_checkbox_enabled_when_evolution_on_with_data(self):
+        records = [RateRecord(day252=1, day360=1, rate="14.0")]
+        self.app.historical_data = {"2026-06-17": records}
+        self.app.evolution_var.set(True)
+        self.app.toggle_evolution()
+        self.assertEqual(str(self.app.cb_3d.cget("state")), "normal")
+
+    def test_3d_checkbox_disabled_and_reset_when_evolution_turned_off(self):
+        records = [RateRecord(day252=1, day360=1, rate="14.0")]
+        self.app.historical_data = {"2026-06-17": records}
+        self.app.evolution_var.set(True)
+        self.app.toggle_evolution()
+        self.app.var_3d.set(True)
+        self.app.evolution_var.set(False)
+        self.app.toggle_evolution()
+        self.assertEqual(str(self.app.cb_3d.cget("state")), "disabled")
+        self.assertEqual(self.app.var_3d.get(), False)
+
+    def test_3d_triggers_3d_render_dispatch(self):
+        from b3_selic_pre import render_3d_evolution
+        records = [RateRecord(day252=1, day360=1, rate="14.0")]
+        self.app.historical_data = {"2026-06-17": records}
+        self.app.evolution_var.set(True)
+        self.app.toggle_evolution()
+        self.app.var_3d.set(True)
+        with mock.patch("b3_selic_pre.render_3d_evolution") as mock_3d:
+            self.app._redraw_chart()
+        mock_3d.assert_called_once()
 
     def test_shortcut_button_callback_creates_shortcut(self):
         root, app = self._make_app_with_shortcut(False)

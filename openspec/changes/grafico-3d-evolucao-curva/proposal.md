@@ -9,7 +9,7 @@ The current curve evolution view shows 5 superposed 2D line charts. While functi
 - The 3D view works with both "Detalhado" and "Consolidado" radio states — raw rate data or yearly averages
 - Each curve occupies a distinct Z position (today=0, 28d ago=4)
 - The 5 individual curves are drawn as black lines overlaid on the surface, with decreasing linewidth (today thickest, oldest thinnest)
-- Surface uses a unified colormap (e.g., viridis) where color represents rate magnitude
+- Surface uses a unified colormap (RdYlGn_r — red=high rate, yellow=mid, green=low) where color represents rate magnitude
 - Requires `mpl_toolkits.mplot3d` for 3D projection support
 - Existing 2D evolution views remain unchanged when 3D is OFF
 
@@ -27,5 +27,6 @@ The current curve evolution view shows 5 superposed 2D line charts. While functi
 - **File modified**: `b3_selic_pre.py` (single-file app) — new rendering function, modified `_redraw_chart` dispatch, new GUI widgets
 - **New dependency**: `mpl_toolkits.mplot3d` (ships with matplotlib, no pip install needed)
 - **Test file**: `tests/test_b3_selic_pre.py` — new tests for 3D rendering function
+- **Test file**: `tests/test_b3_selic_pre_gui.py` — new tests for 3D checkbox GUI behavior
 - **Build spec**: `b3-selic-pre.spec` — may need hidden import for `mpl_toolkits.mplot3d`
 - **No API changes**: no new endpoints, no data model changes

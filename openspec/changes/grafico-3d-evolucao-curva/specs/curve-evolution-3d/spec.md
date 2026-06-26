@@ -65,9 +65,9 @@ The system SHALL apply a single colormap to the surface where color represents t
 
 #### Scenario: Surface colored by rate value
 - **WHEN** the 3D evolution chart is rendered
-- **THEN** the surface uses the Viridis colormap (or equivalent unified colormap) scaled to the minimum and maximum rate values across all curves
+- **THEN** the surface uses the RdYlGn_r colormap (reversed Red-Yellow-Green) scaled to the minimum and maximum rate values across all curves
 - **AND** the color at any point reflects the rate magnitude at that (X, Z) coordinate
-- **AND** a colorbar is displayed alongside the chart
+- **AND** a colorbar is displayed alongside the chart, labeled "Taxa %"
 
 ### Requirement: Default camera angle
 The system SHALL set a default 3D camera angle for optimal visualization.
@@ -98,6 +98,51 @@ The system SHALL clear the figure before drawing the 3D subplot, following the s
 #### Scenario: Figure is cleared
 - **WHEN** `render_3d_evolution` is called
 - **THEN** `fig.clf()` is called before creating the 3D subplot
+
+### Requirement: X-axis limits match 2D view
+The system SHALL restrict the X-axis range to match the corresponding 2D view.
+
+#### Scenario: Detailed mode X-axis limited to 756 business days
+- **WHEN** `render_3d_evolution` is called with `consolidated=False`
+- **THEN** data is filtered to `day252 <= 756` before interpolation
+- **AND** `ax.set_xlim(0, 756)` is called
+
+#### Scenario: Consolidated mode X-axis limited to 20 years
+- **WHEN** `render_3d_evolution` is called with `consolidated=True`
+- **THEN** years are filtered to `0 <= y <= 20` before meshgrid creation
+- **AND** `ax.set_xlim(0, 20)` is called
+
+### Requirement: Y-axis labels show dates
+The system SHALL label the Y (Período) axis ticks with the actual date strings.
+
+#### Scenario: Y-axis shows date labels
+- **WHEN** the 3D evolution chart is rendered
+- **THEN** `ax.set_yticks(z_indices)` is called with the integer Z positions
+- **AND** `ax.set_yticklabels(dates_sorted, fontsize=8)` shows date strings sorted most-recent-first
+
+### Requirement: Smooth color gradient between curves
+The system SHALL upsample the Y-axis grid so `plot_surface` produces smooth color transitions between adjacent curves.
+
+#### Scenario: Y-axis upsampling
+- **WHEN** `render_3d_evolution` is called
+- **THEN** the original n×m grid is linearly interpolated to (n×20)×m rows along the Y axis
+- **AND** the original curve values at Z=0..n-1 are preserved exactly
+- **AND** `plot_surface` receives the upsampled grid for smoother face coloring
+
+### Requirement: Title positioned over chart area (not colorbar)
+The system SHALL shift the 3D title left to center it over the chart area.
+
+#### Scenario: 3D title adjusted for colorbar
+- **WHEN** the 3D evolution title is set
+- **THEN** the title's pixel width is measured after rendering
+- **AND** the title's X position is adjusted by `0.5 - 0.7 * w_ax` (70% of title width leftward)
+
+### Requirement: Layout adjusted for 3D axes
+The system SHALL use `subplots_adjust` to set appropriate margins for 3D rendering.
+
+#### Scenario: subplots_adjust called
+- **WHEN** `render_3d_evolution` renders
+- **THEN** `fig.subplots_adjust(left=0.1, right=0.8, top=0.9, bottom=0.1)` is called
 
 ### Requirement: Empty data shows placeholder
 The system SHALL handle empty or invalid data gracefully.

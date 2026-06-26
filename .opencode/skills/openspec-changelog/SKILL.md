@@ -202,6 +202,5 @@ Read back all modified files and verify:
 **Files updated:**
 - CHANGELOG.md ✓
 - CHANGELOG-ARCHIVE.md ✓
-
-Run release-push skill if you want to publish it on GitHub.
+**Commentary:** release-push skill can now be used manually to publish it on GitHub.
 ```

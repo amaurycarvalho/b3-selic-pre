@@ -69,7 +69,7 @@ Files updated:
 - b3_selic_pre.py (__version__)
 - b3-selic-pre.spec
 
-Run openspec-changelog skill if you want to update the changelog files.
+Commentary: openspec-changelog skill can now be used manually to update the changelog files.
 ```
 
 **Output On Error**

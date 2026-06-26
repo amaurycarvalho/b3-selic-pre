@@ -75,3 +75,4 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           files: b3-selic-pre-*/*
+          body_path: CHANGELOG.md

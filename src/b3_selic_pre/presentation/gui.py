@@ -30,6 +30,7 @@ from b3_selic_pre.presentation.charts import (
     render_curve_evolution,
     render_detailed_evolution,
 )
+from b3_selic_pre.application.analyze import analyze
 
 
 class DatePicker:
@@ -119,7 +120,7 @@ class SelicPreApp:
         self.ttk = ttk
         self.records = []
         root.title(f"B3 SELIC Pré v{__version__}")
-        root.geometry("800x560")
+        root.geometry("1100x560")
         icon_path = _icon_source()
         if os.path.exists(icon_path):
             img = tk.PhotoImage(file=icon_path)
@@ -131,6 +132,7 @@ class SelicPreApp:
         self.evolution_var = tk.BooleanVar(value=False)
         self.var_3d = tk.BooleanVar(value=False)
         self.historical_data = None
+        self._sidebar_visible = False
         top_frame = ttk.Frame(root, padding=12)
         top_frame.pack(fill=tk.X)
         ttk.Label(top_frame, text="Data (YYYY-MM-DD):").pack(side=tk.LEFT)
@@ -150,8 +152,10 @@ class SelicPreApp:
                 command=self._create_shortcut,
             )
             self.shortcut_button.pack(side=tk.RIGHT)
-        chart_frame = ttk.Frame(root, padding=(12, 0, 12, 8))
-        chart_frame.pack(fill=tk.BOTH, expand=True)
+        paned = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
+        paned.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
+        chart_frame = ttk.Frame(paned)
+        paned.add(chart_frame, weight=1)
         self.figure = Figure(figsize=(7, 4), dpi=100)
         self.figure.add_subplot(111)
         render_chart(self.figure, [])
@@ -161,6 +165,11 @@ class SelicPreApp:
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self.toolbar = NavigationToolbar2Tk(self.canvas, chart_frame)
         self.toolbar.update()
+        sidebar_frame = ttk.Frame(paned, width=0)
+        paned.add(sidebar_frame, weight=0)
+        self.sidebar_frame = sidebar_frame
+        self._build_sidebar(sidebar_frame)
+        self.paned = paned
         bottom_frame = ttk.Frame(root, padding=12)
         bottom_frame.pack(fill=tk.X)
         self.data_button = ttk.Button(
@@ -209,6 +218,35 @@ class SelicPreApp:
             fill=tk.X,
             expand=True,
         )
+
+    def _build_sidebar(self, parent):
+        self.sidebar_toggle = self.ttk.Button(
+            parent, text="▶ Análise", command=self._toggle_sidebar,
+        )
+        self.sidebar_toggle.pack(fill=self.tk.X, padx=4, pady=(4, 0))
+        text_frame = self.ttk.Frame(parent)
+        text_frame.pack(fill=self.tk.BOTH, expand=True, padx=4, pady=4)
+        self.sidebar_text = self.tk.Text(
+            text_frame, wrap=self.tk.WORD, state=self.tk.DISABLED,
+            width=36, font=("TkDefaultFont", 9),
+        )
+        scrollbar = self.ttk.Scrollbar(
+            text_frame, orient=self.tk.VERTICAL,
+            command=self.sidebar_text.yview,
+        )
+        self.sidebar_text.configure(yscrollcommand=scrollbar.set)
+        self.sidebar_text.pack(side=self.tk.LEFT, fill=self.tk.BOTH, expand=True)
+        scrollbar.pack(side=self.tk.RIGHT, fill=self.tk.Y)
+
+    def _toggle_sidebar(self):
+        self._sidebar_visible = not self._sidebar_visible
+        if self._sidebar_visible:
+            self.sidebar_frame.configure(width=280)
+            self.paned.sashpos(0, self.paned.winfo_width() - 280)
+            self.sidebar_toggle.configure(text="▼ Análise")
+        else:
+            self.sidebar_frame.configure(width=0)
+            self.sidebar_toggle.configure(text="▶ Análise")
 
     def set_loading(self, is_loading):
         state = self.tk.DISABLED if is_loading else self.tk.NORMAL
@@ -276,6 +314,22 @@ class SelicPreApp:
                 if w_ax > 0:
                     t.set_x(0.5 - 0.7 * w_ax)
         self.canvas.draw_idle()
+        self._update_analysis()
+
+    def _update_analysis(self):
+        if not self._sidebar_visible:
+            return
+        report = analyze(
+            records=self.records,
+            historical_data=self.historical_data,
+            view_mode=self.view_var.get(),
+            evolution_active=self.evolution_var.get(),
+        )
+        self.sidebar_text.configure(state=self.tk.NORMAL)
+        self.sidebar_text.delete("1.0", self.tk.END)
+        from b3_selic_pre.application.analyze._report import format_report
+        self.sidebar_text.insert(self.tk.END, format_report(report))
+        self.sidebar_text.configure(state=self.tk.DISABLED)
 
     def toggle_view(self):
         self._redraw_chart()

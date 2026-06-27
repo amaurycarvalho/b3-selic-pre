@@ -23,7 +23,8 @@ def render_chart(fig, records, consolidated=False):
     fig.clf()
     ax = fig.add_subplot(111)
     if not records:
-        ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
+        ax.text(0.5, 0.5, "Nenhum dado carregado.\nInforme uma data e clique em Buscar.",
+                ha="center", va="center",
                 transform=ax.transAxes, fontsize=14, color="gray")
         ax.set_xlabel("DC365")
         ax.set_ylabel("TAXA")
@@ -80,8 +81,8 @@ def render_curve_evolution(fig, date_rates):
     dates_sorted = sorted(date_rates.keys())
     n = len(dates_sorted)
     colors = plt.cm.Blues(np.linspace(0.3, 0.9, n))
-    alphas = np.linspace(0.3, 1.0, n)
-    linewidths = np.linspace(0.8, 2.5, n)
+    alphas = np.linspace(0.6, 1.0, n)
+    linewidths = np.linspace(1.5, 2.5, n)
     all_rates = []
     for i, date_str in enumerate(dates_sorted):
         rates = average_rate_by_year(date_rates[date_str])
@@ -138,8 +139,8 @@ def render_detailed_evolution(fig, date_rates):
     dates_sorted = sorted(date_rates.keys())
     n = len(dates_sorted)
     colors = plt.cm.Greens(np.linspace(0.3, 0.9, n))
-    alphas = np.linspace(0.3, 1.0, n)
-    linewidths = np.linspace(0.8, 2.5, n)
+    alphas = np.linspace(0.6, 1.0, n)
+    linewidths = np.linspace(1.5, 2.5, n)
     for i, date_str in enumerate(dates_sorted):
         records = date_rates[date_str]
         days = [r.day252 for r in records]

@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -7,7 +8,9 @@ from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.application.use_cases import consolidate_by_year
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
 from b3_selic_pre.infrastructure.desktop import create_shortcut, shortcut_exists
+from pathlib import Path
 from b3_selic_pre.presentation.gui import SelicPreApp
+from b3_selic_pre.presentation.settings import Settings
 
 
 class SelicPreAppTest(unittest.TestCase):
@@ -19,9 +22,15 @@ class SelicPreAppTest(unittest.TestCase):
         except TclError as exc:
             self.skipTest(f"tkinter display unavailable: {exc}")
         self.root.withdraw()
+        self._settings_patch = mock.patch(
+            "b3_selic_pre.presentation.gui.Settings",
+            return_value=Settings(path=Path(tempfile.mktemp(suffix=".json"))),
+        )
+        self._settings_patch.start()
         self.app = SelicPreApp(self.root)
 
     def tearDown(self):
+        self._settings_patch.stop()
         self.root.destroy()
 
     def test_invalid_date_shows_validation_without_fetching(self):

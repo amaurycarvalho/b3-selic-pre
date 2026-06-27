@@ -365,7 +365,7 @@ class ChartRenderTest(unittest.TestCase):
         render_chart(self.fig, [])
         ax = self.fig.gca()
         texts = [t.get_text() for t in ax.texts]
-        self.assertIn("Sem dados", texts)
+        self.assertIn("Nenhum dado carregado.\nInforme uma data e clique em Buscar.", texts)
 
     def test_render_chart_raw_green_line(self):
         records = [

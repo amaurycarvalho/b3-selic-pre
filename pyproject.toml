@@ -11,6 +11,7 @@ dependencies = [
     "Pillow>=10.0.0",
     "pyxclip>=0.2.0",
     "numpy>=1.20.0",
+    "tkcalendar>=1.6.0",
 ]
 
 [project.scripts]

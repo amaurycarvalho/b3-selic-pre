@@ -16,7 +16,7 @@ a = Analysis(
     ['src/b3_selic_pre/__main__.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/b3_selic_pre/icons/b3_selic_pre.png', '.')],
+    datas=[('src/b3_selic_pre/icons', '.')],
     hiddenimports=[
         'tkinter',
         'PIL',
@@ -28,6 +28,10 @@ a = Analysis(
         'mpl_toolkits.mplot3d',
         'ctypes',
         'pyxclip',
+        'tkcalendar',
+        'tkcalendar.entry',
+        'tkcalendar.calendar_',
+        'tkcalendar.tooltip',
     ],
     hookspath=[],
     hooksconfig={},
@@ -67,8 +71,8 @@ if sys.platform == 'darwin':
         icon=icon_file,
         bundle_identifier='com.github.amaurycarvalho.b3-selic-pre',
         info_plist={
-            'CFBundleShortVersionString': '0.8.0',
-            'CFBundleVersion': '0.8.0',
+            'CFBundleShortVersionString': '0.8.1',
+            'CFBundleVersion': '0.8.1',
             'NSHighResolutionCapable': True,
         },
     )

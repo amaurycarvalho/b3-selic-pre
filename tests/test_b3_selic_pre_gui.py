@@ -94,28 +94,13 @@ class SelicPreAppTest(unittest.TestCase):
         lines = ax.get_lines()
         self.assertEqual(len(lines), 2)
 
-    def test_export_png(self):
-        records = [RateRecord(day252=1, day360=2, rate="14.65")]
-        self.app.handle_fetch_success(records)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as file:
-            export_path = file.name
-        try:
-            with mock.patch(
-                "tkinter.filedialog.asksaveasfilename",
-                return_value=export_path,
-            ):
-                self.app.export_chart()
-            self.assertTrue(os.path.getsize(export_path) > 0)
-        finally:
-            os.unlink(export_path)
+    def test_export_png_replaced_by_toolbar(self):
+        self.assertFalse(hasattr(self.app, 'export_button'))
+        self.assertFalse(hasattr(self.app, 'export_chart'))
 
     def test_buttons_disabled_without_data(self):
         self.assertEqual(
-            str(self.app.copy_button.cget("state")),
-            "disabled",
-        )
-        self.assertEqual(
-            str(self.app.export_button.cget("state")),
+            str(self.app.copy_toolbar_btn.cget("state")),
             "disabled",
         )
 
@@ -123,11 +108,7 @@ class SelicPreAppTest(unittest.TestCase):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
         self.app.handle_fetch_success(records)
         self.assertEqual(
-            str(self.app.copy_button.cget("state")),
-            "normal",
-        )
-        self.assertEqual(
-            str(self.app.export_button.cget("state")),
+            str(self.app.copy_toolbar_btn.cget("state")),
             "normal",
         )
 
@@ -135,7 +116,7 @@ class SelicPreAppTest(unittest.TestCase):
         self.app.handle_fetch_success([RateRecord(day252=1, day360=2, rate="14.65")])
         self.app.handle_fetch_error(RuntimeError("falha simulada"))
         self.assertEqual(
-            str(self.app.copy_button.cget("state")),
+            str(self.app.copy_toolbar_btn.cget("state")),
             "disabled",
         )
 
@@ -208,8 +189,7 @@ class SelicPreAppTest(unittest.TestCase):
         except TclError as exc:
             self.skipTest(f"tkinter display unavailable: {exc}")
         root.withdraw()
-        with mock.patch("b3_selic_pre.presentation.gui.shortcut_exists", return_value=exists), \
-             mock.patch("b3_selic_pre.presentation.gui.os.path.exists", return_value=False):
+        with mock.patch("b3_selic_pre.presentation.gui.shortcut_exists", return_value=exists):
             app = SelicPreApp(root)
         return root, app
 

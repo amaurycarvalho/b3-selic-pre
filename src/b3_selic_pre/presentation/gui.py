@@ -1,6 +1,7 @@
 import io
 import os
 import threading
+import importlib.resources as resources
 from datetime import date, datetime, timedelta
 
 from b3_selic_pre import __version__
@@ -33,6 +34,7 @@ from b3_selic_pre.presentation.charts import (
 )
 from b3_selic_pre.presentation.settings import Settings
 from b3_selic_pre.application.analyze import analyze
+from tkcalendar import DateEntry
 
 
 class Tooltip:
@@ -71,79 +73,6 @@ class Tooltip:
             self._tip_window = None
 
 
-class DatePicker:
-    def __init__(self, parent, date_var):
-        import tkinter as tk
-        from tkinter import ttk
-        self.parent = parent
-        self.date_var = date_var
-        self.tk = tk
-        now = date.today()
-        self.year = now.year
-        self.month = now.month
-        self.top = tk.Toplevel(parent)
-        self.top.title("Selecionar Data")
-        self.top.resizable(False, False)
-        self.top.grab_set()
-        nav = ttk.Frame(self.top, padding=4)
-        nav.pack()
-        ttk.Button(nav, text="<", width=3,
-                   command=self._prev_month).pack(side=tk.LEFT)
-        self.month_label = ttk.Label(nav, text="", width=14, anchor="center")
-        self.month_label.pack(side=tk.LEFT, padx=4)
-        ttk.Button(nav, text=">", width=3,
-                   command=self._next_month).pack(side=tk.LEFT)
-        self.year_spin = tk.Spinbox(nav, from_=2020, to=2030, width=5,
-                                    command=self._rebuild)
-        self.year_spin.pack(side=tk.LEFT, padx=(8, 0))
-        self.cal_frame = ttk.Frame(self.top, padding=4)
-        self.cal_frame.pack()
-        self._rebuild()
-
-    def _prev_month(self):
-        self.month -= 1
-        if self.month < 1:
-            self.month = 12
-            self.year -= 1
-        self._rebuild()
-
-    def _next_month(self):
-        self.month += 1
-        if self.month > 12:
-            self.month = 1
-            self.year += 1
-        self._rebuild()
-
-    def _rebuild(self):
-        from calendar import monthcalendar, month_name
-        for w in self.cal_frame.winfo_children():
-            w.destroy()
-        self.month_label.config(text=f"{month_name[self.month]} {self.year}")
-        self.year_spin.delete(0, self.tk.END)
-        self.year_spin.insert(0, str(self.year))
-        days_header = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
-        for i, d in enumerate(days_header):
-            self.tk.Label(self.cal_frame, text=d, font=("", 8, "bold"),
-                          width=4, anchor="center").grid(row=0, column=i, padx=1)
-        cal = monthcalendar(self.year, self.month)
-        for r, week in enumerate(cal):
-            for c, day in enumerate(week):
-                if day == 0:
-                    self.tk.Label(self.cal_frame, text="", width=4).grid(
-                        row=r + 1, column=c, padx=1)
-                else:
-                    btn = self.tk.Button(
-                        self.cal_frame, text=str(day), width=4,
-                        command=lambda d=day: self._pick(d),
-                    )
-                    btn.grid(row=r + 1, column=c, padx=1)
-
-    def _pick(self, day):
-        selected = date(self.year, self.month, day).isoformat()
-        self.date_var.set(selected)
-        self.top.destroy()
-
-
 class SelicPreApp:
     def __init__(self, root):
         import tkinter as tk
@@ -160,9 +89,14 @@ class SelicPreApp:
         root.title(f"B3 SELIC Pré v{__version__}")
         icon_path = _icon_source()
         if os.path.exists(icon_path):
-            img = tk.PhotoImage(file=icon_path)
+            img = tk.PhotoImage(file=icon_path, master=root)
             self.icon_img = img
             root.iconphoto(True, img)
+        self.icons = {}
+        for name in ['document-open-recent', 'view-refresh', 'edit-copy', 'content-loading']:
+            path = str(resources.files('b3_selic_pre') / 'icons' / f'{name}.png')
+            if os.path.exists(path):
+                self.icons[name] = tk.PhotoImage(file=path, master=root)
         self.date_var = tk.StringVar(value=default_reference_date())
         self.status_var = tk.StringVar(value="Informe uma data e clique em Buscar.")
         self.view_var = tk.StringVar(value="raw")
@@ -195,24 +129,30 @@ class SelicPreApp:
         root.bind("<Configure>", self._on_window_configure, add="+")
         top_frame = ttk.Frame(root, padding=12)
         top_frame.pack(fill=tk.X)
-        ttk.Label(top_frame, text="Data (YYYY-MM-DD):").pack(side=tk.LEFT)
-        self.date_entry = ttk.Entry(top_frame, textvariable=self.date_var, width=14)
+        ttk.Label(top_frame, text="Data de referência:").pack(side=tk.LEFT)
+        self.date_entry = DateEntry(
+            top_frame, textvariable=self.date_var, width=14,
+            date_pattern='yyyy-mm-dd', background='white',
+        )
         self.date_entry.pack(side=tk.LEFT, padx=(6, 10))
         self.date_entry.bind("<Return>", lambda _event: self.fetch_rates())
-        self._style = ttk.Style()
-        self._style.configure("Placeholder.TEntry", foreground="gray")
-        self._style.configure("Error.TEntry", fieldbackground="#ffe0e0")
-        self._setup_date_placeholder()
-        self.cal_button = ttk.Button(
-            top_frame, text="📅", width=3, command=self._open_calendar,
-        )
-        self.cal_button.pack(side=tk.LEFT, padx=(0, 4))
+        icon_btn_style = ttk.Style()
+        icon_btn_style.configure("Icon.TButton", padding=0)
         self.today_button = ttk.Button(
-            top_frame, text="Hoje", command=self._go_today,
+            top_frame, image=self.icons['document-open-recent'],
+            command=self._go_today, style="Icon.TButton",
         )
-        self.today_button.pack(side=tk.LEFT, padx=(0, 10))
-        self.fetch_button = ttk.Button(top_frame, text="Buscar", command=self.fetch_rates)
-        self.fetch_button.pack(side=tk.LEFT)
+        self.today_button.pack(side=tk.LEFT, padx=(0, 4))
+        self.fetch_button = ttk.Button(
+            top_frame, image=self.icons['view-refresh'],
+            command=self.fetch_rates, style="Icon.TButton",
+        )
+        self.fetch_button.pack(side=tk.LEFT, padx=(0, 4))
+        self.data_button = ttk.Button(
+            top_frame, image=self.icons['edit-copy'],
+            command=self.copy_data, style="Icon.TButton",
+        )
+        self.data_button.pack(side=tk.LEFT)
         self.shortcut_button = None
         if not shortcut_exists():
             self.shortcut_button = ttk.Button(
@@ -221,15 +161,40 @@ class SelicPreApp:
             )
             self.shortcut_button.pack(side=tk.RIGHT)
         ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X)
-        self.stats_frame = ttk.Frame(root)
-        self.stats_frame.pack(fill=tk.X, padx=12)
-        self.stats_labels = {}
-        for key in ["date", "records", "highest", "lowest", "maturities"]:
-            lbl = ttk.Label(self.stats_frame, text="", padding=(0, 0, 16, 0))
-            lbl.pack(side=tk.LEFT)
-            self.stats_labels[key] = lbl
+        middle_frame = ttk.Frame(root, padding=(12, 4))
+        middle_frame.pack(fill=tk.X)
+        left_group = ttk.Frame(middle_frame)
+        left_group.pack(side=tk.LEFT)
+        self.view_raw_rb = ttk.Radiobutton(
+            left_group, text="Detalhado", variable=self.view_var,
+            value="raw", command=self.toggle_view,
+        )
+        self.view_raw_rb.pack(side=tk.LEFT, padx=(0, 4))
+        self.view_consolidated_rb = ttk.Radiobutton(
+            left_group, text="Consolidado", variable=self.view_var,
+            value="consolidated", command=self.toggle_view,
+        )
+        self.view_consolidated_rb.pack(side=tk.LEFT, padx=(4, 0))
+        self.evolution_cb = ttk.Checkbutton(
+            left_group, text="Evolução da curva",
+            variable=self.evolution_var, command=self.toggle_evolution,
+        )
+        self.evolution_cb.pack(side=tk.LEFT, padx=(8, 0))
+        self.cb_3d = ttk.Checkbutton(
+            left_group, text="3D",
+            variable=self.var_3d, command=self._redraw_chart,
+        )
+        self.cb_3d.pack(side=tk.LEFT, padx=(4, 0))
+        self.cb_3d.configure(state=tk.DISABLED)
+        self.sidebar_cb = ttk.Checkbutton(
+            left_group, text="Análise",
+            variable=self.sidebar_var, command=self._toggle_sidebar,
+        )
+        self.sidebar_cb.pack(side=tk.LEFT, padx=(4, 0))
+        self.stats_label = ttk.Label(middle_frame, text="", anchor=tk.E, padding=(16, 0, 0, 0))
+        self.stats_label.pack(side=tk.RIGHT, fill=tk.X)
         self.pane = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
-        self.pane.pack(fill=tk.BOTH, expand=True, padx=12, pady=(8, 8))
+        self.pane.pack(fill=tk.BOTH, expand=True, padx=12, pady=(8, 0))
         chart_frame = ttk.Frame(self.pane)
         self.pane.add(chart_frame, weight=1)
         self.figure = Figure(figsize=(7, 4), dpi=100)
@@ -239,59 +204,18 @@ class SelicPreApp:
         self.ax.set_title("B3 SELIC Pré", fontsize=14)
         self.canvas = FigureCanvasTkAgg(self.figure, master=chart_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self.toolbar = NavigationToolbar2Tk(self.canvas, chart_frame)
-        self.toolbar.update()
         self.sidebar_frame = ttk.Frame(self.pane, width=280)
         self._build_sidebar(self.sidebar_frame)
-        ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X)
-        bottom_frame = ttk.Frame(root, padding=12)
-        bottom_frame.pack(fill=tk.X)
-        self.data_button = ttk.Button(
-            bottom_frame,
-            text="Copiar dados",
-            command=self.copy_data,
+        toolbar_frame = ttk.Frame(root)
+        toolbar_frame.pack(fill=tk.X, padx=12)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.copy_toolbar_btn = tk.Button(
+            self.toolbar, image=self.icons['edit-copy'],
+            command=self.copy_chart, bd=0, relief=tk.FLAT,
         )
-        self.data_button.pack(side=tk.LEFT)
-        self.copy_button = ttk.Button(
-            bottom_frame,
-            text="Copiar gráfico",
-            command=self.copy_chart,
-        )
-        self.copy_button.pack(side=tk.LEFT, padx=(8, 0))
-        self.export_button = ttk.Button(
-            bottom_frame,
-            text="Exportar PNG",
-            command=self.export_chart,
-        )
-        self.export_button.pack(side=tk.LEFT, padx=(8, 0))
-        self.view_raw_rb = ttk.Radiobutton(
-            bottom_frame, text="Detalhado", variable=self.view_var,
-            value="raw", command=self.toggle_view,
-        )
-        self.view_raw_rb.pack(side=tk.LEFT, padx=(16, 0))
-        self.view_consolidated_rb = ttk.Radiobutton(
-            bottom_frame, text="Consolidado", variable=self.view_var,
-            value="consolidated", command=self.toggle_view,
-        )
-        self.view_consolidated_rb.pack(side=tk.LEFT, padx=(4, 0))
-        self.evolution_cb = ttk.Checkbutton(
-            bottom_frame, text="Evolução da curva",
-            variable=self.evolution_var, command=self.toggle_evolution,
-        )
-        self.evolution_cb.pack(side=tk.LEFT, padx=(4, 0))
-        self.cb_3d = ttk.Checkbutton(
-            bottom_frame, text="3D",
-            variable=self.var_3d, command=self._redraw_chart,
-        )
-        self.cb_3d.pack(side=tk.LEFT, padx=(4, 0))
-        self.cb_3d.configure(state=tk.DISABLED)
-        self.sidebar_cb = ttk.Checkbutton(
-            bottom_frame, text="Análise",
-            variable=self.sidebar_var, command=self._toggle_sidebar,
-        )
-        self.sidebar_cb.pack(side=tk.LEFT, padx=(4, 0))
-        self._update_button_states()
-        ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X)
+        self.copy_toolbar_btn.pack(side=tk.LEFT, padx=(2, 0))
+        self.toolbar.update()
+        ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(4, 0))
         self.statusbar_frame = ttk.Frame(root, padding=(12, 2, 12, 4))
         self.statusbar_frame.pack(fill=tk.X)
         self.statusbar_label = ttk.Label(self.statusbar_frame, textvariable=self.status_var)
@@ -303,9 +227,9 @@ class SelicPreApp:
             self.statusbar_frame, mode="determinate"
         )
         self._lockable_widgets = [
-            self.date_entry, self.cal_button, self.today_button,
+            self.date_entry, self.today_button,
             self.fetch_button,
-            self.data_button, self.copy_button, self.export_button,
+            self.data_button, self.copy_toolbar_btn,
             self.view_raw_rb, self.view_consolidated_rb,
             self.evolution_cb, self.cb_3d, self.sidebar_cb,
         ]
@@ -324,6 +248,7 @@ class SelicPreApp:
             "warning": "⚠",
             "error": "✖",
         }
+        self._update_button_states()
 
     def _build_sidebar(self, parent):
         text_frame = self.ttk.Frame(parent)
@@ -348,16 +273,14 @@ class SelicPreApp:
 
     def _update_stats(self):
         if not self.records:
-            for lbl in self.stats_labels.values():
-                lbl.configure(text="")
+            self.stats_label.configure(text="")
             return
         rates = [float(r.rate.replace(",", ".")) for r in self.records]
-        maturities = len(set(r.day252 for r in self.records))
-        self.stats_labels["date"].config(text=f"Data: {self.date_var.get().strip()}")
-        self.stats_labels["records"].config(text=f"Registros: {len(self.records)}")
-        self.stats_labels["highest"].config(text=f"Maior: {max(rates):.2f}%")
-        self.stats_labels["lowest"].config(text=f"Menor: {min(rates):.2f}%")
-        self.stats_labels["maturities"].config(text=f"Vencimentos: {maturities}")
+        date_str = self.date_var.get().strip()
+        self.stats_label.configure(
+            text=f"Data: {date_str} | Maior: {max(rates):.2f}% | "
+                 f"Menor: {min(rates):.2f}%"
+        )
 
     def _toggle_sidebar(self):
         self.settings["sidebar"] = self.sidebar_var.get()
@@ -385,12 +308,13 @@ class SelicPreApp:
             else:
                 self._indeterminate_bar.pack(side=self.tk.LEFT, padx=(0, 8))
                 self._indeterminate_bar.start()
-            self.fetch_button.configure(text="Buscando…")
+            self.fetch_button.configure(image=self.icons['content-loading'])
+            self.set_status("Buscando taxas…", msg_type="info")
         else:
             self._indeterminate_bar.stop()
             self._indeterminate_bar.pack_forget()
             self._determinate_bar.pack_forget()
-            self.fetch_button.configure(text="Buscar")
+            self.fetch_button.configure(image=self.icons['view-refresh'])
 
     def set_status(self, message, msg_type="info"):
         if hasattr(self, "_restore_after_id") and self._restore_after_id:
@@ -433,7 +357,6 @@ class SelicPreApp:
     def _setup_shortcuts(self):
         self.root.bind("<Control-c>", lambda e: self.copy_data())
         self.root.bind("<Control-Shift-C>", lambda e: self.copy_chart())
-        self.root.bind("<Control-s>", lambda e: self.export_chart())
         self.root.bind("<F5>", lambda e: self.fetch_rates())
         self.root.bind("<Control-e>", lambda e: self.evolution_cb.invoke())
         self.root.bind("<Control-l>", lambda e: self.sidebar_cb.invoke())
@@ -441,12 +364,10 @@ class SelicPreApp:
     def _setup_tooltips(self):
         tooltips = {
             self.date_entry: "Digite a data no formato AAAA-MM-DD",
-            self.cal_button: "Abre o calendário para selecionar a data",
             self.today_button: "Define a data atual e busca automaticamente",
             self.fetch_button: "Busca as taxas para a data informada",
             self.data_button: "Copia os dados para a área de transferência",
-            self.copy_button: "Copia o gráfico como imagem",
-            self.export_button: "Salva o gráfico como arquivo PNG",
+            self.copy_toolbar_btn: "Copia o gráfico como imagem",
             self.view_raw_rb: "Exibe todos os vencimentos disponíveis",
             self.view_consolidated_rb: "Agrupa os vencimentos por ano",
             self.evolution_cb: "Carrega automaticamente os últimos 7 pregões",
@@ -456,28 +377,9 @@ class SelicPreApp:
         for widget, text in tooltips.items():
             Tooltip(widget, text)
 
-    def _setup_date_placeholder(self):
-        placeholder = "AAAA-MM-DD"
-        def on_focus_in(event):
-            if self.date_var.get() == placeholder:
-                self.date_var.set("")
-                self.date_entry.configure(style="TEntry")
-        def on_focus_out(event):
-            if not self.date_var.get().strip():
-                self.date_var.set(placeholder)
-                self.date_entry.configure(style="Placeholder.TEntry")
-        self.date_entry.bind("<FocusIn>", on_focus_in)
-        self.date_entry.bind("<FocusOut>", on_focus_out)
-        if not self.date_var.get().strip():
-            self.date_var.set(placeholder)
-            self.date_entry.configure(style="Placeholder.TEntry")
-
     def _go_today(self):
         self.date_var.set(date.today().isoformat())
         self.fetch_rates()
-
-    def _open_calendar(self):
-        DatePicker(self.root, self.date_var)
 
     def _create_shortcut(self):
         create_shortcut()
@@ -492,8 +394,7 @@ class SelicPreApp:
         has_any = has_single or has_historical
         copy_state = self.tk.NORMAL if has_any else self.tk.DISABLED
         self.data_button.configure(state=copy_state)
-        self.copy_button.configure(state=copy_state)
-        self.export_button.configure(state=copy_state)
+        self.copy_toolbar_btn.configure(state=copy_state)
         consolidated_state = self.tk.NORMAL if has_single else self.tk.DISABLED
         self.view_consolidated_rb.configure(state=consolidated_state)
         self.view_raw_rb.configure(state=consolidated_state)
@@ -590,11 +491,9 @@ class SelicPreApp:
             self._redraw_chart()
 
     def fetch_rates(self):
-        self.date_entry.configure(style="TEntry")
         try:
             reference_date = validate_reference_date(self.date_var.get().strip())
         except ValueError as exc:
-            self.date_entry.configure(style="Error.TEntry")
             self.set_status(str(exc), msg_type="error")
             return
         parsed = datetime.strptime(reference_date, "%Y-%m-%d").date()
@@ -617,11 +516,9 @@ class SelicPreApp:
             self.historical_data = None
         if reference_date == date.today().isoformat():
             self._data_source = "API B3"
-            self.set_status("Buscando taxas na B3...")
             source = lambda d: fetch_reference_rates(d, page_size=100)
         else:
             self._data_source = "Arquivo oficial B3"
-            self.set_status("Baixando arquivo de taxas...")
             source = fetch_rates_download
 
         def worker():
@@ -639,7 +536,6 @@ class SelicPreApp:
         self._historical_fetching = True
         self._set_ui_locked(True, determinate=True)
         self._determinate_bar["maximum"] = len(EVOLUTION_DAYS)
-        self.set_status(f"Buscando taxas históricas... (0/{len(EVOLUTION_DAYS)} concluídas)")
 
         def progress(completed, total):
             self.root.after(0, lambda: self._determinate_bar.configure(value=completed))
@@ -670,8 +566,6 @@ class SelicPreApp:
         self._set_ui_locked(False)
         now = datetime.now().strftime("%H:%M:%S")
         if records:
-            self.root.title(
-                f"B3 SELIC Pré — {self.date_var.get().strip()} — {len(records)} registros")
             self.set_status(
                 f"{len(records)} registro(s) carregado(s)  |  {self._data_source}  |  {now}",
                 msg_type="success")
@@ -692,8 +586,6 @@ class SelicPreApp:
         total = sum(len(v) for v in historical.values())
         dates = len(historical)
         now = datetime.now().strftime("%H:%M:%S")
-        self.root.title(
-            f"B3 SELIC Pré — {dates} datas, {total} registros")
         self.set_status(
             f"Dados históricos carregados: {dates} datas, {total} registros.  |  {self._data_source}  |  {now}",
             msg_type="success")
@@ -704,7 +596,6 @@ class SelicPreApp:
         self.records = []
         self._redraw_chart()
         self._update_button_states()
-        self.root.title(f"B3 SELIC Pré v{__version__}")
         self.set_status(f"Erro ao buscar dados: {exc}", msg_type="error")
 
     def _has_data(self):
@@ -732,7 +623,7 @@ class SelicPreApp:
             self.set_status("Gráfico copiado para a área de transferência.", msg_type="success")
             self._schedule_restore(prior_text, prior_color)
         except pyxclip.ClipboardError:
-            self.set_status("Use Exportar PNG para salvar o gráfico.", msg_type="warning")
+            self.set_status("Use o botão Salvar do toolbar para salvar o gráfico.", msg_type="warning")
 
     def copy_data(self):
         if not self._has_data():
@@ -750,21 +641,6 @@ class SelicPreApp:
         self.root.clipboard_append(csv_text)
         self.set_status("Dados copiados para a área de transferência.", msg_type="success")
         self._schedule_restore(prior_text, prior_color)
-
-    def export_chart(self):
-        if not self._has_data():
-            return
-        from tkinter import filedialog
-        filename = filedialog.asksaveasfilename(
-            parent=self.root,
-            title="Exportar PNG",
-            defaultextension=".png",
-            filetypes=[("PNG", "*.png"), ("Todos os arquivos", "*.*")],
-        )
-        if not filename:
-            return
-        self.figure.savefig(filename, dpi=150)
-        self.set_status(f"PNG exportado: {filename}", msg_type="success")
 
 
 def launch_gui():

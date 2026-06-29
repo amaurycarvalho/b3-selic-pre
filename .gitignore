@@ -32,6 +32,7 @@ MANIFEST
 *.manifest
 *.spec
 src/*.egg-info/
+!b3-selic-pre.spec
 
 # Installer logs
 pip-log.txt

@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import threading
 import importlib.resources as resources
 from datetime import date, datetime, timedelta
@@ -94,7 +95,10 @@ class SelicPreApp:
             root.iconphoto(True, img)
         self.icons = {}
         for name in ['document-open-recent', 'view-refresh', 'edit-copy', 'content-loading']:
-            path = str(resources.files('b3_selic_pre') / 'icons' / f'{name}.png')
+            if getattr(sys, 'frozen', False):
+                path = os.path.join(sys._MEIPASS, f'{name}.png')
+            else:
+                path = str(resources.files('b3_selic_pre') / 'icons' / f'{name}.png')
             if os.path.exists(path):
                 self.icons[name] = tk.PhotoImage(file=path, master=root)
         self.date_var = tk.StringVar(value=default_reference_date())

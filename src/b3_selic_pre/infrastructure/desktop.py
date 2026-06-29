@@ -44,7 +44,8 @@ def _icon_source():
 
 
 def shortcut_exists():
-    return os.path.isfile(SHORTCUT_CHECK_PATH)
+    desktop_file = os.path.join(_detect_desktop_dir(), "b3-selic-pre.desktop")
+    return os.path.isfile(SHORTCUT_CHECK_PATH) and os.path.isfile(desktop_file)
 
 
 def create_shortcut():

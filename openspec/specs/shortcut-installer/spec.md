@@ -13,16 +13,22 @@ The system SHALL provide a `--create-shortcut` CLI argument that creates a `.des
 - **AND** the program prints "Atalho criado em ~/Desktop/ e ~/.local/share/applications/" and exits
 
 ### Requirement: GUI shortcut button
-When running in GUI mode, the system SHALL detect whether a shortcut exists in `~/.local/share/applications/` and, if not, show a "Criar Atalho Desktop" button.
+When running in GUI mode, the system SHALL detect whether shortcuts exist in both `~/Desktop/` and `~/.local/share/applications/` and, if either is missing, show a "Criar Atalho Desktop" button.
 
 #### Scenario: Button appears when no shortcut exists
 - **WHEN** the user launches the GUI via `--gui`
-- **AND** no `.desktop` file exists at `~/.local/share/applications/b3-selic-pre.desktop`
+- **AND** no `.desktop` file exists at either `~/Desktop/b3-selic-pre.desktop` or `~/.local/share/applications/b3-selic-pre.desktop`
 - **THEN** a button labeled "Criar Atalho Desktop" is visible in the top frame
 
-#### Scenario: Button is absent when shortcut exists
+#### Scenario: Button appears when only applications entry exists
 - **WHEN** the user launches the GUI via `--gui`
-- **AND** a `.desktop` file already exists at `~/.local/share/applications/b3-selic-pre.desktop`
+- **AND** a `.desktop` file exists at `~/.local/share/applications/b3-selic-pre.desktop`
+- **AND** no `.desktop` file exists at `~/Desktop/b3-selic-pre.desktop`
+- **THEN** a button labeled "Criar Atalho Desktop" is visible in the top frame
+
+#### Scenario: Button is absent when both shortcuts exist
+- **WHEN** the user launches the GUI via `--gui`
+- **AND** `.desktop` files exist at both `~/Desktop/b3-selic-pre.desktop` and `~/.local/share/applications/b3-selic-pre.desktop`
 - **THEN** the "Criar Atalho Desktop" button is NOT shown
 
 #### Scenario: Button creates shortcut and disappears

@@ -10,6 +10,7 @@ DEFAULT_MAX_PAGES = 100
 
 EVOLUTION_DAYS = [28, 21, 14, 7, 0]
 
+# Used by shortcut_exists() — checked alongside the Desktop shortcut path
 SHORTCUT_CHECK_PATH = os.path.expanduser(
     "~/.local/share/applications/b3-selic-pre.desktop"
 )

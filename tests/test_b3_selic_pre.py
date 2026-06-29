@@ -682,12 +682,34 @@ class ShortcutTest(unittest.TestCase):
             result = _icon_source()
             self.assertEqual(result, "/bundle/b3_selic_pre.png")
 
-    def test_shortcut_exists_returns_true_when_file_exists(self):
-        with mock.patch("os.path.isfile", return_value=True):
+    def test_shortcut_exists_true_when_both_exist(self):
+        def fake_isfile(path):
+            return path.endswith("b3-selic-pre.desktop")
+        with mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"), \
+             mock.patch("os.path.isfile", fake_isfile):
             self.assertTrue(shortcut_exists())
 
-    def test_shortcut_exists_returns_false_when_file_missing(self):
-        with mock.patch("os.path.isfile", return_value=False):
+    def test_shortcut_exists_false_when_only_applications_exists(self):
+        def fake_isfile(path):
+            return "applications" in path
+        with mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"), \
+             mock.patch("os.path.isfile", fake_isfile):
+            self.assertFalse(shortcut_exists())
+
+    def test_shortcut_exists_false_when_only_desktop_exists(self):
+        def fake_isfile(path):
+            return "Desktop" in path and "applications" not in path
+        with mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"), \
+             mock.patch("os.path.isfile", fake_isfile):
+            self.assertFalse(shortcut_exists())
+
+    def test_shortcut_exists_false_when_neither_exists(self):
+        with mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"), \
+             mock.patch("os.path.isfile", return_value=False):
             self.assertFalse(shortcut_exists())
 
     def test_create_shortcut_writes_desktop_files(self):

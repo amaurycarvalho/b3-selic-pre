@@ -5,11 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+## [0.8.1] - 2026-06-28
+
+### [ui-reorganization](openspec/changes/archive/2026-06-28-ui-reorganization/) UI reorganization with DateEntry, icon buttons, compact layout and frozen title
+
+#### Added
+
+- Add `tkcalendar` to project dependencies
+
+#### Changed
+
+- Replace ttk.Entry, calendar popup and custom DatePicker with tkcalendar.DateEntry
+- Change date label from "Data (YYYY-MM-DD):" to "Data de referência:"
+- Replace text buttons with 24x24 icon images
+- Show content-loading icon on fetch button during loading; move "Buscando…" text to statusbar
+- Move "Copiar dados" button to top frame
+- Move "Copiar gráfico" button into matplotlib toolbar
+- Merge radiobuttons/checkboxes and stats summary into a single reduced-height row
+- Display stats as compact pipe-separated format on right side of control row
+- Freeze window title (remove dynamic title updates on data load)
+
+#### Removed
+
+- Remove "Exportar PNG" button (redundant with native matplotlib toolbar save button)
+
 ## [0.8.0] - 2026-06-27
 
 ### [ux-refinements](openspec/changes/archive/2026-06-27-ux-refinements/) 26 UI refinements for professional-quality feedback, persistence, and controls
 
 #### Added
+
 - Add determinate/indeterminate progress bars to the statusbar
 - Highlight date entry in red on validation failure
 - Add placeholder text to date entry
@@ -26,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatically disable/enable controls based on available data context
 
 #### Changed
+
 - Block all controls during loading and show wait cursor
 - Prefix status messages with Unicode icons per severity
 - Toggle "Buscar" button text to "Buscando…" during fetch
@@ -202,6 +228,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PyInstaller `.spec` file for reproducible builds
 - `CHANGELOG.md` for tracking version history
 
+[0.8.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.1
 [0.8.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.0
 [0.7.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.7.1
 [0.7.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.7.0

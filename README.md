@@ -43,7 +43,7 @@ Baixe o binário da plataforma desejada na [página de releases](https://github.
 Via o binário após `make build`:
 
 ```bash
-.venv/bin/b3-selic-pre                              # consultar data atual
+.venv/bin/b3-selic-pre --today                      # consultar data atual
 .venv/bin/b3-selic-pre 2026-06-10                   # data específica
 .venv/bin/b3-selic-pre 2026-06-10 --yearly          # consolidado por ano
 .venv/bin/b3-selic-pre --gui                        # interface gráfica
@@ -55,14 +55,14 @@ Via o binário após `make build`:
 Ou via módulo Python:
 
 ```bash
-.venv/bin/python3 -m b3_selic_pre                   # consultar data atual
+.venv/bin/python3 -m b3_selic_pre --today           # consultar data atual
 .venv/bin/python3 -m b3_selic_pre --gui             # interface gráfica
 ```
 
 ### A partir do executável gerado pelo Makefile
 
 ```bash
-dist/b3-selic-pre                           # consultar data atual
+dist/b3-selic-pre --today                   # consultar data atual
 dist/b3-selic-pre 2026-06-10                # data específica
 dist/b3-selic-pre 2026-06-10 --yearly       # consolidado por ano
 dist/b3-selic-pre --gui                     # interface gráfica
@@ -74,7 +74,7 @@ dist/b3-selic-pre --version                 # exibir versão
 ### A partir do binário pré-compilado do repositório
 
 ```bash
-./b3-selic-pre-linux                        # consultar data atual
+./b3-selic-pre-linux --today                # consultar data atual
 ./b3-selic-pre-linux 2026-06-10             # data específica
 ./b3-selic-pre-linux 2026-06-10 --yearly    # consolidado por ano
 ./b3-selic-pre-linux --gui                  # interface gráfica

@@ -329,6 +329,18 @@ class SelicPreApp:
         color = self._msg_colors.get(msg_type, self._statusbar_default_fg)
         self.statusbar_label.config(foreground=color)
 
+    def _on_fetch_progress(self, current_page, total_pages):
+        if total_pages is not None and current_page <= total_pages:
+            self._indeterminate_bar.stop()
+            self._indeterminate_bar.pack_forget()
+            self._determinate_bar["maximum"] = total_pages
+            self._determinate_bar["value"] = current_page
+            self._determinate_bar.pack(side=self.tk.LEFT, padx=(0, 8))
+            self.set_status(
+                f"Buscando taxas… ({current_page}/{total_pages} páginas)",
+                msg_type="info",
+            )
+
     def _center_window(self):
         self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() - self.root.winfo_width()) // 2
@@ -520,7 +532,13 @@ class SelicPreApp:
             self.historical_data = None
         if reference_date == date.today().isoformat():
             self._data_source = "API B3"
-            source = lambda d: fetch_reference_rates(d, page_size=100)
+
+            def _progress_cb(current, total):
+                self.root.after(0, lambda: self._on_fetch_progress(current, total))
+
+            source = lambda d: fetch_reference_rates(
+                d, page_size=100, progress_callback=_progress_cb
+            )
         else:
             self._data_source = "Arquivo oficial B3"
             source = fetch_rates_download

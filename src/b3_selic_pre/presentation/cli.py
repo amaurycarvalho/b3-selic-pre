@@ -1,4 +1,5 @@
 import argparse
+import sys
 from datetime import date, datetime
 
 from b3_selic_pre import __version__
@@ -16,11 +17,17 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Consulta taxas referenciais SELIC Pré na B3."
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "date",
         nargs="?",
-        default=default_reference_date(),
+        default=None,
         help="Data de referência no formato YYYY-MM-DD.",
+    )
+    group.add_argument(
+        "--today",
+        action="store_true",
+        help="Exibe taxas do dia corrente no terminal.",
     )
     parser.add_argument(
         "--gui",
@@ -47,6 +54,11 @@ def parse_args(argv=None):
 
 
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    if len(argv) == 0:
+        launch_gui()
+        return
     args = parse_args(argv)
     if args.create_shortcut:
         create_shortcut()
@@ -55,7 +67,8 @@ def main(argv=None):
     if args.gui:
         launch_gui()
         return
-    records = fetch_reference_rates(args.date)
+    ref_date = date.today().isoformat() if args.today else (args.date or default_reference_date())
+    records = fetch_reference_rates(ref_date)
     if args.yearly:
         consolidated = consolidate_by_year(records)
         output = format_yearly_rows(consolidated)

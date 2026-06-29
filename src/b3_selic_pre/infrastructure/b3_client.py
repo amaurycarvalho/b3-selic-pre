@@ -1,6 +1,7 @@
 import base64
 import concurrent.futures
 import json
+import math
 import os
 import urllib.request
 
@@ -79,7 +80,9 @@ def fetch_reference_rates_page(
     url = build_url(payload)
     with opener(url, timeout=timeout) as response:
         data = json.loads(response.read().decode("utf-8"))
-    return normalize_records(data)
+    records = normalize_records(data)
+    total_count = data.get("totalCount")
+    return records, total_count
 
 
 def fetch_reference_rates(
@@ -88,14 +91,16 @@ def fetch_reference_rates(
     timeout=30,
     page_size=DEFAULT_PAGE_SIZE,
     max_pages=DEFAULT_MAX_PAGES,
+    progress_callback=None,
 ):
     if page_size <= 0:
         raise ValueError("Tamanho da página deve ser maior que zero.")
     if max_pages <= 0:
         raise ValueError("Quantidade máxima de páginas deve ser maior que zero.")
     records = []
+    total_pages = None
     for page_number in range(DEFAULT_PAGE_NUMBER, max_pages + 1):
-        page_records = fetch_reference_rates_page(
+        page_records, total_count = fetch_reference_rates_page(
             reference_date,
             page_number=page_number,
             page_size=page_size,
@@ -103,6 +108,10 @@ def fetch_reference_rates(
             timeout=timeout,
         )
         records.extend(page_records)
+        if total_pages is None and total_count is not None and page_size > 0:
+            total_pages = math.ceil(total_count / page_size)
+        if progress_callback:
+            progress_callback(page_number, total_pages)
         if len(page_records) < page_size:
             return records
     raise ValueError("Paginação da B3 excedeu o limite máximo de páginas.")

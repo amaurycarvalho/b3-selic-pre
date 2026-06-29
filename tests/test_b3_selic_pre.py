@@ -235,6 +235,50 @@ class B3SelicPreTest(unittest.TestCase):
                 'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
             )
 
+    def test_main_no_args_launches_gui(self):
+        with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:
+            main([])
+        mock_gui.assert_called_once()
+
+    def test_main_today_flag_prints_csv(self):
+        records_arg = []
+
+        def fake_fetch(date):
+            records_arg.append(date)
+            return [
+                RateRecord(day252=1, day360=1, rate="14.65"),
+                RateRecord(day252=365, day360=365, rate="14.50"),
+            ]
+
+        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
+             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
+            main(["--today"])
+            self.assertEqual(len(records_arg), 1)
+            mock_print.assert_called_once()
+
+    def test_main_today_yearly_flag_prints_yearly_csv(self):
+        records_arg = []
+
+        def fake_fetch(date):
+            records_arg.append(date)
+            return [
+                RateRecord(day252=1, day360=1, rate="14.65"),
+                RateRecord(day252=365, day360=365, rate="14.50"),
+            ]
+
+        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
+             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
+            main(["--today", "--yearly"])
+            self.assertEqual(len(records_arg), 1)
+            mock_print.assert_called_once_with(
+                'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
+            )
+
+    def test_main_gui_flag_launches_gui(self):
+        with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:
+            main(["--gui"])
+        mock_gui.assert_called_once()
+
     def test_average_rate_by_year_midpoint(self):
         records = [
             RateRecord(day252=1, day360=1, rate="14.65"),

@@ -13,29 +13,37 @@ class CachedB3Client:
         self._ttl_minutes = ttl_minutes
         self._max_age_days = max_age_days
 
-    def fetch_reference_rates(self, date_str, force=False, **kwargs):
+    def fetch_reference_rates(self, date_str, force=False, source_callback=None, **kwargs):
         if not force:
             cached = self._cache.get(date_str, ttl_minutes=None)
             if cached is not None:
+                if source_callback:
+                    source_callback(f"Cache ({date_str})")
                 return cached
         records = b3_client.fetch_reference_rates(date_str, **kwargs)
         today = _today_date.today().isoformat()
         ttl = self._ttl_minutes if date_str == today else None
         self._cache.put(date_str, records, ttl_minutes=ttl)
         self._cache.housekeeping(max_age_days=self._max_age_days)
+        if source_callback:
+            source_callback("API B3")
         return records
 
-    def fetch_rates_download(self, date_str, force=False):
+    def fetch_rates_download(self, date_str, force=False, source_callback=None):
         if not force:
             cached = self._cache.get(date_str, ttl_minutes=None)
             if cached is not None:
+                if source_callback:
+                    source_callback(f"Cache ({date_str})")
                 return cached
         records = b3_client.fetch_rates_download(date_str)
         self._cache.put(date_str, records, ttl_minutes=None)
         self._cache.housekeeping(max_age_days=self._max_age_days)
+        if source_callback:
+            source_callback("Arquivo oficial B3")
         return records
 
-    def fetch_historical_rates(self, base_date, force=False, **kwargs):
+    def fetch_historical_rates(self, base_date, force=False, source_callback=None, **kwargs):
         today = _today_date.today().isoformat()
         dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
 
@@ -44,7 +52,7 @@ class CachedB3Client:
                 ttl = self._ttl_minutes if date_str == today else None
                 cached = self._cache.get(date_str, ttl_minutes=ttl)
                 if cached is not None:
-                    return date_str, cached
+                    return date_str, cached, True
             if date_str == today:
                 records = b3_client.fetch_reference_rates(date_str, page_size=100)
             else:
@@ -53,17 +61,27 @@ class CachedB3Client:
                     records = b3_client.fetch_reference_rates(date_str, page_size=100)
             ttl = self._ttl_minutes if date_str == today else None
             self._cache.put(date_str, records, ttl_minutes=ttl)
-            return date_str, records
+            return date_str, records, False
 
         results = {}
+        cached_count = 0
+        total = len(dates)
         progress_callback = kwargs.get("progress_callback")
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(fetch_one, d): d for d in dates}
             for i, future in enumerate(concurrent.futures.as_completed(futures)):
-                date_str, records = future.result()
+                date_str, records, from_cache = future.result()
                 results[date_str] = records
+                if from_cache:
+                    cached_count += 1
                 if progress_callback:
                     progress_callback(i + 1, len(dates))
 
         self._cache.housekeeping(max_age_days=self._max_age_days)
+        if source_callback and cached_count == total:
+            source_callback(f"Cache ({total} datas)")
+        elif source_callback and cached_count > 0:
+            source_callback(f"Cache ({cached_count}/{total} datas) + B3")
+        elif source_callback:
+            source_callback("Histórico B3")
         return results

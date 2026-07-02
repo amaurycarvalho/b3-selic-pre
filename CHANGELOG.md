@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.0] - 2026-07-02
 
+### [cache-b3-em-disco](openspec/changes/archive/2026-07-02-cache-b3-em-disco/) Cache em disco para evitar downloads redundantes da B3
+
+#### Added
+
+- Criar sistema de cache em disco para dados baixados da B3, chaveado por data (granular: 1 arquivo JSON por data)
+- Verificar cache antes de fazer requisição HTTP; cache hit retorna dados sem chamar a B3
+- TTL de 30 minutos apenas para a data atual; datas passadas são imutáveis (sem expiração)
+- Corrupção de JSON tratada como cache miss (deleta arquivo + refetch automático)
+- Housekeeping automático: limpa caches com mais de 1 ano (parametrizável via `max_age_days`)
+- Cache segue XDG: `~/.cache/b3-selic-pre/rates/` no Linux
+- Classe `CachedB3Client` encapsula fetch + cache, usada por CLI e GUI
+- Indicador visual na barra de status da GUI: mostra "Cache" vs "API B3" / "Arquivo oficial B3"
+- Flag `--no-cache` no CLI para forçar download fresco ignorando o cache
+
 ### [evolucao-resumo-executivo](openspec/changes/archive/2026-07-02-evolucao-resumo-executivo/) Adiciona painel de evolução da curva ao sidebar da GUI
 
 #### Added

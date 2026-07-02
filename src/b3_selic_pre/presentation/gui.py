@@ -578,18 +578,23 @@ class SelicPreApp:
         self._last_reference_date = reference_date
         if self.evolution_var.get():
             self.historical_data = None
+
+        def _source_cb(source):
+            self._data_source = source
+
         if reference_date == date.today().isoformat():
-            self._data_source = "API B3"
 
             def _progress_cb(current, total):
                 self.root.after(0, lambda: self._on_fetch_progress(current, total))
 
             source = lambda d: self._client.fetch_reference_rates(
-                d, force=True, page_size=100, progress_callback=_progress_cb
+                d, force=True, source_callback=_source_cb,
+                page_size=100, progress_callback=_progress_cb,
             )
         else:
-            self._data_source = "Arquivo oficial B3"
-            source = lambda d: self._client.fetch_rates_download(d, force=True)
+            source = lambda d: self._client.fetch_rates_download(
+                d, force=True, source_callback=_source_cb,
+            )
 
         def worker():
             try:
@@ -613,10 +618,14 @@ class SelicPreApp:
                 f"Buscando taxas históricas... ({completed}/{total} concluídas)"
             ))
 
+        def _source_cb(source):
+            self._data_source = source
+
         def worker():
             try:
                 historical = self._client.fetch_historical_rates(
-                    reference_date, progress_callback=progress
+                    reference_date, source_callback=_source_cb,
+                    progress_callback=progress,
                 )
             except Exception as exc:
                 self.root.after(0, lambda error=exc: self.handle_fetch_error(error))
@@ -649,7 +658,6 @@ class SelicPreApp:
             sorted(historical.keys())[-1], []
         ))
         self.historical_data = historical
-        self._data_source = "Histórico B3"
         self._redraw_chart()
         self._update_button_states()
         self.settings["last_date"] = self.date_var.get().strip()

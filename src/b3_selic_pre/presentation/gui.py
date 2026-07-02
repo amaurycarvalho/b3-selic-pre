@@ -34,7 +34,7 @@ from b3_selic_pre.presentation.charts import (
     render_detailed_evolution,
 )
 from b3_selic_pre.presentation.settings import Settings
-from b3_selic_pre.application.analyze import analyze
+from b3_selic_pre.application.analyze import analyze, analyze_evolution
 from tkcalendar import DateEntry
 
 
@@ -486,6 +486,49 @@ class SelicPreApp:
                     self.sidebar_text.insert(self.tk.END, line + "\n")
             if i < len(report.statements) - 1:
                 self.sidebar_text.insert(self.tk.END, "\n")
+
+        evolution_report = None
+        if self.evolution_var.get() and self.historical_data:
+            sorted_dates = sorted(self.historical_data.keys())
+            if len(sorted_dates) >= 2:
+                current_date = sorted_dates[-1]
+                previous_date = sorted_dates[-2]
+                previous_records = self.historical_data[previous_date]
+                evolution_report = analyze_evolution(
+                    self.records, previous_records, config=None
+                )
+
+        if evolution_report is not None:
+            from b3_selic_pre.application.analyze._texto_evolucao import montar_evolucao_resumo
+            from b3_selic_pre.application.analyze._config import CurvaJurosConfig
+            config = CurvaJurosConfig.from_settings()
+            blocos = montar_evolucao_resumo(evolution_report, config.evolucao)
+            self.sidebar_text.insert(self.tk.END, "\n─╌─╌─╌─╌─╌─╌─╌─╌─╌╌\n\n")
+            self.sidebar_text.insert(
+                self.tk.END, "Resumo Executivo — Evolução da Curva\n\n", "header"
+            )
+            for i, bloco in enumerate(blocos):
+                lines = bloco.split("\n")
+                for j, line in enumerate(lines):
+                    if not line.strip():
+                        continue
+                    if j == 0:
+                        self.sidebar_text.insert(
+                            self.tk.END, line + "\n", "header"
+                        )
+                    elif line.startswith("▲"):
+                        self.sidebar_text.insert(
+                            self.tk.END, line + "\n", "positive"
+                        )
+                    elif line.startswith("▼"):
+                        self.sidebar_text.insert(
+                            self.tk.END, line + "\n", "negative"
+                        )
+                    else:
+                        self.sidebar_text.insert(self.tk.END, line + "\n")
+                if i < len(blocos) - 1:
+                    self.sidebar_text.insert(self.tk.END, "\n")
+
         self.sidebar_text.configure(state=self.tk.DISABLED)
 
     def toggle_view(self):

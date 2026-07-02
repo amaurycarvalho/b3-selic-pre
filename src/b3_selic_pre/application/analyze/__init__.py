@@ -1,4 +1,4 @@
-from b3_selic_pre.application.analyze._config import CurvaJurosConfig
+from b3_selic_pre.application.analyze._config import CurvaJurosConfig, EvolutionConfig
 from b3_selic_pre.application.analyze._resumo import (
     AnalysisReport,
     Indicadores,
@@ -10,6 +10,7 @@ from b3_selic_pre.application.analyze._resumo import (
     classificar_restricao,
     extrair_indicadores,
 )
+from b3_selic_pre.application.analyze._evolucao import EvolutionReport, analyze_evolution
 from b3_selic_pre.application.analyze._texto import montar_resumo_executivo
 from b3_selic_pre.domain.models import RateRecord
 
@@ -48,8 +49,11 @@ def analyze(
 __all__ = [
     "AnalysisReport",
     "CurvaJurosConfig",
+    "EvolutionConfig",
+    "EvolutionReport",
     "Indicadores",
     "analyze",
+    "analyze_evolution",
     "extrair_indicadores",
     "classificar_nominal",
     "classificar_restricao",

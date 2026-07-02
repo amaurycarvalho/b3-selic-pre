@@ -9,6 +9,7 @@ from b3_selic_pre.application.use_cases import (
 )
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
 from b3_selic_pre.infrastructure.b3_client import fetch_reference_rates
+from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
 from b3_selic_pre.presentation.gui import launch_gui
 
@@ -45,6 +46,11 @@ def parse_args(argv=None):
         help="Cria atalho no desktop e menu de aplicações e sai.",
     )
     parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Ignora o cache em disco e baixa os dados da B3 novamente.",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"b3-selic-pre {__version__}",
@@ -68,7 +74,8 @@ def main(argv=None):
         launch_gui()
         return
     ref_date = date.today().isoformat() if args.today else (args.date or default_reference_date())
-    records = fetch_reference_rates(ref_date)
+    client = CachedB3Client()
+    records = client.fetch_reference_rates(ref_date, force=args.no_cache)
     if args.yearly:
         consolidated = consolidate_by_year(records)
         output = format_yearly_rows(consolidated)

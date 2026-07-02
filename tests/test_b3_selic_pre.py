@@ -220,20 +220,24 @@ class B3SelicPreTest(unittest.TestCase):
     def test_main_yearly_flag_uses_consolidated_output(self):
         records_arg = []
 
-        def fake_fetch(date):
-            records_arg.append(date)
+        def fake_fetch(date, force=False, **kwargs):
+            records_arg.append((date, force))
             return [
                 RateRecord(day252=1, day360=1, rate="14.65"),
                 RateRecord(day252=365, day360=365, rate="14.50"),
             ]
 
-        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
-             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-            main(["2026-01-01", "--yearly"])
-            self.assertEqual(records_arg, ["2026-01-01"])
-            mock_print.assert_called_once_with(
-                'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
-            )
+        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
+            mock_client = mock.Mock()
+            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_cls.return_value = mock_client
+            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
+                main(["2026-01-01", "--yearly"])
+        self.assertEqual(len(records_arg), 1)
+        self.assertEqual(records_arg[0][0], "2026-01-01")
+        mock_print.assert_called_once_with(
+            'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
+        )
 
     def test_main_no_args_launches_gui(self):
         with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:
@@ -243,36 +247,42 @@ class B3SelicPreTest(unittest.TestCase):
     def test_main_today_flag_prints_csv(self):
         records_arg = []
 
-        def fake_fetch(date):
-            records_arg.append(date)
+        def fake_fetch(date, force=False, **kwargs):
+            records_arg.append((date, force))
             return [
                 RateRecord(day252=1, day360=1, rate="14.65"),
                 RateRecord(day252=365, day360=365, rate="14.50"),
             ]
 
-        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
-             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-            main(["--today"])
-            self.assertEqual(len(records_arg), 1)
-            mock_print.assert_called_once()
+        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
+            mock_client = mock.Mock()
+            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_cls.return_value = mock_client
+            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
+                main(["--today"])
+        self.assertEqual(len(records_arg), 1)
+        mock_print.assert_called_once()
 
     def test_main_today_yearly_flag_prints_yearly_csv(self):
         records_arg = []
 
-        def fake_fetch(date):
-            records_arg.append(date)
+        def fake_fetch(date, force=False, **kwargs):
+            records_arg.append((date, force))
             return [
                 RateRecord(day252=1, day360=1, rate="14.65"),
                 RateRecord(day252=365, day360=365, rate="14.50"),
             ]
 
-        with mock.patch("b3_selic_pre.presentation.cli.fetch_reference_rates", fake_fetch), \
-             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-            main(["--today", "--yearly"])
-            self.assertEqual(len(records_arg), 1)
-            mock_print.assert_called_once_with(
-                'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
-            )
+        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
+            mock_client = mock.Mock()
+            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_cls.return_value = mock_client
+            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
+                main(["--today", "--yearly"])
+        self.assertEqual(len(records_arg), 1)
+        mock_print.assert_called_once_with(
+            'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
+        )
 
     def test_main_gui_flag_launches_gui(self):
         with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:

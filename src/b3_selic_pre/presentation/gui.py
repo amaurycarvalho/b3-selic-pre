@@ -21,6 +21,7 @@ from b3_selic_pre.infrastructure.b3_client import (
     fetch_rates_download,
     fetch_reference_rates,
 )
+from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 from b3_selic_pre.infrastructure.desktop import (
     _icon_source,
@@ -110,6 +111,7 @@ class SelicPreApp:
         self._data_source = ""
         self.sidebar_var = tk.BooleanVar(value=False)
         self.settings = Settings()
+        self._client = CachedB3Client()
         self._configure_after_id = None
         saved_geo = self.settings.get("window_geometry")
         saved_max = self.settings.get("window_maximized", False)
@@ -582,12 +584,12 @@ class SelicPreApp:
             def _progress_cb(current, total):
                 self.root.after(0, lambda: self._on_fetch_progress(current, total))
 
-            source = lambda d: fetch_reference_rates(
-                d, page_size=100, progress_callback=_progress_cb
+            source = lambda d: self._client.fetch_reference_rates(
+                d, force=True, page_size=100, progress_callback=_progress_cb
             )
         else:
             self._data_source = "Arquivo oficial B3"
-            source = fetch_rates_download
+            source = lambda d: self._client.fetch_rates_download(d, force=True)
 
         def worker():
             try:
@@ -613,7 +615,7 @@ class SelicPreApp:
 
         def worker():
             try:
-                historical = fetch_historical_rates(
+                historical = self._client.fetch_historical_rates(
                     reference_date, progress_callback=progress
                 )
             except Exception as exc:

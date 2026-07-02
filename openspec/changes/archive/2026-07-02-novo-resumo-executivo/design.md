@@ -47,20 +47,31 @@ Todos os indicadores são calculados a partir dos rates extraídos dos `RateReco
 - `juro_real` = taxa_curta - expected_inflation
 - Classificações por faixas configuráveis (nominal, real, prêmio de prazo)
 
+### 4a. Classificação da Inclinação da Curva
+A inclinação é classificada em 5 categorias com base em thresholds fixos (não configuráveis):
+- |slope| < 10 bps → "Quase Plana"
+- 10-30 bps → "Muito Plana"
+- 30-60 bps → "Plana"
+- 60-100 bps → "Moderadamente Inclinada"
+- > 100 bps → "Muito Inclinada"
+- Decisão: Usar faixas fixas (não configuráveis no settings.json) por se basearem na prática brasileira de análise de curva de juros, onde os thresholds são consensuais.
+
 ### 5. Estabilidade das Expectativas
 - Número de curvas: `stability_window = 4` (já carregadas no modo evolução)
 - Fallback `default`: assume `default_mean_deviation_bps = 15` (→ "Média")
 - Fallback `auto`: estima `desvio = |slope_bps| / 5`
 - Fallback `unavailable`: oculta a linha (se stability_fallback = unavailable)
 - Faixas: <5 → Muito Alta, <10 → Alta, <20 → Média, <35 → Baixa, >=35 → Muito Baixa
+- Quando o valor é estimado (fallback), o display mostra "(estimado por ausência de histórico)" em vez do valor bruto em bps, para que o usuário saiba que não foi observado
 
 ### 6. Steepening/Flattening
 - `ΔSlope = inclinacao_atual - inclinacao_anterior`
-- Sem curva anterior: fallback `unavailable` (oculta linha "Última Mudança")
+- Sem curva anterior: fallback `unavailable` (oculta linha "Última Mudança") — este é o comportamento padrão
 - Fallback `default`: `estimated_delta_slope_bps = 15`
 - Fallback `auto`: `ΔSlope = |slope_bps| / 5`
 - Magnitude: <10 → Leve, <20 → Moderado, <40 → Forte, >=40 → Muito Forte
 - Direção: ΔSlope > 0 → Steepening (▲), ΔSlope < 0 → Flattening (▼)
+- O valor padrão de `steepening_fallback` no settings.json é `"unavailable"`; o usuário deve explicitamente configurar `"default"` ou `"auto"` para ativar
 
 ### 7. Layout no sidebar
 - `tk.Text` com tags: "header" (bold), "positive" (green), "negative" (red)

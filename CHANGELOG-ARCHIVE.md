@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+## [0.8.4] - 2026-06-29
+
+### [fix-shortcut-detection](openspec/changes/archive/2026-06-29-fix-shortcut-detection/) Fix shortcut detection to check both Desktop and applications paths
+
+#### Fixed
+
+- `shortcut_exists()` now checks both `~/Desktop/` and `~/.local/share/applications/` instead of only the applications entry
+- "Criar Atalho Desktop" button now appears whenever either shortcut is missing (instead of only when applications entry is missing)
+
+#### Changed
+
+- Update `shortcut-installer` spec to reflect the corrected dual-path detection behavior
+
 ## [0.8.3] - 2026-06-29
 
 ### [gui-as-default](openspec/changes/archive/2026-06-29-gui-as-default/) GUI becomes default invocation mode; --today flag added
@@ -251,6 +264,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PyInstaller `.spec` file for reproducible builds
 - `CHANGELOG.md` for tracking version history
 
+[0.8.4]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.4
 [0.8.3]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.3
 [0.8.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.1
 [0.8.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.0

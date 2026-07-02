@@ -7,20 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.4] - 2026-06-29
+### Added
 
-### [fix-shortcut-detection](openspec/changes/archive/2026-06-29-fix-shortcut-detection/) Fix shortcut detection to check both Desktop and applications paths
+- [evolucao-resumo-executivo](openspec/changes/evolucao-resumo-executivo/) Adiciona painel de evolução da curva ao sidebar da GUI
 
-#### Fixed
+## [0.9.0] - 2026-07-02
 
-- `shortcut_exists()` now checks both `~/Desktop/` and `~/.local/share/applications/` instead of only the applications entry
-- "Criar Atalho Desktop" button now appears whenever either shortcut is missing (instead of only when applications entry is missing)
+### [novo-resumo-executivo](openspec/changes/archive/2026-07-02-novo-resumo-executivo/) Substitui motor de análise por Resumo Executivo da Curva de Juros
+
+#### Added
+
+- Cria 4 novos arquivos no módulo `application/analyze/`: `__init__.py`, `_resumo.py`, `_texto.py`, `_config.py`
+- Adiciona novos parâmetros de configuração no `settings.json` sob as chaves `curva_juros` e `curva_evolucao`
 
 #### Changed
 
-- Update `shortcut-installer` spec to reflect the corrected dual-path detection behavior
+- **BREAKING**: Substitui completamente o módulo `application/analyze/` por nova implementação baseada no Resumo Executivo da Curva de Juros
+- Atualiza o sidebar da GUI para exibir o novo layout do Resumo Executivo (tags tk.Text header/positive/negative, 7 blocos nomeados + mensagem final)
+- **BREAKING**: Altera o contrato da função `analyze()` — agora recebe parâmetros de configuração adicionais e retorna `AnalysisReport` com estrutura diferente
 
-[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.8.4...HEAD
-[0.8.4]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.8.4
+#### Removed
+
+- Remove 8 arquivos do motor antigo (`_metrics.py`, `_features.py`, `_classifier.py`, `_registry.py`, `_scoring.py`, `_templates.py`, `_report.py`, `_metrics_evolution.py`)
+- Remove a classe de análise para os modos "consolidado" e "evolução" (placeholders)
+- Remove todos os testes antigos do motor de análise (`test_analyze.py`)
+
+[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.9.0
 
 See [CHANGELOG Archive](CHANGELOG-ARCHIVE.md) for older releases.

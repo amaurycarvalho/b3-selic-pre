@@ -1,41 +1,17 @@
-from datetime import datetime, timezone
-
-from b3_selic_pre.application.analyze._config import InferenceConfig
-from b3_selic_pre.application.analyze._metrics import (
-    extract_detailed_metrics,
-)
-from b3_selic_pre.application.analyze._features import compute_features
-from b3_selic_pre.application.analyze._classifier import classify, Fact
-from b3_selic_pre.application.analyze._scoring import (
-    compute_score,
-    compute_confidence_per_level,
-    classify_intensity,
-)
-from b3_selic_pre.application.analyze._report import (
+from b3_selic_pre.application.analyze._config import CurvaJurosConfig
+from b3_selic_pre.application.analyze._resumo import (
     AnalysisReport,
-    AnalysisResult,
-    build_report,
-    build_statements_from_facts,
-    format_report,
-    ENGINE_VERSION,
-    RULESET_VERSION,
+    Indicadores,
+    calcular_estabilidade,
+    calcular_steepening,
+    classificar_inclinacao,
+    classificar_nominal,
+    classificar_premio,
+    classificar_restricao,
+    extrair_indicadores,
 )
+from b3_selic_pre.application.analyze._texto import montar_resumo_executivo
 from b3_selic_pre.domain.models import RateRecord
-
-
-def _rates_from_records(records: list[RateRecord]) -> list[float]:
-    return [float(r.rate.replace(",", ".")) for r in records]
-
-
-def _direction_from_facts(facts: list[Fact]) -> str:
-    asc_facts = {"ASCENDENTE", "VALE"}
-    desc_facts = {"DESCENDENTE", "PICO"}
-    for fact in facts:
-        if fact.id in asc_facts:
-            return "asc"
-        if fact.id in desc_facts:
-            return "desc"
-    return "plana"
 
 
 def analyze(
@@ -44,59 +20,42 @@ def analyze(
     view_mode: str = "raw",
     evolution_active: bool = False,
     threshold_overrides: dict | None = None,
-    config: InferenceConfig | None = None,
+    config: CurvaJurosConfig | None = None,
     locale: str = "pt",
 ) -> AnalysisReport:
     if not records:
         return AnalysisReport()
 
-    if evolution_active and historical_data:
-        return AnalysisReport(
-            statements=["Analise de evolucao ainda nao implementada."],
-            score=0,
-            score_label="",
-        )
-
-    if view_mode == "consolidated":
-        return AnalysisReport(
-            statements=["Analise consolidada ainda nao implementada."],
-            score=0,
-            score_label="",
-        )
-
     if config is None:
-        config = InferenceConfig()
+        config = CurvaJurosConfig.from_settings()
 
     if threshold_overrides:
         for key, value in threshold_overrides.items():
             if hasattr(config, key):
                 setattr(config, key, value)
 
-    metrics = extract_detailed_metrics(records)
-    rates = _rates_from_records(records)
+    indicadores = extrair_indicadores(records, config)
+    estabilidade = calcular_estabilidade(historical_data, records, config)
+    steepening = calcular_steepening(records, historical_data, config)
 
-    features = compute_features(metrics, rates, config)
+    blocos = montar_resumo_executivo(indicadores, config, estabilidade, steepening)
 
-    facts, _evaluations = classify(features, config)
+    statements = list(blocos.values())
 
-    score = compute_score(facts)
-
-    direction = _direction_from_facts(facts)
-    intensity_label = classify_intensity(score, direction)
-
-    confidence = compute_confidence_per_level(facts)
-
-    statements = build_statements_from_facts(
-        facts, score, intensity_label, confidence, locale
-    )
-
-    return build_report(statements, score, intensity_label)
+    return AnalysisReport(statements=statements, score=0, score_label="")
 
 
 __all__ = [
     "AnalysisReport",
-    "AnalysisResult",
-    "Fact",
-    "InferenceConfig",
+    "CurvaJurosConfig",
+    "Indicadores",
     "analyze",
+    "extrair_indicadores",
+    "classificar_nominal",
+    "classificar_restricao",
+    "classificar_premio",
+    "classificar_inclinacao",
+    "calcular_estabilidade",
+    "calcular_steepening",
+    "montar_resumo_executivo",
 ]

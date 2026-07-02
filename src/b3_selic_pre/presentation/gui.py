@@ -371,7 +371,7 @@ class SelicPreApp:
         return parsed.isoformat()
 
     def _setup_shortcuts(self):
-        self.root.bind("<Control-c>", lambda e: self.copy_data())
+        self.root.bind("<Control-d>", lambda e: self.copy_data())
         self.root.bind("<Control-Shift-C>", lambda e: self.copy_chart())
         self.root.bind("<F5>", lambda e: self.fetch_rates())
         self.root.bind("<Control-e>", lambda e: self.evolution_cb.invoke())
@@ -471,18 +471,21 @@ class SelicPreApp:
         )
         self.sidebar_text.configure(state=self.tk.NORMAL)
         self.sidebar_text.delete("1.0", self.tk.END)
-        from b3_selic_pre.application.analyze._report import format_report
-        text = format_report(report)
-        for line in text.split("\n"):
-            if not line.strip():
+        for i, statement in enumerate(report.statements):
+            lines = statement.split("\n")
+            for j, line in enumerate(lines):
+                if not line.strip():
+                    continue
+                if j == 0:
+                    self.sidebar_text.insert(self.tk.END, line + "\n", "header")
+                elif line.startswith("▲"):
+                    self.sidebar_text.insert(self.tk.END, line + "\n", "positive")
+                elif line.startswith("▼"):
+                    self.sidebar_text.insert(self.tk.END, line + "\n", "negative")
+                else:
+                    self.sidebar_text.insert(self.tk.END, line + "\n")
+            if i < len(report.statements) - 1:
                 self.sidebar_text.insert(self.tk.END, "\n")
-                continue
-            if line.isupper() and line.strip().isupper():
-                self.sidebar_text.insert(self.tk.END, line + "\n", "header")
-            elif "Confianca:" in line or "Confiança:" in line:
-                self.sidebar_text.insert(self.tk.END, line + "\n")
-            else:
-                self.sidebar_text.insert(self.tk.END, line + "\n")
         self.sidebar_text.configure(state=self.tk.DISABLED)
 
     def toggle_view(self):

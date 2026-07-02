@@ -10,22 +10,24 @@ The system SHALL display section headers within the analysis text panel.
 
 #### Scenario: Header shown for each section
 - **WHEN** analysis content is displayed in the sidebar
-- **THEN** each section (CLASSE PRIMÁRIA, ESTRUTURA, QUALIDADE, INTENSIDADE) SHALL be preceded by a bold header
+- **THEN** each section (Nível Nominal, Política Monetária, Inclinação, Prêmio de Prazo, Estabilidade das Expectativas, Última Mudança, Mensagem do Mercado) SHALL be preceded by a bold header
 
 ### Requirement: Rich-text formatting in analysis panel
 The system SHALL use Text widget tags for visual formatting of analysis content.
 
 #### Scenario: Bold headers
 - **WHEN** section headers are displayed
-- **THEN** they SHALL appear in bold with increased font size
+- **THEN** they SHALL appear in bold
 
-#### Scenario: Colored confidence values
-- **WHEN** confidence percentages are displayed
-- **THEN** high confidence (≥80%) SHALL be shown in green, medium in orange, low in red
+#### Scenario: Colored steepening/flattening indicators
+- **WHEN** a steepening indicator (▲) is displayed
+- **THEN** it SHALL be shown in green using the "positive" tag
+- **WHEN** a flattening indicator (▼) is displayed
+- **THEN** it SHALL be shown in red using the "negative" tag
 
-#### Scenario: Colored fact text
-- **WHEN** fact descriptions mention positive/negative indicators
-- **THEN** positive indicators SHALL be shown in green, negative in red, neutral in default color
+#### Scenario: Bullet points for values
+- **WHEN** indicator values are displayed (e.g., "● Muito Altos (14,25%)")
+- **THEN** they SHALL use indentation and the standard text color
 
 ### Requirement: Resizable sidebar via PanedWindow
 The system SHALL allow the user to resize the analysis sidebar by dragging its left edge.

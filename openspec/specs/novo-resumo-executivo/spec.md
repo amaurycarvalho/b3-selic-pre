@@ -1,4 +1,9 @@
-## ADDED Requirements
+# Novo Resumo Executivo
+
+## Purpose
+Substituir o motor de análise geométrica de curvas por um resumo executivo macroeconômico com 9 indicadores calculados diretamente dos vértices da curva.
+
+## Requirements
 
 ### Requirement: Calculate short-term rate
 The system SHALL use the first vertex of the curve as the short-term rate.
@@ -20,6 +25,21 @@ The system SHALL calculate the curve slope as the difference between long-term a
 #### Scenario: Slope calculation
 - **WHEN** short-term rate is S% and long-term rate is L%
 - **THEN** slope = (L - S) * 100 bps
+
+### Requirement: Classify curve slope
+The system SHALL classify the curve slope into 5 categories according to fixed thresholds.
+
+#### Scenario: Slope classification ranges
+- **WHEN** |slope| < 10 bps
+- **THEN** slope classification SHALL be "Quase Plana"
+- **WHEN** |slope| is 10-30 bps
+- **THEN** slope classification SHALL be "Muito Plana"
+- **WHEN** |slope| is 30-60 bps
+- **THEN** slope classification SHALL be "Plana"
+- **WHEN** |slope| is 60-100 bps
+- **THEN** slope classification SHALL be "Moderadamente Inclinada"
+- **WHEN** |slope| > 100 bps
+- **THEN** slope classification SHALL be "Muito Inclinada"
 
 ### Requirement: Classify term premium
 The system SHALL classify the term premium (slope) according to configurable thresholds.
@@ -72,19 +92,22 @@ The system SHALL classify the degree of monetary policy restrictiveness using th
 - **THEN** policy SHALL be "Muito Restritiva"
 
 ### Requirement: Calculate expectations stability
-The system SHALL calculate the mean deviation of the last N curves to measure expectations stability. The number of curves is defined by `stability_window`.
+The system SHALL calculate the mean deviation of the last N curves to measure expectations stability. The number of curves is defined by `stability_window`. When the value is estimated due to insufficient history, the display SHALL include "(estimado por ausência de histórico)" instead of the raw deviation value.
 
 #### Scenario: Stability with sufficient history
 - **WHEN** there are at least `stability_window` historical curves available
 - **THEN** stability SHALL be calculated as the mean absolute deviation of the slope across the last N curves
+- **THEN** the display SHALL show the deviation value in bps (e.g., "Alta (desvio médio: 8.0 bps)")
 
 #### Scenario: Stability fallback "default"
 - **WHEN** there are fewer than `stability_window` historical curves AND `stability_fallback = default`
 - **THEN** stability SHALL use `default_mean_deviation_bps` as the deviation value
+- **THEN** the display SHALL show "(estimado por ausência de histórico)" instead of the raw deviation
 
 #### Scenario: Stability fallback "auto"
 - **WHEN** there are fewer than `stability_window` historical curves AND `stability_fallback = auto`
 - **THEN** stability SHALL estimate deviation as `|slope_current| / 5`
+- **THEN** the display SHALL show "(estimado por ausência de histórico)" instead of the raw deviation
 
 #### Scenario: Stability fallback "unavailable"
 - **WHEN** there are fewer than `stability_window` historical curves AND `stability_fallback = unavailable`
@@ -106,7 +129,7 @@ The system SHALL classify the calculated deviation into stability levels.
 - **THEN** stability SHALL be "Muito Baixa"
 
 ### Requirement: Calculate steepening/flattening
-The system SHALL compare the current curve slope with the previous curve slope to detect steepening or flattening.
+The system SHALL compare the current curve slope with the previous curve slope to detect steepening or flattening. The default value for `steepening_fallback` in settings is `"unavailable"`, meaning the "Última Mudança" block is omitted unless the user explicitly configures `"default"` or `"auto"`.
 
 #### Scenario: Steepening detected
 - **WHEN** ΔSlope = slope_current - slope_previous > `steepening_threshold_bps`
@@ -171,12 +194,16 @@ The system SHALL generate a text summary composed of 5 concatenated blocks: nomi
 - **THEN** text SHALL be "A política monetária permanece fortemente voltada ao controle da inflação."
 
 #### Scenario: Slope text
-- **WHEN** slope < 20 bps
-- **THEN** text SHALL be "Há pouca diferença entre juros curtos e longos."
-- **WHEN** slope is 20-90 bps
-- **THEN** text SHALL be "O mercado exige prêmio para aplicações longas."
-- **WHEN** slope > 90 bps
-- **THEN** text SHALL be "O prêmio de prazo permanece elevado."
+- **WHEN** slope classification is "Quase Plana"
+- **THEN** text SHALL be "Os juros são praticamente iguais em todos os prazos, indicando forte consenso de que o nível atual deverá permanecer por um longo período."
+- **WHEN** slope classification is "Muito Plana"
+- **THEN** text SHALL be "A pequena diferença entre os vencimentos curtos e longos indica que os investidores esperam a manutenção desse nível de juros por um período prolongado, sem antecipar mudanças significativas na política monetária."
+- **WHEN** slope classification is "Plana"
+- **THEN** text SHALL be "Os juros de longo prazo permanecem ligeiramente acima dos de curto prazo, sugerindo expectativa de estabilidade da política monetária com um pequeno prêmio para prazos maiores."
+- **WHEN** slope classification is "Moderadamente Inclinada"
+- **THEN** text SHALL be "Os investidores exigem um prêmio moderado para aplicações de longo prazo, refletindo alguma incerteza sobre a evolução da inflação e dos juros nos próximos anos."
+- **WHEN** slope classification is "Muito Inclinada"
+- **THEN** text SHALL be "Os juros aumentam significativamente conforme o prazo, indicando que o mercado exige um prêmio elevado para aplicações longas devido às incertezas sobre inflação, política monetária e riscos econômicos futuros."
 
 #### Scenario: Steepening text
 - **WHEN** steepening is detected

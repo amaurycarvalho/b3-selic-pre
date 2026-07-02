@@ -10,6 +10,24 @@ DEFAULT_SETTINGS = {
     "evolution": False,
     "show_3d": False,
     "sidebar": False,
+    "curva_juros": {
+        "expected_inflation": 3.0,
+        "faixas_nominais": [6.0, 9.0, 11.0, 13.0],
+        "faixas_juro_real": [2.0, 4.0, 6.0],
+        "stability_window": 4,
+        "stability_fallback": "default",
+        "default_mean_deviation_bps": 15.0,
+        "faixas_estabilidade": [5.0, 10.0, 20.0, 35.0],
+    },
+    "curva_evolucao": {
+        "steepening_fallback": "unavailable",
+        "estimated_delta_slope_bps": 15.0,
+        "movement_threshold_bps": 5.0,
+        "steepening_threshold_bps": 5.0,
+        "steepening_small_bps": 10.0,
+        "steepening_medium_bps": 20.0,
+        "steepening_large_bps": 40.0,
+    },
 }
 
 

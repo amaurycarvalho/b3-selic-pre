@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- [evolucao-resumo-executivo](openspec/changes/evolucao-resumo-executivo/) Adiciona painel de evolução da curva ao sidebar da GUI
-
 ## [0.9.0] - 2026-07-02
+
+### [evolucao-resumo-executivo](openspec/changes/archive/2026-07-02-evolucao-resumo-executivo/) Adiciona painel de evolução da curva ao sidebar da GUI
+
+#### Added
+
+- Adiciona a seção "Resumo Executivo — Evolução da Curva" ao sidebar da GUI, abaixo do painel de Curva Atual
+- Adiciona 2 novos arquivos ao módulo `application/analyze/`: `_evolucao.py` e `_texto_evolucao.py`
+- Adiciona parâmetros de configuração no `settings.json` sob a chave `curva_evolucao`
+- Adiciona o sub-painel "Evolução da Curva" no sidebar da GUI, visível apenas quando o modo Evolução está ativo
+- Adiciona a struct `EvolutionReport` com os indicadores calculados e texto gerado
+
+#### Changed
+
+- Atualiza `__init__.py` do módulo `analyze` para exportar a nova função `analyze_evolution()`
 
 ### [novo-resumo-executivo](openspec/changes/archive/2026-07-02-novo-resumo-executivo/) Substitui motor de análise por Resumo Executivo da Curva de Juros
 

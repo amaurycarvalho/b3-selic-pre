@@ -505,7 +505,7 @@ class SelicPreApp:
             blocos = montar_evolucao_resumo(evolution_report, config.evolucao)
             self.sidebar_text.insert(self.tk.END, "\n─╌─╌─╌─╌─╌─╌─╌─╌─╌╌\n\n")
             self.sidebar_text.insert(
-                self.tk.END, "Resumo Executivo — Evolução da Curva\n\n", "header"
+                self.tk.END, "Evolução da Curva\n\n", "header"
             )
             for i, bloco in enumerate(blocos):
                 lines = bloco.split("\n")

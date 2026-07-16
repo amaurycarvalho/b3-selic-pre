@@ -1,11 +1,9 @@
 import base64
 import json
-import os
 import unittest
 from unittest import mock
 
 from b3_selic_pre.domain.models import RateRecord
-from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
 from b3_selic_pre.application.formatting import (
     _brl,
     format_cli_rows,

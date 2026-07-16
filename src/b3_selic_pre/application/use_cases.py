@@ -1,6 +1,5 @@
 from datetime import date, datetime
 
-from b3_selic_pre.domain.models import RateRecord
 
 
 def default_reference_date():

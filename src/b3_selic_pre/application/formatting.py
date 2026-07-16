@@ -1,7 +1,6 @@
 import csv
 import io
 
-from b3_selic_pre.domain.models import RateRecord
 
 
 def _brl(value):

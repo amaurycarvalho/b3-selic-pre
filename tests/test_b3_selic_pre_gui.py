@@ -1,5 +1,3 @@
-import json
-import os
 import tempfile
 import unittest
 from unittest import mock
@@ -7,7 +5,6 @@ from unittest import mock
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.application.use_cases import consolidate_by_year
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
-from b3_selic_pre.infrastructure.desktop import create_shortcut, shortcut_exists
 from pathlib import Path
 from b3_selic_pre.presentation.gui import SelicPreApp
 from b3_selic_pre.presentation.settings import Settings
@@ -35,7 +32,7 @@ class SelicPreAppTest(unittest.TestCase):
 
     def test_invalid_date_shows_validation_without_fetching(self):
         self.app.date_var.set("10/06/2026")
-        with mock.patch("b3_selic_pre.presentation.gui.fetch_reference_rates") as fetch:
+        with mock.patch.object(self.app._client, "fetch_reference_rates") as fetch:
             self.app.fetch_rates()
         fetch.assert_not_called()
         self.assertIn("YYYY-MM-DD", self.app.status_var.get())
@@ -233,7 +230,6 @@ class SelicPreAppTest(unittest.TestCase):
         self.assertEqual(self.app.var_3d.get(), False)
 
     def test_3d_triggers_3d_render_dispatch(self):
-        from b3_selic_pre.presentation.charts import render_3d_evolution
         records = [RateRecord(day252=1, day360=1, rate="14.0")]
         self.app.historical_data = {"2026-06-17": records}
         self.app.evolution_var.set(True)

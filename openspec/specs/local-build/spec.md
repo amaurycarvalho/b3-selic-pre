@@ -20,6 +20,18 @@ O projeto SHALL disponibilizar um `Makefile` na raiz com targets para instalaç�
 - **THEN** o PyInstaller é executado com o arquivo `b3-selic-pre.spec`
 - **THEN** o executável é gerado no diretório `dist/`
 
+#### Scenario: Verificação de lint
+
+- **WHEN** o desenvolvedor executa `make lint`
+- **THEN** o ruff é executado em todo o código-fonte
+- **THEN** nenhum erro de lint deve ser reportado
+
+#### Scenario: Execução de testes
+
+- **WHEN** o desenvolvedor executa `make test`
+- **THEN** o pytest é executado com todas as suítes de teste
+- **THEN** todos os testes devem passar sem falhas
+
 #### Scenario: Clean de artefatos de build
 
 - **WHEN** o desenvolvedor executa `make clean`

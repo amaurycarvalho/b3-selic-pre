@@ -187,7 +187,6 @@ def render_detailed_evolution(fig, date_rates):
 
 def render_3d_evolution(fig, date_rates, consolidated=False):
     import numpy as np
-    import matplotlib.pyplot as plt
     fig.clf()
     if not date_rates:
         ax = fig.add_subplot(111)

@@ -1,6 +1,6 @@
 import argparse
 import sys
-from datetime import date, datetime
+from datetime import date
 
 from b3_selic_pre import __version__
 from b3_selic_pre.application.use_cases import (
@@ -8,7 +8,6 @@ from b3_selic_pre.application.use_cases import (
     default_reference_date,
 )
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
-from b3_selic_pre.infrastructure.b3_client import fetch_reference_rates
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
 from b3_selic_pre.presentation.gui import launch_gui

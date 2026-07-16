@@ -2,7 +2,6 @@ import base64
 import concurrent.futures
 import json
 import math
-import os
 import urllib.request
 
 from b3_selic_pre.domain.constants import (

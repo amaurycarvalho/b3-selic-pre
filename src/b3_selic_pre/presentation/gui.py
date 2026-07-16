@@ -16,11 +16,6 @@ from b3_selic_pre.application.formatting import (
     format_evolution_csv,
     format_yearly_rows,
 )
-from b3_selic_pre.infrastructure.b3_client import (
-    fetch_historical_rates,
-    fetch_rates_download,
-    fetch_reference_rates,
-)
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 from b3_selic_pre.infrastructure.desktop import (
@@ -493,7 +488,6 @@ class SelicPreApp:
         if self.evolution_var.get() and self.historical_data:
             sorted_dates = sorted(self.historical_data.keys())
             if len(sorted_dates) >= 2:
-                current_date = sorted_dates[-1]
                 previous_date = sorted_dates[-2]
                 previous_records = self.historical_data[previous_date]
                 evolution_report = analyze_evolution(
@@ -587,14 +581,16 @@ class SelicPreApp:
             def _progress_cb(current, total):
                 self.root.after(0, lambda: self._on_fetch_progress(current, total))
 
-            source = lambda d: self._client.fetch_reference_rates(
-                d, force=True, source_callback=_source_cb,
-                page_size=100, progress_callback=_progress_cb,
-            )
+            def source(d):
+                return self._client.fetch_reference_rates(
+                    d, force=True, source_callback=_source_cb,
+                    page_size=100, progress_callback=_progress_cb,
+                )
         else:
-            source = lambda d: self._client.fetch_rates_download(
-                d, force=True, source_callback=_source_cb,
-            )
+            def source(d):
+                return self._client.fetch_rates_download(
+                    d, force=True, source_callback=_source_cb,
+                )
 
         def worker():
             try:

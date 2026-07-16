@@ -23,10 +23,11 @@ Baixe o binário da plataforma desejada na [página de releases](https://github.
 Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 ```bash
+./b3-selic-pre-linux                        # interface gráfica
+./b3-selic-pre-linux --gui                  # interface gráfica
 ./b3-selic-pre-linux --today                # consultar data atual
 ./b3-selic-pre-linux 2026-06-10             # data específica
 ./b3-selic-pre-linux 2026-06-10 --yearly    # consolidado por ano
-./b3-selic-pre-linux --gui                  # interface gráfica
 ./b3-selic-pre-linux --create-shortcut      # criar atalho no desktop (Linux)
 ./b3-selic-pre-linux --help                 # exibir ajuda com todos os parâmetros
 ./b3-selic-pre-linux --version              # exibir versão

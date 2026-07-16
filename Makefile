@@ -15,7 +15,7 @@ endif
 $(VENV):
 	$(PYTHON) -m venv .venv
 	$(VENV_PYTHON) -m pip install -q -e .
-	$(VENV_PYTHON) -m pip install -q pyinstaller
+	$(VENV_PYTHON) -m pip install -q pyinstaller pytest
 
 install: $(VENV)
 

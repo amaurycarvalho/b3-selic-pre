@@ -39,14 +39,12 @@ class DiskCache:
             return None
         cached_at = data.get("cached_at")
         ttl = data.get("ttl_minutes")
-        if ttl is not None and cached_at is not None:
-            if not self._is_valid(cached_at, ttl):
-                path.unlink(missing_ok=True)
-                return None
-        if ttl_minutes is not None:
-            if not self._is_valid(cached_at, ttl_minutes):
-                path.unlink(missing_ok=True)
-                return None
+        if ttl is not None and cached_at is not None and not self._is_valid(cached_at, ttl):
+            path.unlink(missing_ok=True)
+            return None
+        if ttl_minutes is not None and not self._is_valid(cached_at, ttl_minutes):
+            path.unlink(missing_ok=True)
+            return None
         raw_records = data.get("records")
         if not isinstance(raw_records, list):
             path.unlink(missing_ok=True)
@@ -88,7 +86,7 @@ class DiskCache:
         return age < timedelta(minutes=ttl_minutes)
 
     def housekeeping(self, max_age_days=365):
-        cutoff = date.today() - timedelta(days=max_age_days)
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=max_age_days)
         for path in self.cache_dir.glob("*.json"):
             date_str = path.stem
             try:

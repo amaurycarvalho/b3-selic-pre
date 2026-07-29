@@ -1,8 +1,8 @@
 import concurrent.futures
-from datetime import date as _today_date
+from datetime import datetime, timezone
 
-from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 from b3_selic_pre.application.use_cases import _days_ago
+from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 from b3_selic_pre.infrastructure import b3_client
 from b3_selic_pre.infrastructure.disk_cache import DiskCache
 
@@ -21,7 +21,7 @@ class CachedB3Client:
                     source_callback(f"Cache ({date_str})")
                 return cached
         records = b3_client.fetch_reference_rates(date_str, **kwargs)
-        today = _today_date.today().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         ttl = self._ttl_minutes if date_str == today else None
         self._cache.put(date_str, records, ttl_minutes=ttl)
         self._cache.housekeeping(max_age_days=self._max_age_days)
@@ -44,7 +44,7 @@ class CachedB3Client:
         return records
 
     def fetch_historical_rates(self, base_date, force=False, source_callback=None, **kwargs):
-        today = _today_date.today().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
 
         def fetch_one(date_str):

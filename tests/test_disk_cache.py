@@ -1,6 +1,6 @@
 import json
 import unittest
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -64,9 +64,9 @@ class DiskCacheTest(unittest.TestCase):
         self.assertFalse(self.cache._is_valid(past, 30))
 
     def test_housekeeping_removes_old_files(self):
-        old_date = (date.today() - timedelta(days=400)).isoformat()
+        old_date = (datetime.now(timezone.utc).date() - timedelta(days=400)).isoformat()
         self.cache.put(old_date, self.records)
-        recent_date = (date.today() - timedelta(days=10)).isoformat()
+        recent_date = (datetime.now(timezone.utc).date() - timedelta(days=10)).isoformat()
         self.cache.put(recent_date, self.records)
         self.cache.housekeeping(max_age_days=365)
         self.assertFalse(self.cache._cache_path(old_date).exists())
@@ -172,16 +172,14 @@ class CachedB3ClientTest(unittest.TestCase):
         with mock.patch(
             "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_download",
             side_effect=fake_download,
-        ):
-            with mock.patch(
-                "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_reference_rates",
-                return_value=[],
-            ):
-                with mock.patch(
-                    "b3_selic_pre.infrastructure.cached_client._today_date",
-                ) as mock_today:
-                    mock_today.today.return_value.isoformat.return_value = "2026-06-17"
-                    result = self.client.fetch_historical_rates("2026-06-17")
+        ), mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_reference_rates",
+            return_value=[],
+        ), mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.datetime",
+        ) as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 6, 17, 12, 0, 0, tzinfo=timezone.utc)
+            result = self.client.fetch_historical_rates("2026-06-17")
         self.assertIn("2026-06-17", result)
 
 
@@ -189,8 +187,8 @@ class CLICacheIntegrationTest(unittest.TestCase):
     def test_main_with_no_cache_flag(self):
         records_arg = []
 
-        def fake_cached_fetch(date, force=False, **kwargs):
-            records_arg.append((date, force))
+        def fake_cached_fetch(d, force=False, **kwargs):
+            records_arg.append((d, force))
             return [RateRecord(day252=1, day360=1, rate="14.65")]
 
         with mock.patch(

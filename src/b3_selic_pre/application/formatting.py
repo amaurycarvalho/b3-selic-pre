@@ -2,7 +2,6 @@ import csv
 import io
 
 
-
 def _brl(value):
     return f"{value:.2f}".replace(".", ",")
 

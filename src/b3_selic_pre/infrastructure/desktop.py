@@ -1,8 +1,8 @@
-import importlib.resources as resources
 import os
 import shutil
 import subprocess
 import sys
+from importlib import resources
 
 from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
 
@@ -11,7 +11,7 @@ def _detect_desktop_dir():
     try:
         result = subprocess.run(
             ["xdg-user-dir", "DESKTOP"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, timeout=5, check=False,
         )
         if result.returncode == 0:
             path = result.stdout.strip()
@@ -21,12 +21,13 @@ def _detect_desktop_dir():
         pass
     user_dirs = os.path.expanduser("~/.config/user-dirs.dirs")
     if os.path.isfile(user_dirs):
-        for line in open(user_dirs):
-            if line.startswith("XDG_DESKTOP_DIR="):
-                raw = line.split("=", 1)[1].strip().strip('"')
-                path = os.path.expandvars(raw)
-                if path:
-                    return path
+        with open(user_dirs) as f:
+            for line in f:
+                if line.startswith("XDG_DESKTOP_DIR="):
+                    raw = line.split("=", 1)[1].strip().strip('"')
+                    path = os.path.expandvars(raw)
+                    if path:
+                        return path
     return os.path.expanduser("~/Desktop")
 
 

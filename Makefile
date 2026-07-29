@@ -26,7 +26,7 @@ test: $(VENV)
 	$(VENV_PYTHON) -m pytest --tb=short
 
 lint: $(VENV)
-	$(PIP) install -q ruff
+	$(PIP) install -q -U ruff
 	$(VENV)/bin/ruff check .
 
 clean:

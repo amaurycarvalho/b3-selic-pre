@@ -3,7 +3,6 @@ import os
 import platform
 from pathlib import Path
 
-
 DEFAULT_SETTINGS = {
     "last_date": "",
     "view_mode": "raw",

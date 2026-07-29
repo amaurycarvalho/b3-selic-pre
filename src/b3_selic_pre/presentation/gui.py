@@ -2,22 +2,25 @@ import io
 import os
 import sys
 import threading
-import importlib.resources as resources
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from importlib import resources
+
+from tkcalendar import DateEntry
 
 from b3_selic_pre import __version__
-from b3_selic_pre.application.use_cases import (
-    consolidate_by_year,
-    default_reference_date,
-    validate_reference_date,
-)
+from b3_selic_pre.application.analyze import analyze, analyze_evolution
 from b3_selic_pre.application.formatting import (
     format_cli_rows,
     format_evolution_csv,
     format_yearly_rows,
 )
-from b3_selic_pre.infrastructure.cached_client import CachedB3Client
+from b3_selic_pre.application.use_cases import (
+    consolidate_by_year,
+    default_reference_date,
+    validate_reference_date,
+)
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import (
     _icon_source,
     create_shortcut,
@@ -30,8 +33,6 @@ from b3_selic_pre.presentation.charts import (
     render_detailed_evolution,
 )
 from b3_selic_pre.presentation.settings import Settings
-from b3_selic_pre.application.analyze import analyze, analyze_evolution
-from tkcalendar import DateEntry
 
 
 class Tooltip:
@@ -74,11 +75,12 @@ class SelicPreApp:
     def __init__(self, root):
         import tkinter as tk
         from tkinter import ttk
-        from matplotlib.figure import Figure
+
         from matplotlib.backends.backend_tkagg import (
             FigureCanvasTkAgg,
             NavigationToolbar2Tk,
         )
+        from matplotlib.figure import Figure
         self.root = root
         self.tk = tk
         self.ttk = ttk
@@ -362,7 +364,7 @@ class SelicPreApp:
         self.settings.set("window_maximized", is_maximized)
 
     def _nearest_business_day(self, date_str):
-        parsed = datetime.strptime(date_str, "%Y-%m-%d").date()
+        parsed = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
         while parsed.weekday() >= 5:
             parsed -= timedelta(days=1)
         return parsed.isoformat()
@@ -391,7 +393,7 @@ class SelicPreApp:
             Tooltip(widget, text)
 
     def _go_today(self):
-        self.date_var.set(date.today().isoformat())
+        self.date_var.set(datetime.now(timezone.utc).date().isoformat())
         self.fetch_rates()
 
     def _create_shortcut(self):
@@ -495,8 +497,10 @@ class SelicPreApp:
                 )
 
         if evolution_report is not None:
-            from b3_selic_pre.application.analyze._texto_evolucao import montar_evolucao_resumo
             from b3_selic_pre.application.analyze._config import CurvaJurosConfig
+            from b3_selic_pre.application.analyze._texto_evolucao import (
+                montar_evolucao_resumo,
+            )
             config = CurvaJurosConfig.from_settings()
             blocos = montar_evolucao_resumo(evolution_report, config.evolucao)
             self.sidebar_text.insert(self.tk.END, "\n─╌─╌─╌─╌─╌─╌─╌─╌─╌╌\n\n")
@@ -538,7 +542,7 @@ class SelicPreApp:
             if self.historical_data:
                 self._redraw_chart()
             else:
-                today = self._nearest_business_day(date.today().isoformat())
+                today = self._nearest_business_day(datetime.now(timezone.utc).date().isoformat())
                 if self.date_var.get().strip() != today:
                     self.date_var.set(today)
                 self._fetch_historical_rates(today)
@@ -554,14 +558,14 @@ class SelicPreApp:
         except ValueError as exc:
             self.set_status(str(exc), msg_type="error")
             return
-        parsed = datetime.strptime(reference_date, "%Y-%m-%d").date()
-        if parsed > date.today():
+        parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+        if parsed > datetime.now(timezone.utc).date():
             self.set_status(
                 "Data futura. Informe uma data até hoje.", msg_type="error")
             return
         reference_date = self._nearest_business_day(reference_date)
         self.date_var.set(reference_date)
-        cutoff = date.today() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=30)
         if parsed < cutoff:
             self.set_status(
                 "Data muito antiga. O histórico disponível cobre apenas os "
@@ -576,7 +580,7 @@ class SelicPreApp:
         def _source_cb(source):
             self._data_source = source
 
-        if reference_date == date.today().isoformat():
+        if reference_date == datetime.now(timezone.utc).date().isoformat():
 
             def _progress_cb(current, total):
                 self.root.after(0, lambda: self._on_fetch_progress(current, total))
@@ -595,7 +599,7 @@ class SelicPreApp:
         def worker():
             try:
                 records = source(reference_date)
-            except Exception as exc:
+            except (ConnectionError, TimeoutError, ValueError) as exc:
                 self.root.after(0, lambda error=exc: self.handle_fetch_error(error))
                 return
             self.root.after(0, lambda: self.handle_fetch_success(records))
@@ -623,7 +627,7 @@ class SelicPreApp:
                     reference_date, source_callback=_source_cb,
                     progress_callback=progress,
                 )
-            except Exception as exc:
+            except (ConnectionError, TimeoutError, ValueError) as exc:
                 self.root.after(0, lambda error=exc: self.handle_fetch_error(error))
                 return
             self.root.after(0, lambda: self.handle_historical_fetch_success(historical))
@@ -639,7 +643,7 @@ class SelicPreApp:
             self._fetch_historical_rates(self._last_reference_date)
             return
         self._set_ui_locked(False)
-        now = datetime.now().strftime("%H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%H:%M:%S")
         if records:
             self.set_status(
                 f"{len(records)} registro(s) carregado(s)  |  {self._data_source}  |  {now}",
@@ -651,7 +655,7 @@ class SelicPreApp:
         self._historical_fetching = False
         self._set_ui_locked(False)
         self.records = list(historical.get(
-            sorted(historical.keys())[-1], []
+            max(historical.keys()), []
         ))
         self.historical_data = historical
         self._redraw_chart()
@@ -659,7 +663,7 @@ class SelicPreApp:
         self.settings["last_date"] = self.date_var.get().strip()
         total = sum(len(v) for v in historical.values())
         dates = len(historical)
-        now = datetime.now().strftime("%H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%H:%M:%S")
         self.set_status(
             f"Dados históricos carregados: {dates} datas, {total} registros.  |  {self._data_source}  |  {now}",
             msg_type="success")

@@ -4,6 +4,7 @@ import json
 import math
 import urllib.request
 
+from b3_selic_pre.application.use_cases import _days_ago, validate_reference_date
 from b3_selic_pre.domain.constants import (
     B3_BASE_URL,
     DEFAULT_LANGUAGE,
@@ -14,7 +15,6 @@ from b3_selic_pre.domain.constants import (
     EVOLUTION_DAYS,
 )
 from b3_selic_pre.domain.models import RateRecord
-from b3_selic_pre.application.use_cases import _days_ago, validate_reference_date
 
 
 def build_payload(
@@ -48,7 +48,7 @@ def normalize_records(data):
     if results is None:
         raise ValueError("Resposta da B3 não contém o campo 'results'.")
     if not isinstance(results, list):
-        raise ValueError("Campo 'results' da B3 não é uma lista.")
+        raise TypeError("Campo 'results' da B3 não é uma lista.")
     records = []
     for item in results:
         try:
@@ -142,8 +142,8 @@ def fetch_rates_download(date_str):
 
 
 def fetch_historical_rates(base_date, progress_callback=None):
-    from datetime import date
-    today = date.today().isoformat()
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date().isoformat()
     dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
 
     def fetch_one(date_str):

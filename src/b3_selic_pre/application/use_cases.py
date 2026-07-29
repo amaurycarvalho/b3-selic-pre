@@ -1,14 +1,13 @@
-from datetime import date, datetime
-
+from datetime import datetime, timezone
 
 
 def default_reference_date():
-    return date.today().isoformat()
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def validate_reference_date(reference_date):
     try:
-        parsed = datetime.strptime(reference_date, "%Y-%m-%d").date()
+        parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
     except ValueError as exc:
         raise ValueError("Use uma data no formato YYYY-MM-DD.") from exc
     return parsed.isoformat()
@@ -16,7 +15,7 @@ def validate_reference_date(reference_date):
 
 def _days_ago(base_date, days):
     from datetime import timedelta
-    d = datetime.strptime(base_date, "%Y-%m-%d").date()
+    d = datetime.strptime(base_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
     return (d - timedelta(days=days)).isoformat()
 
 
@@ -27,10 +26,8 @@ def consolidate_by_year(records):
         rate = float(r.rate.replace(",", "."))
         if year in groups:
             g = groups[year]
-            if rate < g["min_rate"]:
-                g["min_rate"] = rate
-            if rate > g["max_rate"]:
-                g["max_rate"] = rate
+            g["min_rate"] = min(g["min_rate"], rate)
+            g["max_rate"] = max(g["max_rate"], rate)
         else:
             groups[year] = {"year": year, "min_rate": rate, "max_rate": rate}
     return [groups[y] for y in sorted(groups)]

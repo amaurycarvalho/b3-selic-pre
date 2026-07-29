@@ -3,7 +3,6 @@ import json
 import unittest
 from unittest import mock
 
-from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.application.formatting import (
     _brl,
     format_cli_rows,
@@ -17,6 +16,7 @@ from b3_selic_pre.application.use_cases import (
     consolidate_by_year,
     validate_reference_date,
 )
+from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure.b3_client import (
     build_payload,
     build_url,

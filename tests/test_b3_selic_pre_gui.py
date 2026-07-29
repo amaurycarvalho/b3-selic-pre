@@ -1,11 +1,11 @@
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-from b3_selic_pre.domain.models import RateRecord
-from b3_selic_pre.application.use_cases import consolidate_by_year
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
-from pathlib import Path
+from b3_selic_pre.application.use_cases import consolidate_by_year
+from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.presentation.gui import SelicPreApp
 from b3_selic_pre.presentation.settings import Settings
 
@@ -148,9 +148,8 @@ class SelicPreAppTest(unittest.TestCase):
         self.app.handle_fetch_success(records)
         self.app.view_var.set("raw")
         expected = format_cli_rows(records)
-        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
-            with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
-                self.app.copy_data()
+        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear, mock.patch.object(self.app.root, "clipboard_append") as mock_append:
+            self.app.copy_data()
         mock_clear.assert_called_once()
         mock_append.assert_called_once_with(expected)
         self.assertIn("Dados copiados", self.app.status_var.get())
@@ -164,17 +163,15 @@ class SelicPreAppTest(unittest.TestCase):
         self.app.handle_fetch_success(records)
         self.app.view_var.set("consolidated")
         expected = format_yearly_rows(consolidate_by_year(records))
-        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
-            with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
-                self.app.copy_data()
+        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear, mock.patch.object(self.app.root, "clipboard_append") as mock_append:
+            self.app.copy_data()
         mock_clear.assert_called_once()
         mock_append.assert_called_once_with(expected)
         self.assertIn("Dados copiados", self.app.status_var.get())
 
     def test_copy_data_noop_when_no_data(self):
-        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear:
-            with mock.patch.object(self.app.root, "clipboard_append") as mock_append:
-                self.app.copy_data()
+        with mock.patch.object(self.app.root, "clipboard_clear") as mock_clear, mock.patch.object(self.app.root, "clipboard_append") as mock_append:
+            self.app.copy_data()
         mock_clear.assert_not_called()
         mock_append.assert_not_called()
 

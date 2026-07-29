@@ -1,6 +1,5 @@
 import os
 
-
 B3_BASE_URL = "https://sistemaswebb3-derivativos.b3.com.br/"
 DEFAULT_LANGUAGE = "pt-br"
 DEFAULT_RATE_ID = "SLP"

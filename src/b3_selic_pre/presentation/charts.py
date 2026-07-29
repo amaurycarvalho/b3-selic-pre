@@ -42,9 +42,9 @@ def render_chart(fig, records, consolidated=False):
                 linestyle="-", linewidth=1.5, label="Maior taxa")
         ax.set_xlabel("Ano")
         ax.set_xlim(0, 20)
-        all_years = sorted(set(g["year"] for g in grouped))
+        all_years = sorted({g["year"] for g in grouped})
         major_3yr = _nearest_ticks(all_years, range(0, 21, 3), 1)
-        minor_1yr = _nearest_ticks(all_years, range(0, 21), 1, set(major_3yr))
+        minor_1yr = _nearest_ticks(all_years, range(21), 1, set(major_3yr))
         ax.set_xticks(major_3yr)
         ax.set_xticks(minor_1yr, minor=True)
         ax.legend()
@@ -55,7 +55,7 @@ def render_chart(fig, records, consolidated=False):
                 linestyle="-", linewidth=1.5)
         ax.set_xlabel("Dias úteis")
         ax.set_xlim(0, 756)
-        all_days = sorted(set(r.day252 for r in records))
+        all_days = sorted({r.day252 for r in records})
         major_66du = _nearest_ticks(all_days, range(66, 757, 66), 44)
         minor_22du = _nearest_ticks(all_days, range(1, 757, 22), 22, set(major_66du))
         ax.set_xticks(major_66du)
@@ -67,8 +67,8 @@ def render_chart(fig, records, consolidated=False):
 
 
 def render_curve_evolution(fig, date_rates):
-    import numpy as np
     import matplotlib.pyplot as plt
+    import numpy as np
     fig.clf()
     ax = fig.add_subplot(111)
     if not date_rates:
@@ -93,7 +93,7 @@ def render_curve_evolution(fig, date_rates):
                 linewidth=linewidths[i], label=date_str)
     all_years = sorted(average_rate_by_year(date_rates[dates_sorted[-1]]).keys())
     major_3yr = _nearest_ticks(all_years, range(0, 21, 3), 1)
-    minor_1yr = _nearest_ticks(all_years, range(0, 21), 1, set(major_3yr))
+    minor_1yr = _nearest_ticks(all_years, range(21), 1, set(major_3yr))
     for tick_idx, year in enumerate(all_years):
         rates_seq = []
         for date_str in dates_sorted:
@@ -125,8 +125,8 @@ def render_curve_evolution(fig, date_rates):
 
 
 def render_detailed_evolution(fig, date_rates):
-    import numpy as np
     import matplotlib.pyplot as plt
+    import numpy as np
     fig.clf()
     ax = fig.add_subplot(111)
     if not date_rates:
@@ -151,7 +151,7 @@ def render_detailed_evolution(fig, date_rates):
         date_str: {r.day252: float(r.rate.replace(",", ".")) for r in date_rates[date_str]}
         for date_str in dates_sorted
     }
-    all_day_values = sorted(set(r.day252 for r in date_rates[dates_sorted[-1]]))
+    all_day_values = sorted({r.day252 for r in date_rates[dates_sorted[-1]]})
     major_66du = _nearest_ticks(all_day_values, range(66, 757, 66), 44)
     minor_22du = _nearest_ticks(all_day_values, range(1, 757, 22), 22, set(major_66du))
     for tick_idx, pos in enumerate(minor_22du):
@@ -208,7 +208,7 @@ def render_3d_evolution(fig, date_rates, consolidated=False):
             per_date_rates.append(rates)
             all_years.update(rates.keys())
         years = sorted(y for y in all_years if 0 <= y <= 20)
-        X, Y = np.meshgrid(years, z_indices)
+        X, _Y = np.meshgrid(years, z_indices)
         Z = np.array([
             [per_date_rates[i].get(y, np.nan) for y in years]
             for i in range(n)
@@ -231,7 +231,7 @@ def render_3d_evolution(fig, date_rates, consolidated=False):
             all_days.update(days)
         max_day = max(all_days) if all_days else 0
         common_x = np.linspace(0, max_day, num=200)
-        X, Y = np.meshgrid(common_x, z_indices)
+        X, _Y = np.meshgrid(common_x, z_indices)
         Z = np.array([
             np.interp(common_x, days, rates, left=np.nan, right=np.nan)
             for days, rates in per_date_data

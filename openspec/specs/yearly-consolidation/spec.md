@@ -34,14 +34,14 @@ The CLI SHALL support a `--yearly` flag that, when present, outputs the consolid
 - **THEN** the output is the existing raw CSV format `DU252,DC365,TAXA`
 
 ### Requirement: GUI yearly toggle
-The GUI SHALL provide radio buttons labeled "Detalhado", "Consolidado", and "Evolução da curva" that switch the chart display between raw mode (green line, TAXA × DU252), consolidated mode (blue menor_taxa line + red maior_taxa line), and evolution mode (5 superposed curves with quiver arrows).
+The GUI SHALL provide radio buttons labeled "Curva curta", "Curva longa", and "Evolução da curva" that switch the chart display between raw mode (green line, TAXA × DU252), consolidated mode (blue menor_taxa line + red maior_taxa line), and evolution mode (5 superposed curves with quiver arrows).
 
 #### Scenario: Raw mode shows detailed chart
-- **WHEN** the "Detalhado" radio button is selected
+- **WHEN** the "Curva curta" radio button is selected
 - **THEN** the chart shows a green line plotting TAXA against DU252
 
 #### Scenario: Consolidated mode shows envelope chart
-- **WHEN** the "Consolidado" radio button is selected
+- **WHEN** the "Curva longa" radio button is selected
 - **THEN** the chart shows a blue line for menor_taxa and a red line for maior_taxa plotted against the year
 
 #### Scenario: View state is preserved across data fetches

@@ -85,7 +85,7 @@ class SelicPreApp:
         self.tk = tk
         self.ttk = ttk
         self.records = []
-        root.title(f"B3 SELIC Pré v{__version__}")
+        root.title(f"Taxas Referenciais SELIC (B3) v{__version__}")
         icon_path = _icon_source()
         if os.path.exists(icon_path):
             img = tk.PhotoImage(file=icon_path, master=root)
@@ -169,12 +169,12 @@ class SelicPreApp:
         left_group = ttk.Frame(middle_frame)
         left_group.pack(side=tk.LEFT)
         self.view_raw_rb = ttk.Radiobutton(
-            left_group, text="Detalhado", variable=self.view_var,
+            left_group, text="Curva curta", variable=self.view_var,
             value="raw", command=self.toggle_view,
         )
         self.view_raw_rb.pack(side=tk.LEFT, padx=(0, 4))
         self.view_consolidated_rb = ttk.Radiobutton(
-            left_group, text="Consolidado", variable=self.view_var,
+            left_group, text="Curva longa", variable=self.view_var,
             value="consolidated", command=self.toggle_view,
         )
         self.view_consolidated_rb.pack(side=tk.LEFT, padx=(4, 0))
@@ -204,7 +204,7 @@ class SelicPreApp:
         self.figure.add_subplot(111)
         render_chart(self.figure, [])
         self.ax = self.figure.gca()
-        self.ax.set_title("B3 SELIC Pré", fontsize=14)
+        self.ax.set_title("Curva Curta (SELIC Pré)", fontsize=14)
         self.canvas = FigureCanvasTkAgg(self.figure, master=chart_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self.sidebar_frame = ttk.Frame(self.pane, width=280)
@@ -425,37 +425,26 @@ class SelicPreApp:
             if show_3d:
                 c = view == "consolidated"
                 render_3d_evolution(self.figure, self.historical_data, consolidated=c)
-                mode = "Consolidada" if c else "Detalhada"
+                mode = "Longa" if c else "Curta"
                 self.figure.gca().set_title(
-                    f"B3 SELIC Pré — Evolução 3D {mode}", fontsize=14, y=1.06,
+                    f"Evolução 3D da Curva {mode} (SELIC Pré)", fontsize=14, y=1.06,
                     ha="center")
             elif view == "consolidated":
                 render_curve_evolution(self.figure, self.historical_data)
                 self.figure.gca().set_title(
-                    "B3 SELIC Pré — Evolução Consolidada", fontsize=14, y=0.92)
+                    "Evolução da Curva Longa (SELIC Pré)", fontsize=14, y=0.92)
             else:
                 render_detailed_evolution(self.figure, self.historical_data)
                 self.figure.gca().set_title(
-                    "B3 SELIC Pré — Evolução Detalhada", fontsize=14, y=0.92)
+                    "Evolução da Curva Curta (SELIC Pré)", fontsize=14, y=0.92)
         elif view == "consolidated":
             render_chart(self.figure, self.records, consolidated=True)
             self.figure.gca().set_title(
-                "B3 SELIC Pré — Consolidado", fontsize=14, y=0.92)
+                "Curva Longa (SELIC Pré)", fontsize=14, y=0.92)
         else:
             render_chart(self.figure, self.records, consolidated=False)
             self.figure.gca().set_title(
-                "B3 SELIC Pré", fontsize=14, y=0.92)
-        if show_evolution and self.historical_data and show_3d:
-            t = self.figure.gca().title
-            self.canvas.draw()
-            renderer = self.canvas.get_renderer()
-            if renderer is not None:
-                bbox = t.get_window_extent(renderer=renderer)
-                ax_box = self.figure.gca().get_position()
-                fig_w, _ = self.figure.get_size_inches()
-                w_ax = (bbox.width / self.figure.dpi) / (ax_box.width * fig_w)
-                if w_ax > 0:
-                    t.set_x(0.5 - 0.7 * w_ax)
+                "Curva Curta (SELIC Pré)", fontsize=14, y=0.92)
         self.canvas.draw_idle()
         self._update_analysis()
 

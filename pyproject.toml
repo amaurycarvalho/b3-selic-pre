@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "b3-selic-pre"
-version = "0.8.0"
+version = "0.9.1"
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.0.0",

@@ -7,56 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-02
-
-### [cache-b3-em-disco](openspec/changes/archive/2026-07-02-cache-b3-em-disco/) Cache em disco para evitar downloads redundantes da B3
+### [rfc001-tesouro-direto-redesign](openspec/changes/rfc001-tesouro-direto-redesign/) Reprojetar extração de movimentações do Tesouro Direto seguindo Clean Architecture
 
 #### Added
 
-- Criar sistema de cache em disco para dados baixados da B3, chaveado por data (granular: 1 arquivo JSON por data)
-- Verificar cache antes de fazer requisição HTTP; cache hit retorna dados sem chamar a B3
-- TTL de 30 minutos apenas para a data atual; datas passadas são imutáveis (sem expiração)
-- Corrupção de JSON tratada como cache miss (deleta arquivo + refetch automático)
-- Housekeeping automático: limpa caches com mais de 1 ano (parametrizável via `max_age_days`)
-- Cache segue XDG: `~/.cache/b3-selic-pre/rates/` no Linux
-- Classe `CachedB3Client` encapsula fetch + cache, usada por CLI e GUI
-- Indicador visual na barra de status da GUI: mostra "Cache" vs "API B3" / "Arquivo oficial B3"
-- Flag `--no-cache` no CLI para forçar download fresco ignorando o cache
-
-### [evolucao-resumo-executivo](openspec/changes/archive/2026-07-02-evolucao-resumo-executivo/) Adiciona painel de evolução da curva ao sidebar da GUI
-
-#### Added
-
-- Adiciona a seção "Resumo Executivo — Evolução da Curva" ao sidebar da GUI, abaixo do painel de Curva Atual
-- Adiciona 2 novos arquivos ao módulo `application/analyze/`: `_evolucao.py` e `_texto_evolucao.py`
-- Adiciona parâmetros de configuração no `settings.json` sob a chave `curva_evolucao`
-- Adiciona o sub-painel "Evolução da Curva" no sidebar da GUI, visível apenas quando o modo Evolução está ativo
-- Adiciona a struct `EvolutionReport` com os indicadores calculados e texto gerado
+- Adicionar modelo de domínio `MovimentacaoTesouroDireto` como frozen dataclass
+- Adicionar camada de cache seguindo o padrão `DiskCache` + `CachedClient` existente, com XDG paths
+- Adicionar entry points na CLI e GUI para acesso aos dados do Tesouro Direto
 
 #### Changed
 
-- Atualiza `__init__.py` do módulo `analyze` para exportar a nova função `analyze_evolution()`
+- Reprojetar a feature de extração de movimentações do Tesouro Direto seguindo a Clean Architecture em 4 camadas (domain, application, infrastructure, presentation)
+- Substituir scraping HTML pela API CKAN JSON nativa do portal Tesouro Transparente para obter metadados e URLs de recursos
+- Eliminar dependências externas: usar `urllib` (não `requests`), CKAN API JSON (não `beautifulsoup4`), módulo `csv` nativo (não `pandas`)
+- Atualizar o documento RFC-001 para refletir o design alinhado ao projeto
 
-### [novo-resumo-executivo](openspec/changes/archive/2026-07-02-novo-resumo-executivo/) Substitui motor de análise por Resumo Executivo da Curva de Juros
+## [0.9.1] - 2026-07-29
 
-#### Added
-
-- Cria 4 novos arquivos no módulo `application/analyze/`: `__init__.py`, `_resumo.py`, `_texto.py`, `_config.py`
-- Adiciona novos parâmetros de configuração no `settings.json` sob as chaves `curva_juros` e `curva_evolucao`
+### [curva-curta-longa](openspec/changes/archive/2026-07-29-curva-curta-longa/) Renomeia rótulos da UI para "Curva curta" e "Curva longa"
 
 #### Changed
 
-- **BREAKING**: Substitui completamente o módulo `application/analyze/` por nova implementação baseada no Resumo Executivo da Curva de Juros
-- Atualiza o sidebar da GUI para exibir o novo layout do Resumo Executivo (tags tk.Text header/positive/negative, 7 blocos nomeados + mensagem final)
-- **BREAKING**: Altera o contrato da função `analyze()` — agora recebe parâmetros de configuração adicionais e retorna `AnalysisReport` com estrutura diferente
+- Título da janela: "B3 SELIC Pré v{version}" → "Taxas Referenciais SELIC (B3) v{version}"
+- RadioButton "Detalhado" → "Curva curta" (modo raw)
+- RadioButton "Consolidado" → "Curva longa" (modo consolidado)
+- Títulos dos gráficos renomeados para "Curva Curta (SELIC Pré)" / "Curva Longa (SELIC Pré)" e variações de evolução
+- Título 3D centralizado horizontalmente (removido deslocamento artificial)
 
-#### Removed
+#### Fixed
 
-- Remove 8 arquivos do motor antigo (`_metrics.py`, `_features.py`, `_classifier.py`, `_registry.py`, `_scoring.py`, `_templates.py`, `_report.py`, `_metrics_evolution.py`)
-- Remove a classe de análise para os modos "consolidado" e "evolução" (placeholders)
-- Remove todos os testes antigos do motor de análise (`test_analyze.py`)
+- pyproject.toml: versão corrigida de 0.8.0 → 0.9.1 (estava defasada)
 
-[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.9.0
+[Unreleased]: https://github.com/amaurycarvalho/b3-selic-pre/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.9.1
 
 See [CHANGELOG Archive](CHANGELOG-ARCHIVE.md) for older releases.

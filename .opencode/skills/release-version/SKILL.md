@@ -26,7 +26,7 @@ Update the application release version across the codebase and regenerate all ch
      ```
    - Do NOT proceed with any of the steps below.
 
-2. **Update app_version in __init__.py**
+2. **Update app_version in **init**.py**
 
    Read `src/b3_selic_pre/__init__.py` and find the line containing `__version__ =`.
 
@@ -40,25 +40,36 @@ Update the application release version across the codebase and regenerate all ch
 
 3.1. Read `b3-selic-pre.spec` and find the `'CFBundleShortVersionString':` field.
 
-   Replace the current version:
+Replace the current version:
 
-   ```
-   'CFBundleShortVersionString': '<new-version>',
-   ```
+```
+'CFBundleShortVersionString': '<new-version>',
+```
 
 3.1. Read `b3-selic-pre.spec` and find the `'CFBundleVersion':` field.
 
-   Replace the current version:
+Replace the current version:
+
+```
+'CFBundleVersion': '<new-version>',
+```
+
+4. **Update app_version in **init**.py**
+
+   Read `pyproject.toml` and find the line containing `version = `.
+
+   Replace the current value with the new version string:
 
    ```
-   'CFBundleVersion': '<new-version>',
+   version = "<new-version>"
    ```
 
-4. **Verify consistency**
+5. **Verify consistency**
 
    Read back the modified files and confirm:
    - `src/b3_selic_pre/__init__.py` has `__version__ = "<new-version>"`
-   - `b3-selic-pre.spec` has the correct `'CFBundleShortVersionString':` and `'CFBundleVersion':`  fields
+   - `b3-selic-pre.spec` has the correct `'CFBundleShortVersionString':` and `'CFBundleVersion':` fields
+   - `pyproject.toml` has `version = "<new-version>"`
 
 **Output On Success**
 
@@ -68,6 +79,7 @@ Release version updated to <version>
 Files updated:
 - src/b3_selic_pre/__init__.py (__version__)
 - b3-selic-pre.spec
+- pyproject.toml
 
 Commentary: changelog skill can now be used manually to update the changelog files.
 ```
@@ -81,6 +93,7 @@ Example: /release-version 1.0.1
 ```
 
 **Guardrails**
+
 - Always validate that a version string was provided before making any changes
 - Do NOT guess or auto-generate a version — the user must supply it explicitly
 - The version format should follow `X.Y.Z` (e.g., `1.0.1`)

@@ -1,9 +1,4 @@
-# Window Title
-
-## Purpose
-Update the window title dynamically based on loaded data context. TBD.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Dynamic window title
 The system SHALL update the window title to reflect loaded data context.

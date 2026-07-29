@@ -129,13 +129,13 @@ The system SHALL upsample the Y-axis grid so `plot_surface` produces smooth colo
 - **AND** the original curve values at Z=0..n-1 are preserved exactly
 - **AND** `plot_surface` receives the upsampled grid for smoother face coloring
 
-### Requirement: Title positioned over chart area (not colorbar)
-The system SHALL shift the 3D title left to center it over the chart area.
+### Requirement: Title positioned centered over chart
+The system SHALL set the 3D title with horizontal centering so the title appears centered over the chart area.
 
-#### Scenario: 3D title adjusted for colorbar
+#### Scenario: 3D title is centered horizontally
 - **WHEN** the 3D evolution title is set
-- **THEN** the title's pixel width is measured after rendering
-- **AND** the title's X position is adjusted by `0.5 - 0.7 * w_ax` (70% of title width leftward)
+- **THEN** the title's `ha` parameter is set to `"center"`
+- **AND** no artificial horizontal offset is applied to the title position
 
 ### Requirement: Layout adjusted for 3D axes
 The system SHALL use `subplots_adjust` to set appropriate margins for 3D rendering.

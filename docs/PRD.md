@@ -6,14 +6,12 @@ Aplicativo desktop (e CLI) para consultar e visualizar a **curva de juros (taxa 
 
 ## Problema
 
-Profissionais do mercado financeiro brasileiro precisam acompanhar diariamente a estrutura a termo da taxa SELIC (curva Pré). A B3 disponibiliza os dados via portal web, mas não há uma ferramenta dedicada, leve e offline-friendly para consultar, analisar e visualizar evolutivamente essa curva.
+Pequenos investidores do mercado financeiro brasileiro precisam acompanhar diariamente a estrutura a termo da taxa SELIC (curva Pré). A B3 disponibiliza os dados via portal web, mas não há uma ferramenta dedicada, leve e offline-friendly para consultar, analisar e visualizar evolutivamente essa curva.
 
 ## Público-alvo
 
-- Analistas e gestores de renda fixa
+- Pequenos investidores de renda fixa
 - Economistas e pesquisadores
-- Operadores do mercado de derivativos
-- Público em geral
 
 ## Funcionalidades
 

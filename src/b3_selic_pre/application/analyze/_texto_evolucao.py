@@ -1,8 +1,11 @@
+"""Geração dos textos descritivos do resumo da evolução da curva de juros."""
+
 from b3_selic_pre.application.analyze._config import EvolutionConfig
 from b3_selic_pre.application.analyze._evolucao import EvolutionReport
 
 
 def gerar_texto_regime(regime: str) -> str:
+    """Retorna o texto descritivo para o regime de evolução da curva."""
     textos = {
         "Bear Steepening":
             "O mercado revisou para cima toda a estrutura de juros, principalmente os vencimentos longos.",
@@ -30,6 +33,7 @@ def gerar_texto_regime(regime: str) -> str:
 
 
 def gerar_texto_politica(monetary_policy_msg: str, delta_real: float) -> str:
+    """Retorna o texto descritivo para a mudança da política monetária."""
     if delta_real > 5:
         prefixo = "▲"
     elif delta_real < -5:
@@ -56,6 +60,7 @@ def gerar_texto_politica(monetary_policy_msg: str, delta_real: float) -> str:
 
 
 def gerar_texto_premio(term_premium_msg: str, delta_slope: float) -> str:
+    """Retorna o texto descritivo para a mudança do prêmio de prazo."""
     if delta_slope > 10:
         prefixo = "▲"
     elif delta_slope < -10:
@@ -81,6 +86,7 @@ def gerar_texto_premio(term_premium_msg: str, delta_slope: float) -> str:
 
 
 def gerar_texto_intensidade(intensidade: str) -> str:
+    """Retorna o texto descritivo para a intensidade das alterações."""
     textos = {
         "Muito Fraca": "A magnitude das alterações foi muito fraca.",
         "Fraca": "A magnitude das alterações foi fraca.",
@@ -92,12 +98,14 @@ def gerar_texto_intensidade(intensidade: str) -> str:
 
 
 def gerar_texto_direcao(direction: str) -> str:
+    """Retorna o texto descritivo para a direção geral da curva."""
     return direction
 
 
 def montar_evolucao_resumo(
     evolution_report: EvolutionReport, config: EvolutionConfig
 ) -> list[str]:
+    """Monta os blocos do resumo da evolução da curva de juros."""
     regime_texto = gerar_texto_regime(evolution_report.regime)
     politica_texto = gerar_texto_politica(
         evolution_report.monetary_policy_msg, evolution_report.delta_real_bps

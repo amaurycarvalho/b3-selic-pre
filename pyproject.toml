@@ -17,8 +17,71 @@ dependencies = [
 [project.scripts]
 b3-selic-pre = "b3_selic_pre.presentation.cli:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "flake8>=6.0.0",
+    "flake8-bugbear>=23.0.0",
+    "flake8-annotations>=3.0.0",
+    "flake8-docstrings>=1.7.0",
+]
+quality = [
+    "ruff>=0.1.0",
+    "flake8>=6.0.0",
+    "flake8-bugbear>=23.0.0",
+    "flake8-annotations>=3.0.0",
+    "flake8-docstrings>=1.7.0",
+    "radon>=6.0.0",
+    "xenon>=0.9.0",
+    "lizard>=1.17.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mutmut>=3.6.0",
+    "semgrep>=1.0.0",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 b3_selic_pre = ["icons/*.png"]
+
+[tool.ruff.lint]
+ignore = ["BLE001", "S110", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: deselected by default via addopts"]
+addopts = ["-m", "not slow"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/b3_selic_pre/presentation/gui/*",
+    "src/b3_selic_pre/icons/*",
+]
+
+[tool.coverage.report]
+fail_under = 85
+
+[tool.mutmut]
+source_paths = ["src/"]
+pytest_add_cli_args_test_selection = ["-m", "not slow", "tests/"]
+pytest_add_cli_args = ["-q", "--disable-warnings"]
+runner = "pytest"
+do_not_mutate = [
+    "__init__.py",
+    "src/tests/*",
+    "tests/*",
+    ".*/*",
+    "build/*",
+    "src/b3_selic_pre/presentation/gui/*",
+    "src/b3_selic_pre/icons/*",
+]
+do_not_mutate_patterns = ['logger\.\w+', 'raise \w+']
+#mutate_only_covered_lines = true
+on_dependency_change = "rerun"
+timeout_constant = 1
+timeout_multiplier = 10

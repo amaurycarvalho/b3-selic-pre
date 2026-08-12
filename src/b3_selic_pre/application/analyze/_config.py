@@ -1,3 +1,5 @@
+"""Configurações das análises de evolução e da curva de juros prefixados."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,6 +9,8 @@ from b3_selic_pre.presentation.settings import Settings
 
 @dataclass
 class EvolutionConfig:
+    """Configuração dos limiares usados na análise de evolução da curva."""
+
     movement_threshold_bps: float = 5.0
     steepening_threshold_bps: float = 5.0
     very_weak_max: float = 5.0
@@ -22,7 +26,8 @@ class EvolutionConfig:
     decreased_min: float = 20.0
 
     @classmethod
-    def from_settings(cls, curva_evolucao: dict) -> EvolutionConfig:
+    def from_settings(cls: type[EvolutionConfig], curva_evolucao: dict) -> EvolutionConfig:
+        """Constrói a configuração de evolução a partir de um dicionário de ajustes."""
         return cls(
             movement_threshold_bps=curva_evolucao.get("movement_threshold_bps", 5.0),
             steepening_threshold_bps=curva_evolucao.get("steepening_threshold_bps", 5.0),
@@ -42,6 +47,8 @@ class EvolutionConfig:
 
 @dataclass
 class CurvaJurosConfig:
+    """Configuração das faixas e parâmetros da análise da curva de juros."""
+
     expected_inflation: float = 3.0
     faixas_nominais: list[float] = field(default_factory=lambda: [6.0, 9.0, 11.0, 13.0])
     faixas_juro_real: list[float] = field(default_factory=lambda: [2.0, 4.0, 6.0])
@@ -58,7 +65,8 @@ class CurvaJurosConfig:
     evolucao: EvolutionConfig = field(default_factory=EvolutionConfig)
 
     @classmethod
-    def from_settings(cls) -> CurvaJurosConfig:
+    def from_settings(cls: type[CurvaJurosConfig]) -> CurvaJurosConfig:
+        """Constrói a configuração da curva de juros a partir das configurações da aplicação."""
         settings = Settings()
         curva_juros = settings.get("curva_juros", {})
         curva_evolucao = settings.get("curva_evolucao", {})

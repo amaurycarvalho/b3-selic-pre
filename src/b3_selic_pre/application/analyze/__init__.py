@@ -1,3 +1,5 @@
+"""Análise da curva de juros prefixados e de sua evolução."""
+
 from b3_selic_pre.application.analyze._config import CurvaJurosConfig, EvolutionConfig
 from b3_selic_pre.application.analyze._evolucao import (
     EvolutionReport,
@@ -27,6 +29,7 @@ def analyze(
     config: CurvaJurosConfig | None = None,
     locale: str = "pt",
 ) -> AnalysisReport:
+    """Executa a análise da curva de juros e retorna o relatório consolidado."""
     if not records:
         return AnalysisReport()
 

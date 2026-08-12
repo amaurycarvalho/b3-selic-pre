@@ -1,3 +1,11 @@
+"""Persistent application settings backed by a JSON file.
+
+The settings file lives in a platform-appropriate config directory
+and is loaded on construction and written back on every mutation.
+"""
+
+from __future__ import annotations
+
 import json
 import os
 import platform
@@ -30,7 +38,7 @@ DEFAULT_SETTINGS = {
 }
 
 
-def _xdg_path():
+def _xdg_path() -> Path:
     app = "b3-selic-pre"
     system = platform.system()
     if system == "Linux":
@@ -45,12 +53,15 @@ def _xdg_path():
 
 
 class Settings:
-    def __init__(self, path=None):
+    """Loads and persists application settings in a JSON file."""
+
+    def __init__(self: Settings, path: str | None = None) -> None:
+        """Initialize settings, optionally pointing to a custom file."""
         self.path = path or _xdg_path()
         self._data = dict(DEFAULT_SETTINGS)
         self._load()
 
-    def _load(self):
+    def _load(self: Settings) -> None:
         try:
             if self.path.exists():
                 raw = self.path.read_text(encoding="utf-8")
@@ -60,7 +71,7 @@ class Settings:
         except (json.JSONDecodeError, OSError):
             pass
 
-    def _save(self):
+    def _save(self: Settings) -> None:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.write_text(
@@ -70,15 +81,19 @@ class Settings:
         except OSError:
             pass
 
-    def get(self, key, default=None):
+    def get(self: Settings, key: str, default: object = None) -> object:
+        """Return the value for ``key`` or ``default`` if absent."""
         return self._data.get(key, default)
 
-    def set(self, key, value):
+    def set(self: Settings, key: str, value: object) -> None:
+        """Store ``value`` under ``key`` and persist the settings file."""
         self._data[key] = value
         self._save()
 
-    def __getitem__(self, key):
+    def __getitem__(self: Settings, key: str) -> object:
+        """Return the value for ``key``, raising KeyError if absent."""
         return self._data[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self: Settings, key: str, value: object) -> None:
+        """Store ``value`` under ``key`` via ``set``."""
         self.set(key, value)

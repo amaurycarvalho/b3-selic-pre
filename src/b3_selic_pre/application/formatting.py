@@ -1,12 +1,17 @@
+"""Formatação de registros de taxas de juros para exibição em CLI e CSV."""
+
 import csv
 import io
 
+from b3_selic_pre.domain.models import RateRecord
 
-def _brl(value):
+
+def _brl(value: float) -> str:
     return f"{value:.2f}".replace(".", ",")
 
 
-def format_cli_rows(records):
+def format_cli_rows(records: list[RateRecord]) -> str:
+    """Formata os registros como linhas CSV destinadas à CLI."""
     output = io.StringIO()
     writer = csv.writer(output, lineterminator="\n")
     writer.writerow(["DU252", "DC365", "TAXA"])
@@ -15,7 +20,8 @@ def format_cli_rows(records):
     return output.getvalue()
 
 
-def format_records_csv(records):
+def format_records_csv(records: list[RateRecord]) -> str:
+    """Formata os registros como linhas CSV."""
     output = io.StringIO()
     writer = csv.writer(output, lineterminator="\n")
     writer.writerow(["day252", "day360", "rate"])
@@ -24,7 +30,8 @@ def format_records_csv(records):
     return output.getvalue()
 
 
-def format_yearly_rows(consolidated):
+def format_yearly_rows(consolidated: list[dict[str, int | float]]) -> str:
+    """Formata os dados consolidados por ano como linhas CSV."""
     output = io.StringIO()
     writer = csv.writer(output, lineterminator="\n")
     writer.writerow(["ANO", "MENOR_TAXA", "MAIOR_TAXA"])
@@ -37,7 +44,8 @@ def format_yearly_rows(consolidated):
     return output.getvalue()
 
 
-def format_evolution_csv(date_rates):
+def format_evolution_csv(date_rates: dict[str, list[RateRecord]]) -> str:
+    """Formata a evolução das taxas médias por data e ano como CSV."""
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";", lineterminator="\n")
     writer.writerow(["DATA", "ANO", "TAXA_MEDIA"])

@@ -1,3 +1,5 @@
+"""Constants used across the b3_selic_pre application."""
+
 import os
 
 B3_BASE_URL = "https://sistemaswebb3-derivativos.b3.com.br/"

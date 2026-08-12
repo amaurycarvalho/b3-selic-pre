@@ -20,7 +20,7 @@ class SelicPreAppTest(unittest.TestCase):
             self.skipTest(f"tkinter display unavailable: {exc}")
         self.root.withdraw()
         self._settings_patch = mock.patch(
-            "b3_selic_pre.presentation.gui.Settings",
+            "b3_selic_pre.presentation.gui.app.Settings",
             return_value=Settings(path=Path(tempfile.mktemp(suffix=".json"))),
         )
         self._settings_patch.start()
@@ -183,7 +183,7 @@ class SelicPreAppTest(unittest.TestCase):
         except TclError as exc:
             self.skipTest(f"tkinter display unavailable: {exc}")
         root.withdraw()
-        with mock.patch("b3_selic_pre.presentation.gui.shortcut_exists", return_value=exists):
+        with mock.patch("b3_selic_pre.presentation.gui.app.shortcut_exists", return_value=exists):
             app = SelicPreApp(root)
         return root, app
 
@@ -232,7 +232,7 @@ class SelicPreAppTest(unittest.TestCase):
         self.app.evolution_var.set(True)
         self.app.toggle_evolution()
         self.app.var_3d.set(True)
-        with mock.patch("b3_selic_pre.presentation.gui.render_3d_evolution") as mock_3d:
+        with mock.patch("b3_selic_pre.presentation.gui.chart.render_3d_evolution") as mock_3d:
             self.app._redraw_chart()
         mock_3d.assert_called_once()
 
@@ -240,7 +240,7 @@ class SelicPreAppTest(unittest.TestCase):
         root, app = self._make_app_with_shortcut(False)
         try:
             self.assertIsNotNone(app.shortcut_button)
-            with mock.patch("b3_selic_pre.presentation.gui.create_shortcut") as mock_cs:
+            with mock.patch("b3_selic_pre.presentation.gui.actions.create_shortcut") as mock_cs:
                 app._create_shortcut()
             mock_cs.assert_called_once()
             self.assertIsNone(app.shortcut_button)

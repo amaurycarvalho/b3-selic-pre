@@ -1,11 +1,17 @@
+"""Casos de uso da camada de aplicação para taxas de juros prefixados."""
+
 from datetime import datetime, timezone
 
+from b3_selic_pre.domain.models import RateRecord
 
-def default_reference_date():
+
+def default_reference_date() -> str:
+    """Retorna a data de referência atual no formato YYYY-MM-DD."""
     return datetime.now(timezone.utc).date().isoformat()
 
 
-def validate_reference_date(reference_date):
+def validate_reference_date(reference_date: str) -> str:
+    """Valida e normaliza uma data de referência para o formato YYYY-MM-DD."""
     try:
         parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
     except ValueError as exc:
@@ -13,14 +19,15 @@ def validate_reference_date(reference_date):
     return parsed.isoformat()
 
 
-def _days_ago(base_date, days):
+def _days_ago(base_date: str, days: int) -> str:
     from datetime import timedelta
     d = datetime.strptime(base_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
     return (d - timedelta(days=days)).isoformat()
 
 
-def consolidate_by_year(records):
-    groups = {}
+def consolidate_by_year(records: list[RateRecord]) -> list[dict[str, int | float]]:
+    """Consolida as taxas por ano, com as taxas mínima e máxima de cada ano."""
+    groups: dict[int, dict[str, int | float]] = {}
     for r in records:
         year = r.day360 // 365
         rate = float(r.rate.replace(",", "."))
@@ -33,6 +40,7 @@ def consolidate_by_year(records):
     return [groups[y] for y in sorted(groups)]
 
 
-def average_rate_by_year(records):
+def average_rate_by_year(records: list[RateRecord]) -> dict[int, float]:
+    """Calcula a taxa média por ano a partir das taxas mínima e máxima."""
     consolidated = consolidate_by_year(records)
     return {g["year"]: (g["min_rate"] + g["max_rate"]) / 2 for g in consolidated}

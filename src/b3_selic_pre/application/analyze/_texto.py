@@ -1,3 +1,5 @@
+"""Geração dos textos descritivos do resumo executivo da curva de juros."""
+
 from b3_selic_pre.application.analyze._config import CurvaJurosConfig
 from b3_selic_pre.application.analyze._resumo import (
     Indicadores,
@@ -9,6 +11,7 @@ from b3_selic_pre.application.analyze._resumo import (
 
 
 def gerar_texto_nominal(classificacao: str) -> str:
+    """Retorna o texto descritivo para a classificação do nível nominal."""
     textos = {
         "Muito Baixos": "O mercado precifica juros historicamente baixos.",
         "Baixos": "O mercado precifica juros relativamente baixos.",
@@ -20,6 +23,7 @@ def gerar_texto_nominal(classificacao: str) -> str:
 
 
 def gerar_texto_restricao(classificacao: str) -> str:
+    """Retorna o texto descritivo para a classificação da política monetária."""
     textos = {
         "Expansionista": "A política monetária estimula crédito e atividade.",
         "Neutra": "A política monetária é aproximadamente neutra.",
@@ -30,6 +34,7 @@ def gerar_texto_restricao(classificacao: str) -> str:
 
 
 def gerar_texto_inclinacao(classificacao: str) -> str:
+    """Retorna o texto descritivo para a classificação da inclinação da curva."""
     textos = {
         "Quase Plana":
             "Os juros são praticamente iguais em todos os prazos, indicando forte consenso de que o nível atual deverá permanecer por um longo período.",
@@ -52,6 +57,7 @@ def gerar_texto_inclinacao(classificacao: str) -> str:
 def gerar_texto_steepening(
     direcao: str, magnitude: str, delta_bps: float
 ) -> str:
+    """Retorna o texto descritivo para a última mudança de inclinação da curva."""
     if direcao == "Estavel":
         return "Sem alteração relevante na última atualização."
     if direcao == "Steepening":
@@ -64,6 +70,7 @@ def montar_resumo_executivo(
     estabilidade: dict | None = None,
     steepening: dict | None = None,
 ) -> dict[str, str]:
+    """Monta os blocos do resumo executivo a partir dos indicadores e configurações."""
     blocos: dict[str, str] = {}
 
     nominal = classificar_nominal(indicadores.taxa_curta, config)

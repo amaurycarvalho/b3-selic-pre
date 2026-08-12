@@ -1,8 +1,13 @@
+"""Client for fetching SELIC reference rates from the B3 website."""
+
+from __future__ import annotations
+
 import base64
 import concurrent.futures
 import json
 import math
 import urllib.request
+from collections.abc import Callable
 
 from b3_selic_pre.application.use_cases import _days_ago, validate_reference_date
 from b3_selic_pre.domain.constants import (
@@ -18,12 +23,13 @@ from b3_selic_pre.domain.models import RateRecord
 
 
 def build_payload(
-    reference_date,
-    language=DEFAULT_LANGUAGE,
-    rate_id=DEFAULT_RATE_ID,
-    page_number=DEFAULT_PAGE_NUMBER,
-    page_size=DEFAULT_PAGE_SIZE,
-):
+    reference_date: str,
+    language: str = DEFAULT_LANGUAGE,
+    rate_id: str = DEFAULT_RATE_ID,
+    page_number: int = DEFAULT_PAGE_NUMBER,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> dict[str, str | int]:
+    """Build the payload used to query B3 reference rates."""
     return {
         "language": language,
         "id": rate_id,
@@ -33,17 +39,20 @@ def build_payload(
     }
 
 
-def encode_payload(payload):
+def encode_payload(payload: dict[str, str | int]) -> str:
+    """Encode a payload dictionary as compact base64 JSON."""
     return base64.b64encode(
         json.dumps(payload, separators=(",", ":")).encode("utf-8")
     ).decode("utf-8")
 
 
-def build_url(payload):
+def build_url(payload: dict[str, str | int]) -> str:
+    """Build the B3 URL for the given encoded payload."""
     return f"{B3_BASE_URL}referenceRatesProxy/Search/GetList/{encode_payload(payload)}"
 
 
-def normalize_records(data):
+def normalize_records(data: dict[str, object]) -> list[RateRecord]:
+    """Normalize raw B3 results into RateRecord instances."""
     results = data.get("results")
     if results is None:
         raise ValueError("Resposta da B3 não contém o campo 'results'.")
@@ -65,12 +74,13 @@ def normalize_records(data):
 
 
 def fetch_reference_rates_page(
-    reference_date,
-    page_number=DEFAULT_PAGE_NUMBER,
-    page_size=DEFAULT_PAGE_SIZE,
-    opener=urllib.request.urlopen,
-    timeout=30,
-):
+    reference_date: str,
+    page_number: int = DEFAULT_PAGE_NUMBER,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    opener: Callable[[str, int], object] = urllib.request.urlopen,
+    timeout: int = 30,
+) -> tuple[list[RateRecord], int | None]:
+    """Fetch a single page of reference rates from B3."""
     payload = build_payload(
         reference_date,
         page_number=page_number,
@@ -85,13 +95,14 @@ def fetch_reference_rates_page(
 
 
 def fetch_reference_rates(
-    reference_date,
-    opener=urllib.request.urlopen,
-    timeout=30,
-    page_size=DEFAULT_PAGE_SIZE,
-    max_pages=DEFAULT_MAX_PAGES,
-    progress_callback=None,
-):
+    reference_date: str,
+    opener: Callable[[str, int], object] = urllib.request.urlopen,
+    timeout: int = 30,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    max_pages: int = DEFAULT_MAX_PAGES,
+    progress_callback: Callable[[int, int | None], None] | None = None,
+) -> list[RateRecord]:
+    """Fetch reference rates across pages with progress reporting."""
     if page_size <= 0:
         raise ValueError("Tamanho da página deve ser maior que zero.")
     if max_pages <= 0:
@@ -116,12 +127,15 @@ def fetch_reference_rates(
     raise ValueError("Paginação da B3 excedeu o limite máximo de páginas.")
 
 
-def fetch_rates_download(date_str):
+def fetch_rates_download(date_str: str) -> list[RateRecord]:
+    """Download historical reference rates for a given date."""
     payload = {"language": "pt-br", "date": date_str, "id": "SLP"}
     compact = json.dumps(payload, separators=(",", ":"))
     encoded = base64.b64encode(compact.encode("utf-8")).decode("utf-8")
     url = f"{B3_BASE_URL}referenceRatesProxy/Search/GetDownloadFile/{encoded}"
-    with urllib.request.urlopen(url, timeout=30) as resp:
+    # semgrep note: em urllib a URL é construída a partir de constantes fixas,
+    # não há controle de usuário sobre o esquema da URL nem sobre o host.
+    with urllib.request.urlopen(url, timeout=30) as resp:  # nosemgrep
         raw = resp.read()
     b64_text = raw.decode("latin-1").strip()
     if not b64_text:
@@ -141,12 +155,15 @@ def fetch_rates_download(date_str):
     return records
 
 
-def fetch_historical_rates(base_date, progress_callback=None):
+def fetch_historical_rates(
+    base_date: str, progress_callback: Callable[[int, int], None] | None = None
+) -> dict[str, list[RateRecord]]:
+    """Fetch historical reference rates for the configured evolution days."""
     from datetime import datetime, timezone
     today = datetime.now(timezone.utc).date().isoformat()
     dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
 
-    def fetch_one(date_str):
+    def fetch_one(date_str: str) -> tuple[str, list[RateRecord]]:
         if date_str == today:
             records = fetch_reference_rates(date_str, page_size=100)
         else:

@@ -1,3 +1,5 @@
+"""Interface de linha de comando do b3-selic-pre."""
+
 import argparse
 import sys
 from datetime import datetime, timezone
@@ -13,7 +15,8 @@ from b3_selic_pre.infrastructure.desktop import create_shortcut
 from b3_selic_pre.presentation.gui import launch_gui
 
 
-def parse_args(argv=None):
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Interpreta os argumentos da linha de comando e retorna as opções analisadas."""
     parser = argparse.ArgumentParser(
         description="Consulta taxas referenciais SELIC Pré na B3."
     )
@@ -58,7 +61,8 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
+    """Ponto de entrada da CLI: despacha para GUI, atalho ou impressão das taxas."""
     if argv is None:
         argv = sys.argv[1:]
     if len(argv) == 0:

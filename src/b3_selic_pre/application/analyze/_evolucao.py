@@ -10,6 +10,11 @@ def extrair_deltas(
     current_records: list[RateRecord],
     previous_records: list[RateRecord],
 ) -> tuple[float, float, float, float]:
+    """Calcula os deltas de curto/longo prazo, da inclinação e do juro real.
+
+    As taxas são convertidas de string para float normalizando a vírgula, e os
+    deltas são expressos em pontos-base (bps) entre as duas datas comparadas.
+    """
     current_rates = [float(r.rate.replace(",", ".")) for r in current_records]
     previous_rates = [float(r.rate.replace(",", ".")) for r in previous_records]
     delta_short = (current_rates[0] - previous_rates[0]) * 100
@@ -24,6 +29,12 @@ def extrair_deltas(
 def classificar_movimento(
     delta_short: float, delta_long: float, config: EvolutionConfig
 ) -> str:
+    """Classifica o movimento geral da curva (Estável, Bear, Bull ou Twist).
+
+    Quando a variação em ambas as pontas ultrapassa o limiar configurado na
+    mesma direção o movimento é Bear (alta) ou Bull (baixa); direções opostas
+    geram Twist, e variações pequenas demais resultam em Estável.
+    """
     threshold = config.movement_threshold_bps
     if max(abs(delta_short), abs(delta_long)) < threshold:
         return "Estável"
@@ -41,6 +52,11 @@ def classificar_movimento(
 def classificar_slope_movement(
     delta_slope: float, config: EvolutionConfig
 ) -> str:
+    """Classifica a variação da inclinação em Steepening, Flattening ou Parallel Shift.
+
+    Usa o limiar de inclinação configurado: delta positivo indica inclinação da
+    curva, delta negativo indica achatamento, e variações pequenas são neutras.
+    """
     threshold = config.steepening_threshold_bps
     if delta_slope > threshold:
         return "Steepening"
@@ -50,6 +66,12 @@ def classificar_slope_movement(
 
 
 def classificar_regime(movimento: str, slope_movement: str) -> str:
+    """Combina movimento geral e variação da inclinação em um regime único.
+
+    Estados Estável e Twist são mantidos como estão; caso contrário o regime é
+    a concatenação do movimento geral com a variação da inclinação (ex.: Bear
+    Steepening).
+    """
     if movimento == "Estável":
         return "Estável"
     if movimento == "Twist":
@@ -60,6 +82,11 @@ def classificar_regime(movimento: str, slope_movement: str) -> str:
 def classificar_intensidade(
     delta_short: float, delta_long: float, config: EvolutionConfig
 ) -> str:
+    """Classifica a intensidade do movimento pela maior variação entre as pontas.
+
+    Compara a variação máxima absoluta com as faixas de intensidade configuradas
+    (muito fraca, fraca, moderada, forte e muito forte).
+    """
     max_abs = max(abs(delta_short), abs(delta_long))
     if max_abs <= config.very_weak_max:
         return "Muito Fraca"
@@ -75,6 +102,11 @@ def classificar_intensidade(
 def classificar_politica_monetaria(
     delta_real: float, config: EvolutionConfig
 ) -> str:
+    """Traduz a variação do juro real em mensagem sobre a política monetária.
+
+    Deltas positivos indicam política mais restritiva e deltas negativos
+    indicam política menos restritiva, conforme os limiares configurados.
+    """
     if delta_real > config.highly_restrictive_min:
         return "Mercado passou a precificar política mais restritiva"
     if delta_real > config.slightly_restrictive_min:
@@ -91,6 +123,11 @@ def classificar_politica_monetaria(
 def classificar_premio_prazo(
     delta_slope: float, config: EvolutionConfig
 ) -> str:
+    """Descreve a variação do prêmio de prazo conforme o delta da inclinação.
+
+    Deltas positivos aumentam o prêmio de prazo e deltas negativos o reduzem,
+    sempre usando os limiares de aumento e redução definidos na configuração.
+    """
     if delta_slope > config.significantly_increased_min:
         return "Prêmio de prazo aumentou significativamente"
     if delta_slope > config.increased_min:
@@ -105,6 +142,11 @@ def classificar_premio_prazo(
 
 
 def derivar_direcao_geral(regime: str, intensidade: str) -> str:
+    """Deriva a mensagem de direção geral dos juros a partir do regime e intensidade.
+
+    Regimes Bear e Bull são convertidos em mensagens de revisão altista ou
+    baixista, com tratamento especial para intensidade muito fraca.
+    """
     if regime == "Estável":
         return "→ Estrutura a Juros Praticamente Estável"
     if regime == "Twist":
@@ -122,6 +164,8 @@ def derivar_direcao_geral(regime: str, intensidade: str) -> str:
 
 @dataclass
 class EvolutionReport:
+    """Relatório da evolução da curva entre duas datas com mensagens e deltas."""
+
     statements: list[str] = field(default_factory=list)
     delta_short_bps: float = 0.0
     delta_long_bps: float = 0.0
@@ -140,6 +184,12 @@ def analyze_evolution(
     previous: list[RateRecord],
     config: CurvaJurosConfig | None = None,
 ) -> EvolutionReport | None:
+    """Analisa a evolução da curva entre as duas datas e monta o relatório final.
+
+    Sem dados anteriores retorna ``None``. Caso contrário classifica movimento,
+    regime, intensidade, política monetária e prêmio de prazo, devolvendo um
+    :class:`EvolutionReport` com todas as mensagens e deltas calculados.
+    """
     if not previous:
         return None
 

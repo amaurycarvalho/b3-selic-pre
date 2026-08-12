@@ -1,3 +1,5 @@
+"""Cálculo dos indicadores e classificações do resumo executivo da curva SELIC."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -8,6 +10,8 @@ from b3_selic_pre.domain.models import RateRecord
 
 @dataclass
 class AnalysisReport:
+    """Relatório consolidado com afirmações, pontuação e rótulo da análise."""
+
     statements: list[str] = field(default_factory=list)
     score: int = 0
     score_label: str = ""
@@ -15,6 +19,8 @@ class AnalysisReport:
 
 @dataclass
 class Indicadores:
+    """Indicadores da curva: taxas de curto/longo prazo, inclinação e juro real."""
+
     taxa_curta: float
     taxa_longa: float
     inclinacao_bps: float
@@ -24,6 +30,7 @@ class Indicadores:
 def extrair_indicadores(
     records: list[RateRecord], config: CurvaJurosConfig
 ) -> Indicadores:
+    """Extrai os indicadores da curva a partir das taxas dos registros."""
     rates = [float(r.rate.replace(",", ".")) for r in records]
     taxa_curta = rates[0]
     taxa_longa = rates[-1]
@@ -38,6 +45,7 @@ def extrair_indicadores(
 
 
 def classificar_nominal(taxa_curta: float, config: CurvaJurosConfig) -> str:
+    """Classifica o nível nominal da taxa curta conforme as faixas configuradas."""
     f = config.faixas_nominais
     if taxa_curta < f[0]:
         return "Muito Baixos"
@@ -51,6 +59,7 @@ def classificar_nominal(taxa_curta: float, config: CurvaJurosConfig) -> str:
 
 
 def classificar_restricao(juro_real: float, config: CurvaJurosConfig) -> str:
+    """Classifica o grau de restrição da política monetária pelo juro real."""
     f = config.faixas_juro_real
     if juro_real < f[0]:
         return "Expansionista"
@@ -62,6 +71,7 @@ def classificar_restricao(juro_real: float, config: CurvaJurosConfig) -> str:
 
 
 def classificar_premio(inclinacao_bps: float, config: CurvaJurosConfig) -> str:
+    """Classifica o prêmio de risco da curva conforme a inclinação em pontos-base."""
     if inclinacao_bps < 20:
         return "Muito Baixo"
     if inclinacao_bps < 50:
@@ -74,6 +84,7 @@ def classificar_premio(inclinacao_bps: float, config: CurvaJurosConfig) -> str:
 
 
 def classificar_inclinacao(inclinacao_bps: float) -> str:
+    """Classifica a inclinação da curva de juros em pontos-base."""
     if inclinacao_bps < 10:
         return "Quase Plana"
     if inclinacao_bps < 30:
@@ -90,6 +101,7 @@ def calcular_estabilidade(
     records: list[RateRecord],
     config: CurvaJurosConfig,
 ) -> dict | None:
+    """Calcula a estabilidade da curva a partir do desvio médio das inclinações."""
     if not historical_data or len(historical_data) < config.stability_window:
         return _estabilidade_fallback(config)
 
@@ -118,6 +130,11 @@ def calcular_estabilidade(
 
 
 def _estabilidade_fallback(config: CurvaJurosConfig) -> dict | None:
+    """Retorna uma estimativa de estabilidade quando o histórico é insuficiente.
+
+    Usa o desvio médio padrão configurado quando ``stability_fallback`` está
+    habilitado; retorna ``None`` quando a indisponibilidade é a regra.
+    """
     if config.stability_fallback == "unavailable":
         return None
     if config.stability_fallback == "auto":
@@ -129,7 +146,8 @@ def _estabilidade_fallback(config: CurvaJurosConfig) -> dict | None:
 
 def _classificar_estabilidade(
     deviation_bps: float, config: CurvaJurosConfig, estimado: bool = False
-) -> dict:
+) -> dict[str, object]:
+    """Classifica a estabilidade em níveis a partir do desvio médio em pontos-base."""
     f = config.faixas_estabilidade
     if deviation_bps < f[0]:
         nivel = "Muito Alta"
@@ -145,6 +163,7 @@ def _classificar_estabilidade(
 
 
 def _calc_slope_from_records(records: list[RateRecord]) -> float | None:
+    """Calcula a inclinação da curva em pontos-base a partir dos registros."""
     if not records or len(records) < 2:
         return None
     rates = [float(r.rate.replace(",", ".")) for r in records]
@@ -156,6 +175,7 @@ def calcular_steepening(
     historical_data: dict[str, list[RateRecord]] | None,
     config: CurvaJurosConfig,
 ) -> dict | None:
+    """Calcula o steepening/flattening da curva comparando com a inclinação anterior."""
     current_slope = _calc_slope_from_records(records)
     if current_slope is None:
         return None
@@ -175,6 +195,7 @@ def calcular_steepening(
 
 
 def _steepening_fallback(current_slope: float, config: CurvaJurosConfig) -> dict | None:
+    """Retorna uma estimativa de steepening quando falta o histórico anterior."""
     if config.steepening_fallback == "unavailable":
         return None
     if config.steepening_fallback == "auto":
@@ -184,7 +205,8 @@ def _steepening_fallback(current_slope: float, config: CurvaJurosConfig) -> dict
     return _classificar_steepening(delta, config)
 
 
-def _classificar_steepening(delta_bps: float, config: CurvaJurosConfig) -> dict:
+def _classificar_steepening(delta_bps: float, config: CurvaJurosConfig) -> dict[str, object]:
+    """Classifica a magnitude e a direção da variação da inclinação da curva."""
     s = config.steepening_small_bps
     m = config.steepening_medium_bps
     l_val = config.steepening_large_bps

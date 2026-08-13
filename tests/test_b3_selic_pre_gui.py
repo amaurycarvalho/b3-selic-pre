@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
 from b3_selic_pre.application.use_cases import consolidate_by_year, default_reference_date
 from b3_selic_pre.domain.models import RateRecord
@@ -19,6 +21,13 @@ def _settings_patch():
     )
 
 
+def _client_patch():
+    return mock.patch(
+        "b3_selic_pre.presentation.gui.app.CachedB3Client",
+        return_value=mock.Mock(),
+    )
+
+
 class _FastSelicPreApp(SelicPreApp):
     """App que usa um Entry simples no lugar de tkcalendar.DateEntry."""
 
@@ -26,6 +35,7 @@ class _FastSelicPreApp(SelicPreApp):
         return ttk.Entry(parent, textvariable=self.date_var, width=14)
 
 
+@pytest.mark.slow
 class SelicPreAppTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -38,10 +48,13 @@ class SelicPreAppTest(unittest.TestCase):
         cls.root.withdraw()
         cls._settings_patch = _settings_patch()
         cls._settings_patch.start()
+        cls._client_patch = _client_patch()
+        cls._client_patch.start()
         cls.app = _FastSelicPreApp(cls.root)
 
     @classmethod
     def tearDownClass(cls):
+        cls._client_patch.stop()
         cls._settings_patch.stop()
         cls.root.destroy()
 
@@ -273,6 +286,7 @@ class SelicPreAppTest(unittest.TestCase):
         mock_3d.assert_called_once()
 
 
+@pytest.mark.slow
 class SelicPreAppShortcutTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -287,6 +301,8 @@ class SelicPreAppShortcutTest(unittest.TestCase):
         cls.root_yes.withdraw()
         cls._settings_patch = _settings_patch()
         cls._settings_patch.start()
+        cls._client_patch = _client_patch()
+        cls._client_patch.start()
         with mock.patch(
             "b3_selic_pre.presentation.gui.app.shortcut_exists",
             return_value=False,
@@ -307,6 +323,7 @@ class SelicPreAppShortcutTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        cls._client_patch.stop()
         cls._settings_patch.stop()
         cls.root_no.destroy()
         cls.root_yes.destroy()

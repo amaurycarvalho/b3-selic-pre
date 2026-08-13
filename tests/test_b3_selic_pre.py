@@ -1,5 +1,8 @@
 import base64
 import json
+import os
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
@@ -381,11 +384,14 @@ class B3SelicPreTest(unittest.TestCase):
         ]
         date_rates = {"2026-06-17": records, "2026-06-03": records}
         csv_out = format_evolution_csv(date_rates)
-        self.assertIn("DATA;ANO;TAXA_MEDIA", csv_out)
-        self.assertIn("2026-06-03;0;14.65", csv_out)
-        self.assertIn("2026-06-03;1;14.50", csv_out)
-        self.assertIn("2026-06-17;0;14.65", csv_out)
-        self.assertIn("2026-06-17;1;14.50", csv_out)
+        self.assertEqual(
+            csv_out,
+            "DATA;ANO;TAXA_MEDIA\n"
+            "2026-06-03;0;14.65\n"
+            "2026-06-03;1;14.50\n"
+            "2026-06-17;0;14.65\n"
+            "2026-06-17;1;14.50\n",
+        )
 
     def test_format_records_csv_includes_headers_and_rows(self):
         text = format_records_csv(
@@ -667,12 +673,141 @@ class ShortcutTest(unittest.TestCase):
             result = _detect_desktop_dir()
             self.assertTrue(result.endswith("/Desktop"))
 
+    def test_detect_desktop_dir_user_dirs_parsing(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/Área de Trabalho"\n'
+                           'XDG_DOWNLOAD_DIR="$HOME/Downloads"\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Área de Trabalho"))
+
+    def test_detect_desktop_dir_user_dirs_no_quotes(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR=$HOME/Desktop\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_detect_desktop_dir_user_dirs_empty_value(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR=\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_detect_desktop_dir_xdg_success_skips_user_dirs(self):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "/home/user/Desktop"
+            result = _detect_desktop_dir()
+            self.assertEqual(result, "/home/user/Desktop")
+
+    def test_detect_desktop_dir_subprocess_arguments(self):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "/home/user/Desktop"
+            _detect_desktop_dir()
+        mock_run.assert_called_once_with(
+            ["xdg-user-dir", "DESKTOP"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+
+    def test_detect_desktop_dir_xdg_timeout_falls_back(self):
+        def fake_run(cmd, **kw):
+            raise subprocess.TimeoutExpired(cmd, timeout=5)
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=False):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_detect_desktop_dir_xdg_empty_stdout_uses_user_dirs(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/Desktop"\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/Desktop"))
+
+    def test_detect_desktop_dir_uses_expanded_user_dirs_path(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        seen = {}
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True) as mock_isfile, \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/Desktop"\n')):
+            _detect_desktop_dir()
+        seen = [c[0][0] for c in mock_isfile.call_args_list]
+        self.assertIn(
+            os.path.expanduser("~/.config/user-dirs.dirs"), seen
+        )
+
+    def test_detect_desktop_dir_opens_expanded_user_dirs(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/Desktop"\n')) as mock_open:
+            _detect_desktop_dir()
+        mock_open.assert_called_once_with(
+            os.path.expanduser("~/.config/user-dirs.dirs")
+        )
+
+    def test_detect_desktop_dir_value_with_equals_sign(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/My=Folder"\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/My=Folder"))
+
+    def test_detect_desktop_dir_value_preserves_trailing_x(self):
+        def fake_run(cmd, **kw):
+            raise FileNotFoundError()
+        with mock.patch("subprocess.run", fake_run), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("builtins.open", mock.mock_open(
+                 read_data='XDG_DESKTOP_DIR="$HOME/MyFolderX"\n')):
+            result = _detect_desktop_dir()
+            self.assertTrue(result.endswith("/MyFolderX"))
+
     def test_resolve_executable_script_mode(self):
         with mock.patch("sys.frozen", False, create=True), \
              mock.patch("sys.argv", ["/app/b3_selic_pre.py"]), \
              mock.patch("sys.executable", "/usr/bin/python3"):
             result = _resolve_executable()
             self.assertEqual(result, "/usr/bin/python3 /app/b3_selic_pre.py")
+
+    def test_resolve_executable_script_mode_no_frozen_attr(self):
+        had_frozen = hasattr(sys, "frozen")
+        saved = getattr(sys, "frozen", None)
+        if had_frozen:
+            delattr(sys, "frozen")
+        try:
+            with mock.patch("sys.argv", ["/app/b3_selic_pre.py"]), \
+                 mock.patch("sys.executable", "/usr/bin/python3"):
+                result = _resolve_executable()
+                self.assertEqual(result, "/usr/bin/python3 /app/b3_selic_pre.py")
+        finally:
+            if had_frozen:
+                setattr(sys, "frozen", saved)
 
     def test_resolve_executable_frozen_mode(self):
         with mock.patch("sys.frozen", True, create=True), \
@@ -720,6 +855,20 @@ class ShortcutTest(unittest.TestCase):
              mock.patch("os.path.isfile", return_value=False):
             self.assertFalse(shortcut_exists())
 
+    def test_shortcut_exists_uses_desktop_dir_in_path(self):
+        seen = []
+        from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
+
+        def fake_isfile(path):
+            seen.append(path)
+            return path == SHORTCUT_CHECK_PATH or path.endswith("/Desktop/b3-selic-pre.desktop")
+
+        with mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"), \
+             mock.patch("os.path.isfile", side_effect=fake_isfile):
+            self.assertTrue(shortcut_exists())
+        self.assertIn("/home/user/Desktop/b3-selic-pre.desktop", seen)
+
     def test_create_shortcut_writes_desktop_files(self):
         writes = {}
 
@@ -727,11 +876,11 @@ class ShortcutTest(unittest.TestCase):
             pass
 
         def fake_chmod(path, mode):
-            pass
+            writes.setdefault("chmods", []).append((path, mode))
 
         fake_open = mock.mock_open()
         fake_open.return_value.__enter__.return_value.write.side_effect = \
-            lambda content: writes.setdefault("content", content)
+            lambda content: writes.setdefault("contents", []).append(content)
 
         def fake_copy2(src, dst):
             writes["icon_copied"] = (src, dst)
@@ -749,10 +898,112 @@ class ShortcutTest(unittest.TestCase):
                         return_value="/home/user/Desktop"):
             create_shortcut()
         self.assertIn("icon_copied", writes)
-        self.assertIn("Name=Taxas Referenciais SELIC (B3)", writes["content"])
-        self.assertIn("Categories=Finance;Office;", writes["content"])
-        self.assertIn("/usr/bin/python3 /app/b3_selic_pre.py --gui",
-                      writes["content"])
+        expected = (
+            "[Desktop Entry]\n"
+            "Name=Taxas Referenciais SELIC (B3)\n"
+            "Comment=Consulta taxas referenciais SELIC Pré na B3\n"
+            "Exec=/usr/bin/python3 /app/b3_selic_pre.py --gui\n"
+            f"Icon={os.path.expanduser('~/.local/share/icons/b3-selic-pre.png')}\n"
+            "Terminal=false\n"
+            "Type=Application\n"
+            "Categories=Finance;Office;\n"
+            "StartupNotify=true\n"
+        )
+        self.assertEqual(writes["contents"][0], expected)
+        self.assertEqual(writes["contents"][1], expected)
+        self.assertEqual(len(writes["contents"]), 2)
+        for path, mode in writes["chmods"]:
+            self.assertEqual(mode, 0o755)
+            self.assertTrue(path.endswith("b3-selic-pre.desktop"))
+
+    def test_create_shortcut_copies_icon_with_full_destination(self):
+        writes = {}
+
+        def fake_makedirs(path, exist_ok=False):
+            pass
+
+        def fake_chmod(path, mode):
+            pass
+
+        fake_open = mock.mock_open()
+        fake_open.return_value.__enter__.return_value.write.side_effect = \
+            lambda content: writes.setdefault("contents", []).append(content)
+
+        def fake_copy2(src, dst):
+            writes["icon_copied"] = (src, dst)
+
+        with mock.patch("os.makedirs", fake_makedirs), \
+             mock.patch("builtins.open", fake_open), \
+             mock.patch("os.chmod", fake_chmod), \
+             mock.patch("shutil.copy2", fake_copy2), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._resolve_executable",
+                        return_value="/usr/bin/python3 /app/b3_selic_pre.py"), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._icon_source",
+                        return_value="/app/icons/b3_selic_pre.png"), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"):
+            create_shortcut()
+        self.assertEqual(
+            writes["icon_copied"],
+            ("/app/icons/b3_selic_pre.png",
+             os.path.join(os.path.expanduser("~/.local/share/icons"), "b3-selic-pre.png")),
+        )
+
+    def test_create_shortcut_os_call_arguments(self):
+        calls = {"makedirs": [], "isfile": [], "open": [], "chmod": []}
+
+        def fake_makedirs(path, exist_ok=False):
+            calls["makedirs"].append((path, exist_ok))
+
+        def fake_chmod(path, mode):
+            calls["chmod"].append((path, mode))
+
+        def fake_isfile(path):
+            calls["isfile"].append(path)
+            return True
+
+        fake_open = mock.mock_open()
+        fake_open.return_value.__enter__.return_value.write.side_effect = \
+            lambda content: None
+
+        def fake_open_factory(path, mode="r"):
+            calls["open"].append((path, mode))
+            return fake_open.return_value
+
+        fake_open.side_effect = fake_open_factory
+
+        with mock.patch("os.makedirs", fake_makedirs), \
+             mock.patch("builtins.open", fake_open), \
+             mock.patch("os.chmod", fake_chmod), \
+             mock.patch("shutil.copy2"), \
+             mock.patch("os.path.isfile", side_effect=fake_isfile), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._resolve_executable",
+                        return_value="/usr/bin/python3 /app/b3_selic_pre.py"), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._icon_source",
+                        return_value="/app/icons/b3_selic_pre.png"), \
+             mock.patch("b3_selic_pre.infrastructure.desktop._detect_desktop_dir",
+                        return_value="/home/user/Desktop"):
+            create_shortcut()
+        expected_icons = os.path.expanduser("~/.local/share/icons")
+        self.assertIn((expected_icons, True), calls["makedirs"])
+        self.assertIn(("/home/user/Desktop", True), calls["makedirs"])
+        self.assertIn(
+            (os.path.expanduser("~/.local/share/applications"), True),
+            calls["makedirs"],
+        )
+        self.assertIn("/app/icons/b3_selic_pre.png", calls["isfile"])
+        self.assertIn(
+            ("/home/user/Desktop/b3-selic-pre.desktop", "w"), calls["open"]
+        )
+        self.assertIn(
+            (os.path.expanduser(
+                "~/.local/share/applications/b3-selic-pre.desktop"), "w"),
+            calls["open"],
+        )
+        for path, mode in calls["chmod"]:
+            self.assertEqual(mode, 0o755)
+            self.assertTrue(path.endswith("b3-selic-pre.desktop"))
 
     def test_main_create_shortcut_calls_create_shortcut(self):
         with mock.patch("b3_selic_pre.presentation.cli.create_shortcut") as mock_cs, \

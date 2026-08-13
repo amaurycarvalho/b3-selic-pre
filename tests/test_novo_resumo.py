@@ -19,6 +19,16 @@ from b3_selic_pre.application.analyze._texto import (
     gerar_texto_restricao,
     gerar_texto_steepening,
 )
+from b3_selic_pre.application.analyze._resumo import (
+    _calc_slope_from_records,
+    _classificar_estabilidade,
+    _classificar_steepening,
+    _estabilidade_fallback,
+    _steepening_fallback,
+    calcular_estabilidade,
+    calcular_steepening,
+    classificar_premio,
+)
 from b3_selic_pre.domain.models import RateRecord
 
 
@@ -264,19 +274,34 @@ class TestCalcularSteepening(unittest.TestCase):
 
 class TestGerarTextoNominal(unittest.TestCase):
     def test_muito_baixos(self):
-        self.assertIn("historicamente baixos", gerar_texto_nominal("Muito Baixos"))
+        self.assertEqual(
+            gerar_texto_nominal("Muito Baixos"),
+            "O mercado precifica juros historicamente baixos.",
+        )
 
     def test_baixos(self):
-        self.assertIn("relativamente baixos", gerar_texto_nominal("Baixos"))
+        self.assertEqual(
+            gerar_texto_nominal("Baixos"),
+            "O mercado precifica juros relativamente baixos.",
+        )
 
     def test_moderados(self):
-        self.assertIn("média histórica", gerar_texto_nominal("Moderados"))
+        self.assertEqual(
+            gerar_texto_nominal("Moderados"),
+            "O mercado precifica juros próximos da média histórica.",
+        )
 
     def test_altos(self):
-        self.assertIn("juros elevados", gerar_texto_nominal("Altos"))
+        self.assertEqual(
+            gerar_texto_nominal("Altos"),
+            "O mercado precifica juros elevados.",
+        )
 
     def test_muito_altos(self):
-        self.assertIn("maiores níveis", gerar_texto_nominal("Muito Altos"))
+        self.assertEqual(
+            gerar_texto_nominal("Muito Altos"),
+            "O mercado precifica juros entre os maiores níveis observados.",
+        )
 
     def test_unknown_returns_empty(self):
         self.assertEqual(gerar_texto_nominal("Desconhecido"), "")
@@ -284,53 +309,80 @@ class TestGerarTextoNominal(unittest.TestCase):
 
 class TestGerarTextoRestricao(unittest.TestCase):
     def test_expansionista(self):
-        self.assertIn("estimula crédito", gerar_texto_restricao("Expansionista"))
+        self.assertEqual(
+            gerar_texto_restricao("Expansionista"),
+            "A política monetária estimula crédito e atividade.",
+        )
 
     def test_neutra(self):
-        self.assertIn("aproximadamente neutra", gerar_texto_restricao("Neutra"))
+        self.assertEqual(
+            gerar_texto_restricao("Neutra"),
+            "A política monetária é aproximadamente neutra.",
+        )
 
     def test_restritiva(self):
-        self.assertIn("conter pressões", gerar_texto_restricao("Restritiva"))
+        self.assertEqual(
+            gerar_texto_restricao("Restritiva"),
+            "A política monetária busca conter pressões inflacionárias.",
+        )
 
     def test_muito_restritiva(self):
-        self.assertIn("controle da inflação", gerar_texto_restricao("Muito Restritiva"))
+        self.assertEqual(
+            gerar_texto_restricao("Muito Restritiva"),
+            "A política monetária permanece fortemente voltada ao controle da inflação.",
+        )
+
+    def test_unknown_returns_empty(self):
+        self.assertEqual(gerar_texto_restricao("Desconhecida"), "")
 
 
 class TestGerarTextoInclinacao(unittest.TestCase):
     def test_quase_plana(self):
-        self.assertIn("praticamente iguais", gerar_texto_inclinacao("Quase Plana"))
+        self.assertEqual(
+            gerar_texto_inclinacao("Quase Plana"),
+            "Os juros são praticamente iguais em todos os prazos, indicando forte consenso de que o nível atual deverá permanecer por um longo período.",
+        )
 
     def test_muito_plana(self):
-        self.assertIn("pequena diferença", gerar_texto_inclinacao("Muito Plana"))
+        self.assertEqual(
+            gerar_texto_inclinacao("Muito Plana"),
+            "A pequena diferença entre os vencimentos curtos e longos indica que os investidores esperam a manutenção desse nível de juros por um período prolongado, sem antecipar mudanças significativas na política monetária.",
+        )
 
     def test_plana(self):
-        self.assertIn("ligeiramente acima", gerar_texto_inclinacao("Plana"))
+        self.assertEqual(
+            gerar_texto_inclinacao("Plana"),
+            "Os juros de longo prazo permanecem ligeiramente acima dos de curto prazo, sugerindo expectativa de estabilidade da política monetária com um pequeno prêmio para prazos maiores.",
+        )
 
     def test_moderadamente_inclinada(self):
-        self.assertIn("prêmio moderado", gerar_texto_inclinacao("Moderadamente Inclinada"))
+        self.assertEqual(
+            gerar_texto_inclinacao("Moderadamente Inclinada"),
+            "Os investidores exigem um prêmio moderado para aplicações de longo prazo, refletindo alguma incerteza sobre a evolução da inflação e dos juros nos próximos anos.",
+        )
 
     def test_muito_inclinada(self):
-        self.assertIn("prêmio elevado", gerar_texto_inclinacao("Muito Inclinada"))
+        self.assertEqual(
+            gerar_texto_inclinacao("Muito Inclinada"),
+            "Os juros aumentam significativamente conforme o prazo, indicando que o mercado exige um prêmio elevado para aplicações longas devido às incertezas sobre inflação, política monetária e riscos econômicos futuros.",
+        )
+
+    def test_unknown_returns_empty(self):
+        self.assertEqual(gerar_texto_inclinacao("Desconhecida"), "")
 
 
 class TestGerarTextoSteepening(unittest.TestCase):
     def test_steepening_format(self):
         text = gerar_texto_steepening("Steepening", "Moderado", 18.0)
-        self.assertIn("▲", text)
-        self.assertIn("Steepening", text)
-        self.assertIn("Moderado", text)
-        self.assertIn("18 bps", text)
+        self.assertEqual(text, "▲ Steepening Moderado (+18 bps)")
 
     def test_flattening_format(self):
         text = gerar_texto_steepening("Flattening", "Forte", -30.0)
-        self.assertIn("▼", text)
-        self.assertIn("Flattening", text)
-        self.assertIn("Forte", text)
-        self.assertIn("30 bps", text)
+        self.assertEqual(text, "▼ Flattening Forte (30 bps)")
 
     def test_estavel(self):
         text = gerar_texto_steepening("Estavel", "Nenhuma", 0.0)
-        self.assertIn("Sem alteração relevante", text)
+        self.assertEqual(text, "Sem alteração relevante na última atualização.")
 
 
 class TestMontarResumoExecutivo(unittest.TestCase):
@@ -364,6 +416,78 @@ class TestMontarResumoExecutivo(unittest.TestCase):
     def test_nominal_content(self):
         blocos = montar_resumo_executivo(self.indicadores, self.config)
         self.assertIn("Muito Altos", blocos["Nível Nominal"])
+
+    def test_nominal_content_exact(self):
+        blocos = montar_resumo_executivo(self.indicadores, self.config)
+        self.assertEqual(
+            blocos["Nível Nominal"],
+            "Nível Nominal\n"
+            "● Muito Altos (14.25%)\n"
+            "O mercado precifica juros entre os maiores níveis observados.",
+        )
+
+    def test_politica_monetaria_content_exact(self):
+        blocos = montar_resumo_executivo(self.indicadores, self.config)
+        self.assertEqual(
+            blocos["Política Monetária"],
+            "Política Monetária\n"
+            "● Muito Restritiva (juro real: 11.25%)\n"
+            "A política monetária permanece fortemente voltada ao controle da inflação.",
+        )
+
+    def test_inclinacao_content_exact(self):
+        blocos = montar_resumo_executivo(self.indicadores, self.config)
+        self.assertEqual(
+            blocos["Inclinação"],
+            "Inclinação\n"
+            "● Moderadamente Inclinada (75 bps)\n"
+            "Os investidores exigem um prêmio moderado para aplicações de longo prazo, refletindo alguma incerteza sobre a evolução da inflação e dos juros nos próximos anos.",
+        )
+
+    def test_premio_de_prazo_content_exact(self):
+        blocos = montar_resumo_executivo(self.indicadores, self.config)
+        self.assertEqual(
+            blocos["Prêmio de Prazo"],
+            "Prêmio de Prazo\n"
+            "● Normal (75 bps)",
+        )
+
+    def test_mensagem_do_mercado_content_exact(self):
+        blocos = montar_resumo_executivo(self.indicadores, self.config)
+        self.assertEqual(
+            blocos["Mensagem do Mercado"],
+            "Mensagem do Mercado\n"
+            "O mercado precifica juros entre os maiores níveis observados. "
+            "A política monetária permanece fortemente voltada ao controle da inflação. "
+            "Os investidores exigem um prêmio moderado para aplicações de longo prazo, refletindo alguma incerteza sobre a evolução da inflação e dos juros nos próximos anos.",
+        )
+
+    def test_estabilidade_estimada_content(self):
+        estabilidade = {"deviation_bps": 8.0, "nivel": "Alta", "estimado": True}
+        blocos = montar_resumo_executivo(self.indicadores, self.config, estabilidade)
+        self.assertEqual(
+            blocos["Estabilidade das Expectativas"],
+            "Estabilidade das Expectativas\n"
+            "● Alta (estimado por ausência de histórico)",
+        )
+
+    def test_estabilidade_real_content(self):
+        estabilidade = {"deviation_bps": 8.0, "nivel": "Alta", "estimado": False}
+        blocos = montar_resumo_executivo(self.indicadores, self.config, estabilidade)
+        self.assertEqual(
+            blocos["Estabilidade das Expectativas"],
+            "Estabilidade das Expectativas\n"
+            "● Alta (desvio médio: 8.0 bps)",
+        )
+
+    def test_ultima_mudanca_content(self):
+        steepening = {"direcao": "Steepening", "delta_bps": 12.0, "magnitude": "Moderado"}
+        blocos = montar_resumo_executivo(self.indicadores, self.config, None, steepening)
+        self.assertEqual(
+            blocos["Última Mudança"],
+            "Última Mudança\n"
+            "▲ Steepening Moderado (+12 bps)",
+        )
 
     def test_mensagem_content(self):
         blocos = montar_resumo_executivo(self.indicadores, self.config)
@@ -406,6 +530,201 @@ class TestAnalyzeIntegration(unittest.TestCase):
         }
         report = analyze(records, historical_data=historical)
         self.assertGreater(len(report.statements), 0)
+
+
+class TestClassificarEstabilidade(unittest.TestCase):
+    def setUp(self):
+        self.config = CurvaJurosConfig()
+
+    def test_muito_alta(self):
+        result = _classificar_estabilidade(1.0, self.config)
+        self.assertEqual(result["nivel"], "Muito Alta")
+        self.assertFalse(result["estimado"])
+
+    def test_alta(self):
+        result = _classificar_estabilidade(5.0, self.config)
+        self.assertEqual(result["nivel"], "Alta")
+
+    def test_media(self):
+        result = _classificar_estabilidade(10.0, self.config)
+        self.assertEqual(result["nivel"], "Média")
+
+    def test_baixa(self):
+        result = _classificar_estabilidade(20.0, self.config)
+        self.assertEqual(result["nivel"], "Baixa")
+
+    def test_muito_baixa(self):
+        result = _classificar_estabilidade(35.0, self.config)
+        self.assertEqual(result["nivel"], "Muito Baixa")
+
+    def test_estimado_flag(self):
+        result = _classificar_estabilidade(5.0, self.config, estimado=True)
+        self.assertTrue(result["estimado"])
+
+    def test_deviation_rounded_to_two_decimals(self):
+        result = _classificar_estabilidade(4.999, self.config)
+        self.assertEqual(result["deviation_bps"], 5.0)
+
+
+class TestClassificarSteepening(unittest.TestCase):
+    def setUp(self):
+        self.config = CurvaJurosConfig()
+
+    def test_leve(self):
+        result = _classificar_steepening(9.0, self.config)
+        self.assertEqual(result["magnitude"], "Leve")
+        self.assertEqual(result["direcao"], "Steepening")
+
+    def test_moderado(self):
+        result = _classificar_steepening(10.0, self.config)
+        self.assertEqual(result["magnitude"], "Moderado")
+
+    def test_forte(self):
+        result = _classificar_steepening(20.0, self.config)
+        self.assertEqual(result["magnitude"], "Forte")
+
+    def test_muito_forte(self):
+        result = _classificar_steepening(40.0, self.config)
+        self.assertEqual(result["magnitude"], "Muito Forte")
+
+    def test_estavel(self):
+        result = _classificar_steepening(0.0, self.config)
+        self.assertEqual(result, {"direcao": "Estavel", "delta_bps": 0.0, "magnitude": "Nenhuma"})
+
+    def test_flattening_direction(self):
+        result = _classificar_steepening(-10.0, self.config)
+        self.assertEqual(result["direcao"], "Flattening")
+        self.assertEqual(result["magnitude"], "Moderado")
+
+    def test_delta_rounded_to_two_decimals(self):
+        result = _classificar_steepening(10.004, self.config)
+        self.assertEqual(result["delta_bps"], 10.0)
+
+
+class TestCalcSlopeFromRecords(unittest.TestCase):
+    def test_empty_returns_none(self):
+        self.assertIsNone(_calc_slope_from_records([]))
+
+    def test_single_record_returns_none(self):
+        records = [RateRecord(day252=1, day360=1, rate="14.65")]
+        self.assertIsNone(_calc_slope_from_records(records))
+
+    def test_two_records(self):
+        records = [
+            RateRecord(day252=1, day360=1, rate="14.00"),
+            RateRecord(day252=2, day360=2, rate="15.00"),
+        ]
+        self.assertEqual(_calc_slope_from_records(records), 100.0)
+
+    def test_comma_decimal(self):
+        records = [
+            RateRecord(day252=1, day360=1, rate="14,00"),
+            RateRecord(day252=2, day360=2, rate="15,00"),
+        ]
+        self.assertEqual(_calc_slope_from_records(records), 100.0)
+
+
+class TestEstabilidadeFallback(unittest.TestCase):
+    def test_default_fallback_returns_estimado(self):
+        config = CurvaJurosConfig(stability_fallback="default")
+        result = _estabilidade_fallback(config)
+        self.assertIsNotNone(result)
+        self.assertTrue(result["estimado"])
+        self.assertAlmostEqual(result["deviation_bps"], 15.0)
+
+    def test_auto_fallback(self):
+        config = CurvaJurosConfig(stability_fallback="auto")
+        result = _estabilidade_fallback(config)
+        self.assertIsNotNone(result)
+        self.assertTrue(result["estimado"])
+
+    def test_unavailable_returns_none(self):
+        config = CurvaJurosConfig(stability_fallback="unavailable")
+        self.assertIsNone(_estabilidade_fallback(config))
+
+
+class TestSteepeningFallback(unittest.TestCase):
+    def test_auto_uses_delta_division(self):
+        config = CurvaJurosConfig(steepening_fallback="auto")
+        result = _steepening_fallback(50.0, config)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result["delta_bps"], 10.0)
+
+    def test_default_uses_estimated_delta(self):
+        config = CurvaJurosConfig(steepening_fallback="default")
+        result = _steepening_fallback(50.0, config)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result["delta_bps"], 15.0)
+
+    def test_unavailable_returns_none(self):
+        config = CurvaJurosConfig(steepening_fallback="unavailable")
+        self.assertIsNone(_steepening_fallback(50.0, config))
+
+
+class TestCalcularEstabilidadeDetalhado(unittest.TestCase):
+    def test_breaks_loop_on_empty_window_date(self):
+        historical = {
+            "2024-01-01": [],
+            "2024-01-02": _make_records(14.0, 14.5, 15.0, 15.5),
+            "2024-01-03": _make_records(14.1, 14.6, 15.1, 15.6),
+            "2024-01-04": _make_records(14.2, 14.7, 15.2, 15.7),
+        }
+        config = CurvaJurosConfig(stability_window=4, stability_fallback="default")
+        result = calcular_estabilidade(historical, _make_records(14.0, 14.5), config)
+        self.assertIsNotNone(result)
+        self.assertFalse(result["estimado"])
+
+    def test_insufficient_slopes_uses_fallback(self):
+        historical = {
+            "2024-01-01": _make_records(14.0, 14.5),
+            "2024-01-02": [RateRecord(day252=1, day360=1, rate="14.1")],
+        }
+        config = CurvaJurosConfig(stability_window=2, stability_fallback="default")
+        result = calcular_estabilidade(historical, _make_records(14.0, 14.5), config)
+        self.assertIsNotNone(result)
+        self.assertTrue(result["estimado"])
+
+    def test_uses_slope_delta_between_first_and_last(self):
+        historical = {
+            "2024-01-01": _make_records(14.0, 14.5, 15.0),
+            "2024-01-02": _make_records(14.0, 14.5, 15.0),
+            "2024-01-03": _make_records(14.0, 14.5, 15.0),
+            "2024-01-04": _make_records(14.0, 14.5, 15.0),
+        }
+        config = CurvaJurosConfig(stability_window=4, stability_fallback="default")
+        result = calcular_estabilidade(historical, _make_records(14.0, 14.5), config)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result["deviation_bps"], 0.0)
+        self.assertFalse(result["estimado"])
+
+    def test_non_estimado_when_sufficient_history(self):
+        historical = {
+            "2024-01-01": _make_records(14.0, 14.5, 15.0),
+            "2024-01-02": _make_records(14.1, 14.6, 15.1),
+            "2024-01-03": _make_records(14.2, 14.7, 15.2),
+            "2024-01-04": _make_records(14.3, 14.8, 15.3),
+        }
+        config = CurvaJurosConfig(stability_window=4, stability_fallback="default")
+        result = calcular_estabilidade(historical, _make_records(14.0, 14.5), config)
+        self.assertIsNotNone(result)
+        self.assertFalse(result["estimado"])
+
+
+class TestClassificarPremioBoundaries(unittest.TestCase):
+    def setUp(self):
+        self.config = CurvaJurosConfig()
+
+    def test_boundary_20(self):
+        self.assertEqual(classificar_premio(20, self.config), "Baixo")
+
+    def test_boundary_50(self):
+        self.assertEqual(classificar_premio(50, self.config), "Normal")
+
+    def test_boundary_90(self):
+        self.assertEqual(classificar_premio(90, self.config), "Elevado")
+
+    def test_boundary_150(self):
+        self.assertEqual(classificar_premio(150, self.config), "Muito Elevado")
 
 
 if __name__ == "__main__":

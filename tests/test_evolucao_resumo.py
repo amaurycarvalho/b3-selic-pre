@@ -107,6 +107,61 @@ class TestClassificarMovimento(unittest.TestCase):
             classificar_movimento(-6.0, -7.0, self.config), "Bull"
         )
 
+    def test_bear_delta_short_exact(self):
+        self.assertEqual(
+            classificar_movimento(5.0, 6.0, self.config), "Estável"
+        )
+
+    def test_bear_delta_long_exact(self):
+        self.assertEqual(
+            classificar_movimento(6.0, 5.0, self.config), "Estável"
+        )
+
+    def test_bull_delta_short_exact(self):
+        self.assertEqual(
+            classificar_movimento(-5.0, -6.0, self.config), "Estável"
+        )
+
+    def test_bull_delta_long_exact(self):
+        self.assertEqual(
+            classificar_movimento(-6.0, -5.0, self.config), "Estável"
+        )
+
+    def test_bull_delta_short_above_threshold_sign_flip(self):
+        self.assertEqual(
+            classificar_movimento(-3.0, -6.0, self.config), "Estável"
+        )
+
+    def test_bull_delta_long_below_threshold(self):
+        self.assertEqual(
+            classificar_movimento(-6.0, -3.0, self.config), "Estável"
+        )
+
+    def test_twist_delta_short_exact(self):
+        self.assertEqual(
+            classificar_movimento(5.0, -6.0, self.config), "Estável"
+        )
+
+    def test_twist_delta_long_exact(self):
+        self.assertEqual(
+            classificar_movimento(6.0, -5.0, self.config), "Estável"
+        )
+
+    def test_twist_bear_short_bull_long_short_exact(self):
+        self.assertEqual(
+            classificar_movimento(-5.0, 6.0, self.config), "Estável"
+        )
+
+    def test_twist_bear_short_sign_flip(self):
+        self.assertEqual(
+            classificar_movimento(-3.0, 6.0, self.config), "Estável"
+        )
+
+    def test_twist_bear_long_exact(self):
+        self.assertEqual(
+            classificar_movimento(-6.0, 5.0, self.config), "Estável"
+        )
+
 
 class TestClassificarSlopeMovement(unittest.TestCase):
     def setUp(self):
@@ -231,6 +286,21 @@ class TestClassificarIntensidade(unittest.TestCase):
             classificar_intensidade(5.0, 5.0, self.config), "Muito Fraca"
         )
 
+    def test_boundary_weak_max_value(self):
+        self.assertEqual(
+            classificar_intensidade(15.0, 15.0, self.config), "Fraca"
+        )
+
+    def test_boundary_moderate_max_value(self):
+        self.assertEqual(
+            classificar_intensidade(30.0, 30.0, self.config), "Moderada"
+        )
+
+    def test_boundary_strong_max_value(self):
+        self.assertEqual(
+            classificar_intensidade(50.0, 50.0, self.config), "Forte"
+        )
+
 
 class TestClassificarPoliticaMonetaria(unittest.TestCase):
     def setUp(self):
@@ -281,6 +351,48 @@ class TestClassificarPoliticaMonetaria(unittest.TestCase):
             "Política praticamente inalterada",
         )
 
+    def test_boundary_highly_restrictive(self):
+        self.assertEqual(
+            classificar_politica_monetaria(20.0, self.config),
+            "Política ligeiramente mais restritiva",
+        )
+
+    def test_boundary_slightly_loose(self):
+        self.assertEqual(
+            classificar_politica_monetaria(-20.0, self.config),
+            "Política ligeiramente menos restritiva",
+        )
+
+    def test_boundary_slightly_restrictive_min(self):
+        self.assertEqual(
+            classificar_politica_monetaria(-5.0, self.config),
+            "Política praticamente inalterada",
+        )
+
+    def test_gap_config_negative_boundary(self):
+        config = EvolutionConfig(
+            highly_restrictive_min=20.0,
+            slightly_restrictive_min=8.0,
+            neutral_max=5.0,
+            slightly_loose_max=20.0,
+        )
+        self.assertEqual(
+            classificar_politica_monetaria(-8.0, config),
+            "Política praticamente inalterada",
+        )
+
+    def test_gap_config_abs_boundary(self):
+        config = EvolutionConfig(
+            highly_restrictive_min=5.0,
+            slightly_restrictive_min=3.0,
+            neutral_max=5.0,
+            slightly_loose_max=10.0,
+        )
+        self.assertEqual(
+            classificar_politica_monetaria(-5.0, config),
+            "Política praticamente inalterada",
+        )
+
 
 class TestClassificarPremioPrazo(unittest.TestCase):
     def setUp(self):
@@ -326,6 +438,24 @@ class TestClassificarPremioPrazo(unittest.TestCase):
             "Praticamente estável",
         )
 
+    def test_boundary_significantly_increased(self):
+        self.assertEqual(
+            classificar_premio_prazo(20.0, self.config),
+            "Prêmio aumentou",
+        )
+
+    def test_boundary_decreased(self):
+        self.assertEqual(
+            classificar_premio_prazo(-20.0, self.config),
+            "Prêmio diminuiu",
+        )
+
+    def test_boundary_increased_negative(self):
+        self.assertEqual(
+            classificar_premio_prazo(-10.0, self.config),
+            "Praticamente estável",
+        )
+
 
 class TestDerivarDirecaoGeral(unittest.TestCase):
     def test_bear_fraca(self):
@@ -368,6 +498,24 @@ class TestDerivarDirecaoGeral(unittest.TestCase):
         self.assertEqual(
             derivar_direcao_geral("Estável", "Muito Fraca"),
             "→ Estrutura a Juros Praticamente Estável",
+        )
+
+    def test_unknown_regime_falls_back(self):
+        self.assertEqual(
+            derivar_direcao_geral("Desconhecido", "Fraca"),
+            "→ Estrutura a Juros Praticamente Estável",
+        )
+
+    def test_bear_muito_fraca_exact(self):
+        self.assertEqual(
+            derivar_direcao_geral("Bear Steepening", "Muito Fraca"),
+            "→ Juros Marginalmente Mais Altos",
+        )
+
+    def test_bull_muito_fraca_exact(self):
+        self.assertEqual(
+            derivar_direcao_geral("Bull Steepening", "Muito Fraca"),
+            "→ Juros Marginalmente Mais Baixos",
         )
 
 
@@ -418,42 +566,92 @@ class TestTextoRegime(unittest.TestCase):
             "A curva permaneceu praticamente estável desde a última atualização.",
         )
 
+    def test_bear_steepening_exact(self):
+        self.assertEqual(
+            gerar_texto_regime("Bear Steepening"),
+            "O mercado revisou para cima toda a estrutura de juros, principalmente os vencimentos longos.",
+        )
+
+    def test_bear_flattening_exact(self):
+        self.assertEqual(
+            gerar_texto_regime("Bear Flattening"),
+            "O mercado revisou para cima toda a estrutura de juros, principalmente os vencimentos curtos.",
+        )
+
+    def test_bull_steepening_exact(self):
+        self.assertEqual(
+            gerar_texto_regime("Bull Steepening"),
+            "O mercado passou a esperar cortes de juros, sobretudo nos vencimentos curtos.",
+        )
+
+    def test_bull_flattening_exact(self):
+        self.assertEqual(
+            gerar_texto_regime("Bull Flattening"),
+            "O mercado reduziu as expectativas de juros, principalmente nos vencimentos longos.",
+        )
+
+    def test_parallel_shift_exact(self):
+        self.assertEqual(
+            gerar_texto_regime("Bear Parallel Shift"),
+            "O mercado alterou toda a estrutura de juros sem mudanças relevantes na inclinação.",
+        )
+        self.assertEqual(
+            gerar_texto_regime("Bull Parallel Shift"),
+            "O mercado alterou toda a estrutura de juros sem mudanças relevantes na inclinação.",
+        )
+
+    def test_unknown_regime_falls_back(self):
+        self.assertEqual(
+            gerar_texto_regime("Desconhecido"),
+            "A curva permaneceu praticamente estável desde a última atualização.",
+        )
+
 
 class TestTextoPolitica(unittest.TestCase):
     def test_highly_restrictive_prefix(self):
         result = gerar_texto_politica(
             "Mercado passou a precificar política mais restritiva", 25.0
         )
-        self.assertTrue(result.startswith("▲"))
-        self.assertIn("significativamente mais contracionista", result)
+        self.assertEqual(
+            result,
+            "▲ O mercado passou a precificar uma política monetária significativamente mais contracionista. (+25 bps)",
+        )
 
     def test_slightly_restrictive_prefix(self):
         result = gerar_texto_politica(
             "Política ligeiramente mais restritiva", 10.0
         )
-        self.assertTrue(result.startswith("▲"))
-        self.assertIn("elevou ligeiramente", result)
+        self.assertEqual(
+            result,
+            "▲ O mercado elevou ligeiramente a expectativa para os juros reais. (+10 bps)",
+        )
 
     def test_neutral_prefix(self):
         result = gerar_texto_politica(
             "Política praticamente inalterada", 3.0
         )
-        self.assertTrue(result.startswith("→"))
-        self.assertIn("praticamente inalterada", result)
+        self.assertEqual(
+            result,
+            "→ A percepção sobre a política monetária permaneceu praticamente inalterada. (+3 bps)",
+        )
 
     def test_loose_prefix(self):
         result = gerar_texto_politica(
             "Política ligeiramente menos restritiva", -10.0
         )
-        self.assertTrue(result.startswith("▼"))
-        self.assertIn("menos restritiva", result)
+        self.assertEqual(
+            result,
+            "▼ O mercado passou a esperar uma política monetária menos restritiva. (-10 bps)",
+        )
 
     def test_highly_loose_prefix(self):
         result = gerar_texto_politica(
             "Mercado passou a precificar política significativamente menos restritiva", -25.0
         )
-        self.assertTrue(result.startswith("▼"))
-        self.assertIn("significativamente menos contracionista", result)
+        self.assertEqual(
+            result,
+            "▼ O mercado passou a precificar uma política monetária significativamente menos contracionista. (-25 bps)",
+        )
 
     def test_formata_bps_positivo(self):
         result = gerar_texto_politica(
@@ -467,24 +665,42 @@ class TestTextoPolitica(unittest.TestCase):
         )
         self.assertIn("-10 bps", result)
 
+    def test_unknown_msg_passes_through(self):
+        result = gerar_texto_politica("Mensagem desconhecida", 10.0)
+        self.assertEqual(result, "▲ Mensagem desconhecida (+10 bps)")
+
+    def test_delta_zero_uses_plus_sign(self):
+        result = gerar_texto_politica("Mensagem", 0.0)
+        self.assertEqual(result, "→ Mensagem (+0 bps)")
+
 
 class TestTextoPremio(unittest.TestCase):
     def test_increased_prefix(self):
         result = gerar_texto_premio(
             "Prêmio de prazo aumentou significativamente", 25.0
         )
-        self.assertTrue(result.startswith("▲"))
-        self.assertIn("aumentou", result)
+        self.assertEqual(
+            result,
+            "▲ O prêmio exigido para aplicações de longo prazo aumentou.",
+        )
 
     def test_stable_prefix(self):
         result = gerar_texto_premio("Praticamente estável", 5.0)
-        self.assertTrue(result.startswith("→"))
-        self.assertIn("praticamente inalterado", result)
+        self.assertEqual(
+            result,
+            "→ O prêmio de prazo permaneceu praticamente inalterado.",
+        )
 
     def test_decreased_prefix(self):
         result = gerar_texto_premio("Forte redução do prêmio", -25.0)
-        self.assertTrue(result.startswith("▼"))
-        self.assertIn("diminuiu", result)
+        self.assertEqual(
+            result,
+            "▼ O prêmio exigido para aplicações longas diminuiu.",
+        )
+
+    def test_unknown_msg_passes_through(self):
+        result = gerar_texto_premio("Mensagem desconhecida", 15.0)
+        self.assertEqual(result, "▲ Mensagem desconhecida")
 
 
 class TestTextoIntensidade(unittest.TestCase):
@@ -517,6 +733,9 @@ class TestTextoIntensidade(unittest.TestCase):
             gerar_texto_intensidade("Muito Forte"),
             "A magnitude das alterações foi muito forte.",
         )
+
+    def test_unknown_returns_empty(self):
+        self.assertEqual(gerar_texto_intensidade("Desconhecida"), "")
 
 
 class TestTextoDirecao(unittest.TestCase):
@@ -566,6 +785,71 @@ class TestMontarEvolucaoResumo(unittest.TestCase):
         self.assertIn("Direção Geral", blocos[1])
         self.assertIn("Mensagem do Mercado", blocos[2])
 
+    def test_full_version_content_exact(self):
+        report = EvolutionReport(
+            regime="Bear Steepening",
+            intensity="Forte",
+            monetary_policy_msg="Mercado passou a precificar política mais restritiva",
+            term_premium_msg="Prêmio de prazo aumentou significativamente",
+            direction="↑ Revisão Altista dos Juros",
+            delta_real_bps=25.0,
+            delta_slope_bps=25.0,
+        )
+        blocos = montar_evolucao_resumo(report, self.config)
+        self.assertEqual(
+            blocos[0],
+            "Regime\n● Bear Steepening\n"
+            "O mercado revisou para cima toda a estrutura de juros, principalmente os vencimentos longos.",
+        )
+        self.assertEqual(
+            blocos[1],
+            "Política Monetária\n"
+            "▲ O mercado passou a precificar uma política monetária significativamente mais contracionista. (+25 bps)",
+        )
+        self.assertEqual(
+            blocos[2],
+            "Prêmio de Prazo\n"
+            "▲ O prêmio exigido para aplicações de longo prazo aumentou.",
+        )
+        self.assertEqual(
+            blocos[3],
+            "Intensidade\n● Forte\nA magnitude das alterações foi forte.",
+        )
+        self.assertEqual(blocos[4], "Direção Geral\n↑ Revisão Altista dos Juros")
+        self.assertEqual(
+            blocos[5],
+            "Mensagem do Mercado\n"
+            "O mercado revisou para cima toda a estrutura de juros, principalmente os vencimentos longos. "
+            "A magnitude das alterações foi forte. "
+            "▲ O mercado passou a precificar uma política monetária significativamente mais contracionista. (+25 bps) "
+            "▲ O prêmio exigido para aplicações de longo prazo aumentou.",
+        )
+
+    def test_estavel_version_content_exact(self):
+        report = EvolutionReport(
+            regime="Estável",
+            intensity="Muito Fraca",
+            monetary_policy_msg="Política praticamente inalterada",
+            term_premium_msg="Praticamente estável",
+            direction="→ Estrutura a Juros Praticamente Estável",
+            delta_real_bps=2.0,
+            delta_slope_bps=2.0,
+        )
+        blocos = montar_evolucao_resumo(report, self.config)
+        self.assertEqual(
+            blocos[0],
+            "Regime\n● Estável\n"
+            "A curva permaneceu praticamente estável desde a última atualização.",
+        )
+        self.assertEqual(blocos[1], "Direção Geral\n→ Estrutura a Juros Praticamente Estável")
+        self.assertEqual(
+            blocos[2],
+            "Mensagem do Mercado\n"
+            "A curva permaneceu praticamente estável desde a última atualização. "
+            "→ A percepção sobre a política monetária permaneceu praticamente inalterada. (+2 bps) "
+            "→ O prêmio de prazo permaneceu praticamente inalterado.",
+        )
+
 
 class TestAnalyzeEvolution(unittest.TestCase):
     def test_returns_none_with_empty_previous(self):
@@ -606,6 +890,26 @@ class TestAnalyzeEvolution(unittest.TestCase):
         self.assertEqual(result.regime, "Bear Parallel Shift")
         self.assertEqual(result.intensity, "Muito Forte")
         self.assertIn("mais restritiva", result.monetary_policy_msg)
+
+    def test_report_fields_precise(self):
+        current = _make_records(15.12355, 15.45678, 15.78901, 16.14295)
+        previous = _make_records(14.01112, 14.33456, 14.65789, 14.12397)
+        result = analyze_evolution(current, previous)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.delta_short_bps, 111.24)
+        self.assertEqual(result.delta_long_bps, 201.9)
+        self.assertEqual(result.delta_slope_bps, 90.65)
+        self.assertEqual(result.delta_real_bps, 111.24)
+        self.assertEqual(result.statements, [])
+        self.assertEqual(result.market_message, "")
+        self.assertEqual(result.regime, "Bear Steepening")
+        self.assertEqual(result.intensity, "Muito Forte")
+        self.assertEqual(
+            result.monetary_policy_msg,
+            "Mercado passou a precificar política mais restritiva",
+        )
+        self.assertEqual(result.term_premium_msg, "Prêmio de prazo aumentou significativamente")
+        self.assertEqual(result.direction, "↑ Revisão Altista dos Juros")
 
 
 if __name__ == "__main__":

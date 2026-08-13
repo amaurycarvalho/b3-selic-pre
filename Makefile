@@ -55,6 +55,10 @@ test: $(ACTIVATE)
 	@echo "Testing and code coverage..."
 	@$(PYTHON) -m pytest --tb=short --cov --cov-report=xml:coverage.xml --cov-report=term-missing --cov-fail-under=85
 
+test-slow: $(ACTIVATE)
+	@echo "Testing (slow scenarios)..."
+	@$(PYTHON) -m pytest -m "slow" --tb=short
+
 lint: $(ACTIVATE)
 	@echo "Linting..."
 	@$(BIN)/ruff check src/
@@ -95,7 +99,7 @@ mutation-stats: $(ACTIVATE)
 
 mutation-check: $(ACTIVATE)
 	@echo "Checking mutation tests..."
-	@$(PYTHON) scripts/check-mutation-score.py || exit 0
+	@$(PYTHON) scripts/check-mutation-score.py
 
 mutation-results: $(ACTIVATE)
 	@echo "Generating mutation tests results..."

@@ -4,38 +4,104 @@ from pathlib import Path
 from unittest import mock
 
 from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
-from b3_selic_pre.application.use_cases import consolidate_by_year
+from b3_selic_pre.application.use_cases import consolidate_by_year, default_reference_date
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.presentation.gui import SelicPreApp
 from b3_selic_pre.presentation.settings import Settings
 
+INITIAL_STATUS = "Informe uma data e clique em Buscar."
+
+
+def _settings_patch():
+    return mock.patch(
+        "b3_selic_pre.presentation.gui.app.Settings",
+        side_effect=lambda: Settings(path=Path(tempfile.mktemp(suffix=".json"))),
+    )
+
+
+class _FastSelicPreApp(SelicPreApp):
+    """App que usa um Entry simples no lugar de tkcalendar.DateEntry."""
+
+    def _create_date_entry(self, parent, tk, ttk):
+        return ttk.Entry(parent, textvariable=self.date_var, width=14)
+
 
 class SelicPreAppTest(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         import tkinter as tk
         from tkinter import TclError
         try:
-            self.root = tk.Tk()
+            cls.root = tk.Tk()
+        except TclError as exc:
+            raise unittest.SkipTest(f"tkinter display unavailable: {exc}") from exc
+        cls.root.withdraw()
+        cls._settings_patch = _settings_patch()
+        cls._settings_patch.start()
+        cls.app = _FastSelicPreApp(cls.root)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._settings_patch.stop()
+        cls.root.destroy()
+
+    def setUp(self):
+        self._reset_app_state()
+
+    def _reset_app_state(self):
+        self.app.records = []
+        self.app.historical_data = None
+        self.app._data_source = ""
+        self.app._historical_fetching = False
+        self.app._last_reference_date = None
+        if getattr(self.app, "_restore_after_id", None):
+            self.app.root.after_cancel(self.app._restore_after_id)
+            self.app._restore_after_id = None
+        if getattr(self.app, "_configure_after_id", None):
+            try:
+                self.app.root.after_cancel(self.app._configure_after_id)
+            except self.app.tk.TclError:
+                pass
+            self.app._configure_after_id = None
+        self.app.view_var.set("raw")
+        self.app.evolution_var.set(False)
+        self.app.var_3d.set(False)
+        self.app.sidebar_var.set(False)
+        if str(self.app.sidebar_frame) in self.app.pane.panes():
+            self.app.pane.forget(self.app.sidebar_frame)
+        self.app.date_var.set(default_reference_date())
+        self.app.status_var.set(INITIAL_STATUS)
+        self.app.statusbar_label.config(foreground=self.app._statusbar_default_fg)
+        self.app._set_ui_locked(False)
+        self.app.cb_3d.configure(state=self.app.tk.DISABLED)
+        self.app.figure.clear()
+        self.app._update_button_states()
+
+    def _make_real_app(self):
+        import tkinter as tk
+        from tkinter import TclError
+        try:
+            root = tk.Tk()
         except TclError as exc:
             self.skipTest(f"tkinter display unavailable: {exc}")
-        self.root.withdraw()
-        self._settings_patch = mock.patch(
-            "b3_selic_pre.presentation.gui.app.Settings",
-            return_value=Settings(path=Path(tempfile.mktemp(suffix=".json"))),
-        )
-        self._settings_patch.start()
-        self.app = SelicPreApp(self.root)
-
-    def tearDown(self):
-        self._settings_patch.stop()
-        self.root.destroy()
+        root.withdraw()
+        with mock.patch(
+            "b3_selic_pre.presentation.gui.app.shortcut_exists",
+            return_value=True,
+        ):
+            app = SelicPreApp(root)
+        return root, app
 
     def test_invalid_date_shows_validation_without_fetching(self):
-        self.app.date_var.set("10/06/2026")
-        with mock.patch.object(self.app._client, "fetch_reference_rates") as fetch:
-            self.app.fetch_rates()
-        fetch.assert_not_called()
-        self.assertIn("YYYY-MM-DD", self.app.status_var.get())
+        root, app = self._make_real_app()
+        try:
+            app.date_var.set("10/06/2026")
+            with mock.patch.object(app._client, "fetch_reference_rates") as fetch:
+                app.fetch_rates()
+            fetch.assert_not_called()
+            self.assertIn("YYYY-MM-DD", app.status_var.get())
+        finally:
+            root.destroy()
 
     def test_success_and_empty_and_error_flows(self):
         records = [RateRecord(day252=1, day360=2, rate="14.65")]
@@ -175,36 +241,6 @@ class SelicPreAppTest(unittest.TestCase):
         mock_clear.assert_not_called()
         mock_append.assert_not_called()
 
-    def _make_app_with_shortcut(self, exists):
-        import tkinter as tk
-        from tkinter import TclError
-        try:
-            root = tk.Tk()
-        except TclError as exc:
-            self.skipTest(f"tkinter display unavailable: {exc}")
-        root.withdraw()
-        with mock.patch("b3_selic_pre.presentation.gui.app.shortcut_exists", return_value=exists):
-            app = SelicPreApp(root)
-        return root, app
-
-    def test_shortcut_button_shown_when_no_shortcut(self):
-        root, app = self._make_app_with_shortcut(False)
-        try:
-            self.assertIsNotNone(app.shortcut_button)
-            self.assertEqual(
-                str(app.shortcut_button.cget("text")),
-                "Criar Atalho Desktop",
-            )
-        finally:
-            root.destroy()
-
-    def test_shortcut_button_hidden_when_shortcut_exists(self):
-        root, app = self._make_app_with_shortcut(True)
-        try:
-            self.assertIsNone(app.shortcut_button)
-        finally:
-            root.destroy()
-
     def test_3d_checkbox_disabled_when_evolution_off(self):
         self.assertEqual(str(self.app.cb_3d.cget("state")), "disabled")
 
@@ -236,17 +272,62 @@ class SelicPreAppTest(unittest.TestCase):
             self.app._redraw_chart()
         mock_3d.assert_called_once()
 
-    def test_shortcut_button_callback_creates_shortcut(self):
-        root, app = self._make_app_with_shortcut(False)
+
+class SelicPreAppShortcutTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import tkinter as tk
+        from tkinter import TclError
         try:
-            self.assertIsNotNone(app.shortcut_button)
-            with mock.patch("b3_selic_pre.presentation.gui.actions.create_shortcut") as mock_cs:
-                app._create_shortcut()
-            mock_cs.assert_called_once()
-            self.assertIsNone(app.shortcut_button)
-            self.assertIn("Atalho criado", app.status_var.get())
-        finally:
-            root.destroy()
+            cls.root_no = tk.Tk()
+            cls.root_yes = tk.Tk()
+        except TclError as exc:
+            raise unittest.SkipTest(f"tkinter display unavailable: {exc}") from exc
+        cls.root_no.withdraw()
+        cls.root_yes.withdraw()
+        cls._settings_patch = _settings_patch()
+        cls._settings_patch.start()
+        with mock.patch(
+            "b3_selic_pre.presentation.gui.app.shortcut_exists",
+            return_value=False,
+        ):
+            cls.app_no = _FastSelicPreApp(cls.root_no)
+        cls.shortcut_btn_no = cls.app_no.shortcut_button
+        with mock.patch(
+            "b3_selic_pre.presentation.gui.app.shortcut_exists",
+            return_value=True,
+        ):
+            cls.app_yes = _FastSelicPreApp(cls.root_yes)
+
+    def setUp(self):
+        if self.app_no.shortcut_button is None:
+            self.shortcut_btn_no.pack(side=self.app_no.tk.RIGHT)
+            self.app_no.shortcut_button = self.shortcut_btn_no
+        self.app_no.status_var.set(INITIAL_STATUS)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._settings_patch.stop()
+        cls.root_no.destroy()
+        cls.root_yes.destroy()
+
+    def test_shortcut_button_shown_when_no_shortcut(self):
+        self.assertIsNotNone(self.app_no.shortcut_button)
+        self.assertEqual(
+            str(self.app_no.shortcut_button.cget("text")),
+            "Criar Atalho Desktop",
+        )
+
+    def test_shortcut_button_hidden_when_shortcut_exists(self):
+        self.assertIsNone(self.app_yes.shortcut_button)
+
+    def test_shortcut_button_callback_creates_shortcut(self):
+        self.assertIsNotNone(self.app_no.shortcut_button)
+        with mock.patch("b3_selic_pre.presentation.gui.actions.create_shortcut") as mock_cs:
+            self.app_no._create_shortcut()
+        mock_cs.assert_called_once()
+        self.assertIsNone(self.app_no.shortcut_button)
+        self.assertIn("Atalho criado", self.app_no.status_var.get())
 
 
 if __name__ == "__main__":

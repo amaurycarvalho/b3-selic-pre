@@ -136,10 +136,7 @@ class SelicPreApp(
         top_frame = ttk.Frame(root, padding=12)
         top_frame.pack(fill=tk.X)
         ttk.Label(top_frame, text="Data de referência:").pack(side=tk.LEFT)
-        self.date_entry = DateEntry(
-            top_frame, textvariable=self.date_var, width=14,
-            date_pattern='yyyy-mm-dd', background='white',
-        )
+        self.date_entry = self._create_date_entry(top_frame, tk, ttk)
         self.date_entry.pack(side=tk.LEFT, padx=(6, 10))
         self.date_entry.bind("<Return>", lambda _event: self.fetch_rates())
         icon_btn_style = ttk.Style()
@@ -166,6 +163,15 @@ class SelicPreApp(
                 command=self._create_shortcut,
             )
             self.shortcut_button.pack(side=tk.RIGHT)
+
+    def _create_date_entry(
+        self: SelicPreApp, parent: Widget, tk: TkModule, ttk: TkModule
+    ) -> Widget:
+        """Cria o seletor de data; ponto de extensão para os testes injetarem um widget mais leve."""
+        return DateEntry(
+            parent, textvariable=self.date_var, width=14,
+            date_pattern='yyyy-mm-dd', background='white',
+        )
 
     def _build_view_options(self: SelicPreApp, root: Widget, tk: TkModule, ttk: TkModule) -> None:
         """Constrói as opções de visualização da curva e o rótulo de estatísticas."""

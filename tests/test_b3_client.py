@@ -275,12 +275,13 @@ class FetchRatesDownloadTest(unittest.TestCase):
 class FetchHistoricalRatesTest(unittest.TestCase):
     @staticmethod
     def _dates():
-        from b3_selic_pre.application.use_cases import _days_ago
-        from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+        from b3_selic_pre.application.use_cases import days_ago, evolution_dates
         today = __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc
         ).date().isoformat()
-        return [_days_ago(today, d) for d in EVOLUTION_DAYS], today
+        dates = evolution_dates(today)
+        assert dates == [days_ago(today, d) for d in (28, 21, 14, 7, 0)]
+        return dates, today
 
     def test_today_uses_reference_rates(self):
         dates, today = self._dates()

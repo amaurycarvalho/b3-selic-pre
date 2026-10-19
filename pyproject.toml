@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "b3-selic-pre"
-version = "0.9.2"
+version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.0.0",
@@ -21,14 +21,14 @@ b3-selic-pre = "b3_selic_pre.presentation.cli:main"
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
-    "ruff>=0.1.0",
+    "ruff==0.17.0",
     "flake8>=6.0.0",
     "flake8-bugbear>=23.0.0",
     "flake8-annotations>=3.0.0",
     "flake8-docstrings>=1.7.0",
 ]
 quality = [
-    "ruff>=0.1.0",
+    "ruff==0.17.0",
     "flake8>=6.0.0",
     "flake8-bugbear>=23.0.0",
     "flake8-annotations>=3.0.0",
@@ -53,7 +53,10 @@ ignore = ["BLE001", "S110", "B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: deselected by default via addopts"]
+markers = [
+    "slow: deselected by default via addopts",
+    "ui: test requires a display/Tk and must be counted by the UI test budget",
+]
 addopts = ["-m", "not slow"]
 
 [tool.coverage.run]

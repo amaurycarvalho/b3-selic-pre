@@ -6,8 +6,7 @@ import concurrent.futures
 from collections.abc import Callable
 from datetime import datetime, timezone
 
-from b3_selic_pre.application.use_cases import _days_ago
-from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+from b3_selic_pre.application.use_cases import evolution_dates
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure import b3_client
 from b3_selic_pre.infrastructure.disk_cache import DiskCache
@@ -79,7 +78,7 @@ class CachedB3Client:
     ) -> dict[str, list[RateRecord]]:
         """Return historical rates for the evolution window ending at ``base_date``."""
         today = datetime.now(timezone.utc).date().isoformat()
-        dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
+        dates = evolution_dates(base_date)
         results: dict[str, list[RateRecord]] = {}
         cached_count = 0
         progress_callback: Callable[[int, int], None] | None = kwargs.get(

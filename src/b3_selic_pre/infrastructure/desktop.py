@@ -7,7 +7,9 @@ import subprocess
 import sys
 from importlib import resources  # nosemgrep
 
-from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
+SHORTCUT_CHECK_PATH = os.path.expanduser(
+    "~/.local/share/applications/b3-selic-pre.desktop"
+)
 
 
 def _detect_desktop_dir() -> str:

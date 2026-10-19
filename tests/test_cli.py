@@ -115,19 +115,14 @@ class MainArgvTest(unittest.TestCase):
             main(None)
         mock_gui.assert_called_once()
 
-    def test_main_uses_utc_today(self):
-        import b3_selic_pre.presentation.cli as cli
-        real_datetime = cli.datetime
-        calls = []
+    def test_main_delegates_today_resolution_to_application(self):
+        from b3_selic_pre.domain.models import RateRecord
 
-        class _FakeDatetime:
-            @staticmethod
-            def now(tz=None):
-                calls.append(tz)
-                return real_datetime.now(tz)
-
-        records = [__import__("b3_selic_pre.domain.models", fromlist=["RateRecord"]).RateRecord(day252=1, day360=1, rate="14.65")]
-        with mock.patch.object(cli, "datetime", _FakeDatetime), mock.patch(
+        records = [RateRecord(day252=1, day360=1, rate="14.65")]
+        with mock.patch(
+            "b3_selic_pre.presentation.cli.resolve_reference_date",
+            return_value="2026-06-10",
+        ) as mock_resolve, mock.patch(
             "b3_selic_pre.presentation.cli.CachedB3Client"
         ) as mock_cls:
             mock_client = mock.Mock()
@@ -135,7 +130,10 @@ class MainArgvTest(unittest.TestCase):
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print"):
                 main(["--today"])
-        self.assertIn(__import__("datetime").timezone.utc, calls)
+        mock_resolve.assert_called_once_with(None, use_today=True)
+        mock_client.fetch_reference_rates.assert_called_once_with(
+            "2026-06-10", force=False
+        )
 
 
 if __name__ == "__main__":

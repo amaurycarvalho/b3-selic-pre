@@ -9,7 +9,10 @@ import math
 import urllib.request
 from collections.abc import Callable
 
-from b3_selic_pre.application.use_cases import _days_ago, validate_reference_date
+from b3_selic_pre.application.use_cases import (
+    evolution_dates,
+    validate_reference_date,
+)
 from b3_selic_pre.domain.constants import (
     B3_BASE_URL,
     DEFAULT_LANGUAGE,
@@ -17,7 +20,6 @@ from b3_selic_pre.domain.constants import (
     DEFAULT_PAGE_NUMBER,
     DEFAULT_PAGE_SIZE,
     DEFAULT_RATE_ID,
-    EVOLUTION_DAYS,
 )
 from b3_selic_pre.domain.models import RateRecord
 
@@ -165,7 +167,7 @@ def fetch_historical_rates(
     """Fetch historical reference rates for the configured evolution days."""
     from datetime import datetime, timezone
     today = datetime.now(timezone.utc).date().isoformat()
-    dates = [_days_ago(base_date, d) for d in EVOLUTION_DAYS]
+    dates = evolution_dates(base_date)
 
     def fetch_one(date_str: str) -> tuple[str, list[RateRecord]]:
         if date_str == today:

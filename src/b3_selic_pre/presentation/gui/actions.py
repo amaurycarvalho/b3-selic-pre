@@ -5,13 +5,7 @@ from __future__ import annotations
 import io
 from typing import Any
 
-from b3_selic_pre.application.formatting import (
-    format_cli_rows,
-    format_evolution_csv,
-    format_yearly_rows,
-)
-from b3_selic_pre.application.use_cases import consolidate_by_year
-from b3_selic_pre.infrastructure.desktop import create_shortcut
+from b3_selic_pre.application.use_cases import create_shortcut_with_message
 from b3_selic_pre.presentation.gui.tooltip import Tooltip
 
 App = Any
@@ -47,11 +41,11 @@ class ActionsMixin:
 
     def _create_shortcut(self: App) -> None:
         """Cria o atalho desktop e esconde o botão de criação."""
-        create_shortcut()
+        message = create_shortcut_with_message(self.deps.create_shortcut)
         if self.shortcut_button:
             self.shortcut_button.pack_forget()
             self.shortcut_button = None
-        self.set_status("Atalho criado em ~/Desktop/ e ~/.local/share/applications/.", msg_type="success")
+        self.set_status(message, msg_type="success")
 
     def _has_data(self: App) -> bool:
         return bool(self.records)
@@ -76,17 +70,11 @@ class ActionsMixin:
 
     def copy_data(self: App) -> None:
         """Copia os dados da tabela atual para a área de transferência."""
-        if not self._has_data():
+        csv_text = self._view_model().export_text
+        if csv_text is None:
             return
         prior_text = self.status_var.get()
         prior_color = self.statusbar_label.cget("foreground")
-        if self.evolution_var.get() and self.historical_data:
-            csv_text = format_evolution_csv(self.historical_data)
-        elif self.view_var.get() == "consolidated":
-            consolidated = consolidate_by_year(self.records)
-            csv_text = format_yearly_rows(consolidated)
-        else:
-            csv_text = format_cli_rows(self.records)
         self.root.clipboard_clear()
         self.root.clipboard_append(csv_text)
         self.set_status("Dados copiados para a área de transferência.", msg_type="success")

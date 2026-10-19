@@ -12,11 +12,10 @@ from tkcalendar import DateEntry
 
 from b3_selic_pre import __version__
 from b3_selic_pre.application.use_cases import default_reference_date
-from b3_selic_pre.infrastructure.cached_client import CachedB3Client
-from b3_selic_pre.infrastructure.desktop import _icon_source, shortcut_exists
 from b3_selic_pre.presentation.charts import render_chart
 from b3_selic_pre.presentation.gui.actions import ActionsMixin
 from b3_selic_pre.presentation.gui.chart import ChartMixin
+from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.fetch import FetchMixin
 from b3_selic_pre.presentation.gui.sidebar import SidebarMixin
 from b3_selic_pre.presentation.gui.status import StatusMixin
@@ -32,7 +31,11 @@ class SelicPreApp(
 ):
     """Aplicação Tkinter de consulta às taxas referenciais SELIC."""
 
-    def __init__(self: SelicPreApp, root: Widget) -> None:
+    def __init__(
+        self: SelicPreApp,
+        root: Widget,
+        dependencies: GuiDependencies | None = None,
+    ) -> None:
         """Constrói a interface gráfica completa com gráficos e barra de status."""
         import tkinter as tk
         from tkinter import ttk
@@ -40,6 +43,7 @@ class SelicPreApp(
         self.root = root
         self.tk = tk
         self.ttk = ttk
+        self.deps = dependencies or GuiDependencies()
         self.records = []
         self._load_icons(root, tk)
         self._setup_state(tk)
@@ -79,7 +83,7 @@ class SelicPreApp(
     def _load_icons(self: SelicPreApp, root: Widget, tk: TkModule) -> None:
         """Define o título da janela e carrega os ícones usados pela interface."""
         root.title(f"Taxas Referenciais SELIC (B3) v{__version__}")
-        icon_path = _icon_source()
+        icon_path = self.deps.icon_source()
         if os.path.exists(icon_path):
             img = tk.PhotoImage(file=icon_path, master=root)
             self.icon_img = img
@@ -103,8 +107,8 @@ class SelicPreApp(
         self.historical_data = None
         self._data_source = ""
         self.sidebar_var = tk.BooleanVar(value=False)
-        self.settings = Settings()
-        self._client = CachedB3Client()
+        self.settings = self.deps.settings or Settings()
+        self._client = self.deps.client
         self._configure_after_id = None
 
     def _apply_saved_settings(self: SelicPreApp, root: Widget, tk: TkModule) -> None:
@@ -157,7 +161,7 @@ class SelicPreApp(
         )
         self.data_button.pack(side=tk.LEFT)
         self.shortcut_button = None
-        if not shortcut_exists():
+        if not self.deps.shortcut_exists():
             self.shortcut_button = ttk.Button(
                 top_frame, text="Criar Atalho Desktop",
                 command=self._create_shortcut,
@@ -257,17 +261,3 @@ class SelicPreApp(
         self._determinate_bar = ttk.Progressbar(
             self.statusbar_frame, mode="determinate"
         )
-
-
-def launch_gui() -> None:
-    """Inicia a janela principal da aplicação."""
-    import tkinter as tk
-    root = tk.Tk()
-    app = SelicPreApp(root)
-
-    def on_closing() -> None:
-        app._save_window_state()
-        root.quit()
-        root.destroy()
-    root.protocol("WM_DELETE_WINDOW", on_closing)
-    root.mainloop()

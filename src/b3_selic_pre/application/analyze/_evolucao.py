@@ -194,7 +194,7 @@ def analyze_evolution(
         return None
 
     if config is None:
-        config = CurvaJurosConfig.from_settings()
+        config = CurvaJurosConfig()
 
     evol_config = config.evolucao
     delta_short, delta_long, delta_slope, delta_real = extrair_deltas(current, previous)

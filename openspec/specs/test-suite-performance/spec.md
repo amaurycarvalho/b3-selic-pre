@@ -34,3 +34,45 @@ Após a reutilização de instâncias, o tempo de execução de `make test` SHAL
 - **WHEN** `make test` executa a suíte completa
 - **THEN** o tempo total é reduzido para uma fração do baseline
 - **THEN** nenhum caso de teste individual excede 1s nos testes de GUI
+
+### Requirement: Orçamento de testes de UI não headless
+
+A suíte SHALL manter um orçamento máximo de testes que exigem display/Tk. Todo teste que instancia Tkinter ou a aplicação GUI SHALL ser marcado com `@pytest.mark.ui` e contabilizado pelo orçamento. O orçamento SHALL NOT aumentar sem aprovação explícita e SHALL ser reduzido sempre que testes forem migrados para headless.
+
+#### Scenario: Novo teste de UI sem ampliar orçamento
+
+- **WHEN** um novo teste depende de Tkinter ou da aplicação GUI e o orçamento já está no limite
+- **THEN** o teste de guarda do orçamento falha
+- **THEN** a change deve preferir um teste headless ou obter aprovação explícita para ampliar o orçamento
+
+#### Scenario: Teste de UI sem marcação
+
+- **WHEN** um arquivo de teste importa Tkinter ou a camada GUI e contém teste não marcado com `@pytest.mark.ui`
+- **THEN** o teste de guarda de marcação falha
+
+#### Scenario: Migração reduz o orçamento
+
+- **WHEN** um teste de UI é migrado para headless
+- **THEN** o orçamento é reduzido para refletir a nova contagem
+
+### Requirement: Testes de comportamento migrados de UI para headless
+
+Testes que validam regras de negócio, exportação, estatísticas, dispatch de gráfico ou estado derivado de controles SHALL ser migrados para testes headless. Apenas testes de montagem, aparência e wiring de widgets SHALL permanecer como testes de UI. Após a migração, o orçamento de testes de UI SHALL ser reduzido para a nova contagem.
+
+#### Scenario: Comportamento testado sem display
+
+- **WHEN** um teste valida validação de data, seleção de exportação, estatísticas, modo de gráfico ou estado de habilitação
+- **THEN** ele executa sem Tkinter e sem display
+- **THEN** ele importa o serviço/view-model headless correspondente
+
+#### Scenario: UI mantém apenas testes de apresentação
+
+- **WHEN** um teste de UI é mantido
+- **THEN** ele valida montagem, existência/configuração de widgets ou wiring com o view-model
+- **THEN** regras de negócio já são cobertas por testes headless
+
+#### Scenario: Orçamento reduzido após migração
+
+- **WHEN** os testes migrados deixam de depender de Tkinter
+- **THEN** `UI_TEST_BUDGET` é reduzido para a contagem real de testes de UI remanescentes
+- **THEN** o teste de guarda do orçamento continua passando

@@ -13,10 +13,11 @@ from b3_selic_pre.application.formatting import (
     format_records_csv,
     format_yearly_rows,
 )
+from b3_selic_pre.application.chart_data import interpolate_rates
 from b3_selic_pre.application.use_cases import (
-    _days_ago,
     average_rate_by_year,
     consolidate_by_year,
+    days_ago,
     validate_reference_date,
 )
 from b3_selic_pre.domain.models import RateRecord
@@ -37,7 +38,6 @@ from b3_selic_pre.infrastructure.desktop import (
     shortcut_exists,
 )
 from b3_selic_pre.presentation.charts import (
-    _interpolate_rates,
     render_3d_evolution,
     render_chart,
     render_curve_evolution,
@@ -308,9 +308,9 @@ class B3SelicPreTest(unittest.TestCase):
         self.assertEqual(average_rate_by_year(records), {0: 14.65})
 
     def test_days_ago(self):
-        self.assertEqual(_days_ago("2026-06-17", 0), "2026-06-17")
-        self.assertEqual(_days_ago("2026-06-17", 7), "2026-06-10")
-        self.assertEqual(_days_ago("2026-06-17", 28), "2026-05-20")
+        self.assertEqual(days_ago("2026-06-17", 0), "2026-06-17")
+        self.assertEqual(days_ago("2026-06-17", 7), "2026-06-10")
+        self.assertEqual(days_ago("2026-06-17", 28), "2026-05-20")
 
     def test_fetch_rates_download_parses_csv(self):
         csv_content = (
@@ -374,7 +374,7 @@ class B3SelicPreTest(unittest.TestCase):
             )
         self.assertEqual(len(results), 5)
         dates = sorted(results.keys())
-        self.assertEqual(dates[0], _days_ago(today, 28))
+        self.assertEqual(dates[0], days_ago(today, 28))
         self.assertEqual(dates[-1], today)
 
     def test_format_evolution_csv(self):
@@ -639,7 +639,7 @@ class CurveEvolutionChartTest(unittest.TestCase):
             RateRecord(day252=120, day360=120, rate="16.0"),
         ]
         common_x = [0, 1, 60, 120, 150]
-        result = _interpolate_rates(records, common_x)
+        result = interpolate_rates(records, common_x)
         self.assertTrue(np.isnan(result[0]))
         self.assertEqual(result[1], 14.0)
         self.assertEqual(result[2], 15.0)
@@ -857,7 +857,7 @@ class ShortcutTest(unittest.TestCase):
 
     def test_shortcut_exists_uses_desktop_dir_in_path(self):
         seen = []
-        from b3_selic_pre.domain.constants import SHORTCUT_CHECK_PATH
+        from b3_selic_pre.infrastructure.desktop import SHORTCUT_CHECK_PATH
 
         def fake_isfile(path):
             seen.append(path)

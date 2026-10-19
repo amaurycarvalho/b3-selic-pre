@@ -2,13 +2,11 @@
 
 import argparse
 import sys
-from datetime import datetime, timezone
 
 from b3_selic_pre import __version__
-from b3_selic_pre.application.formatting import format_cli_rows, format_yearly_rows
 from b3_selic_pre.application.use_cases import (
-    consolidate_by_year,
-    default_reference_date,
+    build_rates_table,
+    resolve_reference_date,
 )
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
@@ -76,13 +74,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.gui:
         launch_gui()
         return
-    ref_date = datetime.now(timezone.utc).date().isoformat() if args.today else (args.date or default_reference_date())
+    ref_date = resolve_reference_date(args.date, use_today=args.today)
     client = CachedB3Client()
     records = client.fetch_reference_rates(ref_date, force=args.no_cache)
-    if args.yearly:
-        consolidated = consolidate_by_year(records)
-        output = format_yearly_rows(consolidated)
-    else:
-        output = format_cli_rows(records)
+    output = build_rates_table(records, yearly=args.yearly)
     if output:
         print(output)

@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
-from b3_selic_pre.application.use_cases import validate_reference_date
+from b3_selic_pre.application.use_cases import (
+    FutureQueryDateError,
+    OldQueryDateError,
+    nearest_business_day,
+    validate_query_date,
+)
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 
 App = Any
@@ -20,23 +25,20 @@ class FetchMixin:
     def fetch_rates(self: App) -> None:
         """Busca as taxas para a data informada em segundo plano."""
         try:
-            reference_date = validate_reference_date(self.date_var.get().strip())
+            reference_date = validate_query_date(self.date_var.get().strip())
+        except FutureQueryDateError as exc:
+            self.set_status(str(exc), msg_type="error")
+            return
+        except OldQueryDateError as exc:
+            self.set_status(str(exc), msg_type="warning")
+            return
         except ValueError as exc:
             self.set_status(str(exc), msg_type="error")
             return
-        parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
-        if parsed > datetime.now(timezone.utc).date():
-            self.set_status(
-                "Data futura. Informe uma data até hoje.", msg_type="error")
-            return
-        reference_date = self._nearest_business_day(reference_date)
+        reference_date = nearest_business_day(reference_date)
         self.date_var.set(reference_date)
-        cutoff = datetime.now(timezone.utc).date() - timedelta(days=30)
-        if parsed < cutoff:
-            self.set_status(
-                "Data muito antiga. O histórico disponível cobre apenas os "
-                "últimos 30 dias. Informe uma data mais recente.",
-                msg_type="warning")
+        if self._client is None:
+            self.set_status("Cliente de dados não configurado.", msg_type="error")
             return
         self._set_ui_locked(True)
         self._last_reference_date = reference_date
@@ -74,6 +76,9 @@ class FetchMixin:
     def _fetch_historical_rates(self: App, reference_date: str) -> None:
         """Busca o histórico de taxas dos últimos pregões em segundo plano."""
         if getattr(self, "_historical_fetching", False):
+            return
+        if self._client is None:
+            self.set_status("Cliente de dados não configurado.", msg_type="error")
             return
         self._historical_fetching = True
         self._set_ui_locked(True, determinate=True)

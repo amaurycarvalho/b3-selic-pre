@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 Event = Any
@@ -37,13 +37,6 @@ class WindowMixin:
         if not is_maximized:
             self.settings.set("window_geometry", self.root.geometry())
         self.settings.set("window_maximized", is_maximized)
-
-    def _nearest_business_day(self: App, date_str: str) -> str:
-        """Retorna a data útil mais próxima (retrocede fins de semana)."""
-        parsed = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
-        while parsed.weekday() >= 5:
-            parsed -= timedelta(days=1)
-        return parsed.isoformat()
 
     def _go_today(self: App) -> None:
         """Define a data atual no campo de data e dispara a busca."""

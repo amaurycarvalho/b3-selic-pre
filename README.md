@@ -35,7 +35,7 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 ### Interface Gráfica
 
-Vide a [documentação](panels.md) da interface, com indicadores e parametrizações disponíveis.
+Vide a [documentação](docs/misc/panels.md) da interface, com indicadores e parametrizações disponíveis.
 
 ---
 

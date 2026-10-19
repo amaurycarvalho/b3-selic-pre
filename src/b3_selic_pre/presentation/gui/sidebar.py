@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from b3_selic_pre.application.analyze import (
+    CurvaJurosConfig,
     EvolutionReport,
     analyze,
     analyze_evolution,
+    montar_evolucao_resumo,
 )
-from b3_selic_pre.application.analyze._config import CurvaJurosConfig
-from b3_selic_pre.application.analyze._texto_evolucao import montar_evolucao_resumo
 
 App = Any
 Widget = Any
@@ -54,27 +54,37 @@ class SidebarMixin:
         """Reconstrói o texto do painel de análise a partir dos dados atuais."""
         if not self.sidebar_var.get():
             return
+        config = self._curva_config()
         report = analyze(
             records=self.records,
             historical_data=self.historical_data,
             view_mode=self.view_var.get(),
             evolution_active=self.evolution_var.get(),
+            config=config,
         )
         self.sidebar_text.configure(state=self.tk.NORMAL)
         self.sidebar_text.delete("1.0", self.tk.END)
         self._render_paragraphs(self.sidebar_text, report.statements)
-        evolution_report = self._build_evolution_report()
+        evolution_report = self._build_evolution_report(config)
         if evolution_report is not None:
             self.sidebar_text.insert(self.tk.END, "\n─╌─╌─╌─╌─╌─╌─╌─╌─╌╌\n\n")
             self.sidebar_text.insert(
                 self.tk.END, "Evolução da Curva\n\n", "header"
             )
-            config = CurvaJurosConfig.from_settings()
             blocos = montar_evolucao_resumo(evolution_report, config.evolucao)
             self._render_paragraphs(self.sidebar_text, blocos)
         self.sidebar_text.configure(state=self.tk.DISABLED)
 
-    def _build_evolution_report(self: App) -> EvolutionReport | None:
+    def _curva_config(self: App) -> CurvaJurosConfig:
+        """Monta a configuração da curva a partir das preferências persistidas."""
+        return CurvaJurosConfig.from_mapping(
+            self.settings.get("curva_juros", {}),
+            self.settings.get("curva_evolucao", {}),
+        )
+
+    def _build_evolution_report(
+        self: App, config: CurvaJurosConfig
+    ) -> EvolutionReport | None:
         """Devolve o relatório de evolução quando há duas ou mais datas."""
         if not (self.evolution_var.get() and self.historical_data):
             return None
@@ -83,7 +93,7 @@ class SidebarMixin:
             return None
         previous_date = sorted_dates[-2]
         previous_records = self.historical_data[previous_date]
-        return analyze_evolution(self.records, previous_records, config=None)
+        return analyze_evolution(self.records, previous_records, config=config)
 
     def _render_paragraphs(self: App, text: Widget, paragraphs: list[str]) -> None:
         """Insere parágrafos formatados no widget de texto do painel."""

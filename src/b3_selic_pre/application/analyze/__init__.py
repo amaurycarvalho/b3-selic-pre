@@ -17,6 +17,7 @@ from b3_selic_pre.application.analyze._resumo import (
     extrair_indicadores,
 )
 from b3_selic_pre.application.analyze._texto import montar_resumo_executivo
+from b3_selic_pre.application.analyze._texto_evolucao import montar_evolucao_resumo
 from b3_selic_pre.domain.models import RateRecord
 
 
@@ -34,7 +35,7 @@ def analyze(
         return AnalysisReport()
 
     if config is None:
-        config = CurvaJurosConfig.from_settings()
+        config = CurvaJurosConfig()
 
     if threshold_overrides:
         for key, value in threshold_overrides.items():
@@ -67,5 +68,6 @@ __all__ = [
     "classificar_premio",
     "classificar_restricao",
     "extrair_indicadores",
+    "montar_evolucao_resumo",
     "montar_resumo_executivo",
 ]

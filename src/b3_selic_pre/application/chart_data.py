@@ -19,6 +19,8 @@ def nearest_ticks(
 ) -> list[int]:
     """Seleciona, entre os valores disponíveis, os mais próximos dos alvos."""
     result = []
+    if not all_values:
+        return result
     seen = set(exclude_set) if exclude_set else set()
     for target in targets:
         nearest = min(all_values, key=lambda d: abs(d - target))

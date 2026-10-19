@@ -21,6 +21,9 @@ def _records(*pairs):
 
 
 class NearestTicksTest(unittest.TestCase):
+    def test_empty_values_returns_empty(self):
+        self.assertEqual(nearest_ticks([], range(0, 21, 3), 1), [])
+
     def test_returns_nearest_within_tolerance(self):
         self.assertEqual(nearest_ticks([1, 22, 45, 66], range(1, 67, 22), 12), [1, 22, 45])
 

@@ -700,5 +700,52 @@ class RenderDetailedEvolutionTest(unittest.TestCase):
         self.assertAlmostEqual(widths[2], 2.5)
 
 
+
+class EvolutionEmptyDataTest(unittest.TestCase):
+    def _valid(self):
+        return _records((1, 14.0), (365, 15.0))
+
+    def test_curve_skips_empty_date(self):
+        fig = RecordingFig()
+        render_curve_evolution(
+            fig, {"2026-01-01": [], "2026-01-02": self._valid()}
+        )
+        self.assertEqual(len(fig.axes[0].calls["plot"]), 1)
+
+    def test_curve_all_empty_dates_show_message(self):
+        fig = RecordingFig()
+        render_curve_evolution(fig, {"2026-01-01": []})
+        self.assertEqual(len(fig.axes), 1)
+        self.assertEqual(fig.axes[0]._xlabel, "Ano")
+
+    def test_detailed_skips_empty_date(self):
+        fig = RecordingFig()
+        render_detailed_evolution(
+            fig, {"2026-01-01": [], "2026-01-02": self._valid()}
+        )
+        self.assertEqual(len(fig.axes[0].calls["plot"]), 1)
+
+    def test_detailed_all_empty_dates_show_message(self):
+        fig = RecordingFig()
+        render_detailed_evolution(fig, {"2026-01-01": []})
+        self.assertEqual(len(fig.axes), 1)
+        self.assertEqual(fig.axes[0]._xlabel, "Dias úteis")
+
+    def test_3d_all_empty_dates_show_message(self):
+        fig = RecordingFig()
+        render_3d_evolution(fig, {"2026-01-01": []})
+        self.assertEqual(len(fig.axes), 1)
+        self.assertEqual(fig.axes[0]._ylabel, "Taxa")
+
+    def test_3d_skips_empty_date(self):
+        fig = RecordingFig()
+        render_3d_evolution(
+            fig,
+            {"2026-01-01": [], "2026-01-02": self._valid()},
+            consolidated=True,
+        )
+        self.assertIsNotNone(fig.axes[0]._surface_kwargs)
+
+
 if __name__ == "__main__":
     unittest.main()

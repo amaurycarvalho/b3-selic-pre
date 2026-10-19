@@ -70,13 +70,16 @@ class CommunicationErrorWrapperTest(unittest.TestCase):
                 self.client.fetch_reference_rates("2026-10-19", force=True)
         self.assertNotIsInstance(context.exception, CommunicationError)
 
-    def test_historical_rates_wrap_download_error(self):
+    def test_historical_rates_isolate_download_error(self):
         with mock.patch(
             "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_download",
             side_effect=urllib.error.URLError("offline"),
         ):
-            with self.assertRaises(CommunicationError):
-                self.client.fetch_historical_rates("2020-01-10", force=True)
+            result = self.client.fetch_historical_rates(
+                "2020-01-10", force=True
+            )
+        self.assertEqual(len(result), 5)
+        self.assertTrue(all(records == [] for records in result.values()))
 
 
 if __name__ == "__main__":

@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> None:
     try:
         ref_date = resolve_reference_date(args.date, use_today=args.today)
         client = CachedB3Client()
-        records = client.fetch_reference_rates(ref_date, force=args.no_cache)
+        records = client.fetch_rates_for_date(ref_date, force=args.no_cache)
         output = build_rates_table(records, yearly=args.yearly)
     except Exception as exc:
         log_exception(logger, exc, "Erro ao buscar dados")

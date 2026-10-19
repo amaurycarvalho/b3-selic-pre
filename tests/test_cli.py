@@ -137,12 +137,12 @@ class MainArgvTest(unittest.TestCase):
             "b3_selic_pre.presentation.cli.CachedB3Client"
         ) as mock_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.return_value = records
+            mock_client.fetch_rates_for_date.return_value = records
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print"):
                 main(["--today"])
         mock_resolve.assert_called_once_with(None, use_today=True)
-        mock_client.fetch_reference_rates.assert_called_once_with(
+        mock_client.fetch_rates_for_date.assert_called_once_with(
             "2026-06-10", force=False
         )
 
@@ -161,7 +161,7 @@ class MainArgvTest(unittest.TestCase):
             "b3_selic_pre.presentation.cli.CachedB3Client"
         ) as mock_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.return_value = []
+            mock_client.fetch_rates_for_date.return_value = []
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print"):
                 main(["--today"])
@@ -189,7 +189,7 @@ class MainArgvTest(unittest.TestCase):
         ) as mock_log, mock.patch(
             "b3_selic_pre.presentation.cli.print"
         ) as mock_print:
-            mock_cls.return_value.fetch_reference_rates.side_effect = (
+            mock_cls.return_value.fetch_rates_for_date.side_effect = (
                 CommunicationError("offline")
             )
             with self.assertRaises(SystemExit) as context:
@@ -219,7 +219,7 @@ class MainArgvTest(unittest.TestCase):
         ) as mock_log, mock.patch(
             "b3_selic_pre.presentation.cli.print"
         ):
-            mock_cls.return_value.fetch_reference_rates.side_effect = ValueError(
+            mock_cls.return_value.fetch_rates_for_date.side_effect = ValueError(
                 "bad"
             )
             with self.assertRaises(ValueError):

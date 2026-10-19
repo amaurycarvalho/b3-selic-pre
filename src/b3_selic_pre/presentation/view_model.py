@@ -9,6 +9,31 @@ from b3_selic_pre.application.use_cases import build_export_text, rate_statistic
 from b3_selic_pre.domain.models import RateRecord
 
 
+def historical_status(
+    historical_data: dict[str, list[RateRecord]],
+    source: str,
+    timestamp: str,
+) -> tuple[str, str]:
+    """Monta a mensagem e o tipo de status do carregamento histórico."""
+    available = [date for date, records in historical_data.items() if records]
+    missing = sorted(
+        date for date, records in historical_data.items() if not records
+    )
+    total = sum(len(records) for records in historical_data.values())
+    if missing:
+        message = (
+            f"Dados históricos carregados: {len(available)} datas, "
+            f"{total} registros; indisponíveis: {', '.join(missing)}.  |  "
+            f"{source}  |  {timestamp}"
+        )
+        return message, "warning" if available else "error"
+    message = (
+        f"Dados históricos carregados: {len(available)} datas, "
+        f"{total} registros.  |  {source}  |  {timestamp}"
+    )
+    return message, "success"
+
+
 class ChartMode(str, Enum):
     """Modo de renderização selecionado a partir do estado da interface."""
 
@@ -49,8 +74,10 @@ class GuiViewModel:
 
     @property
     def has_historical(self: GuiViewModel) -> bool:
-        """Indica se há dados históricos carregados."""
-        return bool(self.historical_data)
+        """Indica se há pelo menos uma data histórica com registros."""
+        return bool(self.historical_data) and any(
+            bool(records) for records in self.historical_data.values()
+        )
 
     @property
     def has_any(self: GuiViewModel) -> bool:
@@ -65,7 +92,7 @@ class GuiViewModel:
             view_enabled=self.has_single,
             evolution_enabled=self.has_single,
             analysis_enabled=self.has_single,
-            three_d_enabled=self.evolution_active,
+            three_d_enabled=self.evolution_active and self.has_historical,
         )
 
     @property
@@ -82,9 +109,10 @@ class GuiViewModel:
     @property
     def export_text(self: GuiViewModel) -> str | None:
         """CSV que deve ser copiado para a área de transferência."""
+        historical = self.historical_data if self.has_historical else None
         return build_export_text(
             self.records,
-            historical_data=self.historical_data,
+            historical_data=historical,
             view_mode=self.view_mode,
             evolution_active=self.evolution_active,
         )

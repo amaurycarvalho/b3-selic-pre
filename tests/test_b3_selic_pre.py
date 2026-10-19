@@ -230,7 +230,7 @@ class B3SelicPreTest(unittest.TestCase):
 
         with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_client.fetch_rates_for_date.side_effect = fake_fetch
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
                 main(["2026-01-01", "--yearly"])
@@ -257,7 +257,7 @@ class B3SelicPreTest(unittest.TestCase):
 
         with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_client.fetch_rates_for_date.side_effect = fake_fetch
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
                 main(["--today"])
@@ -276,7 +276,7 @@ class B3SelicPreTest(unittest.TestCase):
 
         with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.side_effect = fake_fetch
+            mock_client.fetch_rates_for_date.side_effect = fake_fetch
             mock_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
                 main(["--today", "--yearly"])

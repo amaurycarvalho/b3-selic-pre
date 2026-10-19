@@ -9,6 +9,8 @@ from pathlib import Path
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure.xdg import cache_base
 
+SCHEMA_VERSION = 2
+
 
 def _xdg_cache_dir() -> Path:
     return cache_base() / "b3-selic-pre" / "rates"
@@ -34,6 +36,9 @@ class DiskCache:
         data = self._load_payload(path)
         if data is None:
             return None
+        if not self._is_valid_entry(data):
+            path.unlink(missing_ok=True)
+            return None
         if self._is_expired(data, ttl_minutes):
             path.unlink(missing_ok=True)
             return None
@@ -48,10 +53,29 @@ class DiskCache:
         if not path.exists():
             return None
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             path.unlink(missing_ok=True)
             return None
+        if not isinstance(data, dict):
+            path.unlink(missing_ok=True)
+            return None
+        return data
+
+    @staticmethod
+    def _is_valid_entry(data: dict) -> bool:
+        """Return whether the payload has the current schema and complete data."""
+        if data.get("schema_version") != SCHEMA_VERSION:
+            return False
+        if data.get("complete") is not True:
+            return False
+        raw_records = data.get("records")
+        if not isinstance(raw_records, list) or not raw_records:
+            return False
+        expected_count = data.get("expected_count")
+        if not isinstance(expected_count, int):
+            return False
+        return len(raw_records) == expected_count
 
     def _is_expired(self: DiskCache, data: dict, ttl_minutes: int | None) -> bool:
         """Return ``True`` when the payload is stale according to TTL settings."""
@@ -87,12 +111,25 @@ class DiskCache:
         date_str: str,
         records: list[RateRecord],
         ttl_minutes: int | None = None,
+        *,
+        complete: bool = True,
+        expected_count: int | None = None,
+        source: str | None = None,
     ) -> None:
         """Write ``records`` for ``date_str`` to the cache directory."""
+        if not complete or not records:
+            return
+        expected = len(records) if expected_count is None else expected_count
+        if expected != len(records):
+            return
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         data = {
+            "schema_version": SCHEMA_VERSION,
             "cached_at": datetime.now(timezone.utc).isoformat(),
             "ttl_minutes": ttl_minutes,
+            "complete": True,
+            "expected_count": expected,
+            "source": source,
             "records": [
                 {"day252": r.day252, "day360": r.day360, "rate": r.rate}
                 for r in records

@@ -13,6 +13,11 @@ from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure import b3_client
 from b3_selic_pre.infrastructure.disk_cache import DiskCache
 
+_PER_DATE_COMMUNICATION_ERRORS = (
+    CommunicationError,
+    *b3_client.COMMUNICATION_EXCEPTIONS,
+)
+
 
 def _wrap_communication_errors(
     method: Callable[..., object],
@@ -61,8 +66,16 @@ class CachedB3Client:
         records = b3_client.fetch_reference_rates(date_str, **kwargs)
         today = datetime.now(timezone.utc).date().isoformat()
         ttl = self._ttl_minutes if date_str == today else None
-        self._cache.put(date_str, records, ttl_minutes=ttl)
-        self._cache.housekeeping(max_age_days=self._max_age_days)
+        if records:
+            self._cache.put(
+                date_str,
+                records,
+                ttl_minutes=ttl,
+                complete=True,
+                expected_count=len(records),
+                source="GetList",
+            )
+            self._cache.housekeeping(max_age_days=self._max_age_days)
         if source_callback:
             source_callback("API B3")
         return records
@@ -82,10 +95,54 @@ class CachedB3Client:
                     source_callback(f"Cache ({date_str})")
                 return cached
         records = b3_client.fetch_rates_download(date_str)
-        self._cache.put(date_str, records, ttl_minutes=None)
-        self._cache.housekeeping(max_age_days=self._max_age_days)
+        if records:
+            self._cache.put(
+                date_str,
+                records,
+                ttl_minutes=None,
+                complete=True,
+                expected_count=len(records),
+                source="GetDownloadFile",
+            )
+            self._cache.housekeeping(max_age_days=self._max_age_days)
         if source_callback:
             source_callback("Arquivo oficial B3")
+        return records
+
+    @_wrap_communication_errors
+    def fetch_rates_for_date(
+        self: CachedB3Client,
+        date_str: str,
+        force: bool = False,
+        source_callback: Callable[[str], None] | None = None,
+        **kwargs: object,
+    ) -> list[RateRecord]:
+        """Return rates for ``date_str`` using the correct source and cache."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        ttl = self._ttl_minutes if date_str == today else None
+        if not force:
+            cached = self._cache.get(date_str, ttl_minutes=ttl)
+            if cached is not None:
+                if source_callback:
+                    source_callback(f"Cache ({date_str})")
+                return cached
+        records, source = b3_client.fetch_rates_for_date(
+            date_str, today=today, **kwargs
+        )
+        if records:
+            self._cache.put(
+                date_str,
+                records,
+                ttl_minutes=ttl,
+                complete=True,
+                expected_count=len(records),
+                source=source,
+            )
+            self._cache.housekeeping(max_age_days=self._max_age_days)
+        if source_callback:
+            source_callback(
+                "API B3" if source == "GetList" else "Arquivo oficial B3"
+            )
         return records
 
     @_wrap_communication_errors
@@ -132,19 +189,29 @@ class CachedB3Client:
             cached = self._cache.get(date_str, ttl_minutes=ttl)
             if cached is not None:
                 return date_str, cached, True
-        records = self._fetch_from_api(date_str, today)
+        try:
+            records = self._fetch_from_api(date_str, today)
+        except _PER_DATE_COMMUNICATION_ERRORS:
+            return date_str, [], False
         ttl = self._ttl_minutes if date_str == today else None
-        self._cache.put(date_str, records, ttl_minutes=ttl)
+        if records:
+            source = "GetList" if date_str == today else "GetDownloadFile"
+            self._cache.put(
+                date_str,
+                records,
+                ttl_minutes=ttl,
+                complete=True,
+                expected_count=len(records),
+                source=source,
+            )
         return date_str, records, False
 
     @staticmethod
     def _fetch_from_api(date_str: str, today: str) -> list[RateRecord]:
-        """Fetch a date's rates from B3, falling back to reference rates."""
-        if date_str == today:
-            return b3_client.fetch_reference_rates(date_str, page_size=100)
-        records = b3_client.fetch_rates_download(date_str)
-        if not records:
-            records = b3_client.fetch_reference_rates(date_str, page_size=100)
+        """Fetch a date's rates from B3 using the source selected for that date."""
+        records, _ = b3_client.fetch_rates_for_date(
+            date_str, today=today, page_size=100
+        )
         return records
 
     @staticmethod

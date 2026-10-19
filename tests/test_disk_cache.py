@@ -314,7 +314,7 @@ class CachedB3ClientTest(unittest.TestCase):
             "2026-06-10": [RateRecord(day252=1, day360=1, rate="14,50")],
         }
 
-        def fake_download(date_str):
+        def fake_download(date_str, **_kwargs):
             return date_records.get(date_str, [])
 
         with mock.patch(
@@ -342,44 +342,17 @@ class CachedB3ClientTest(unittest.TestCase):
         CachedB3Client(cache_dir="/custom/cache")
         self.mock_cache_cls.assert_called_once_with("/custom/cache")
 
-    def test_fetch_from_api_today_uses_reference(self):
+    def test_fetch_from_api_uses_source_selection(self):
         expected = [RateRecord(day252=1, day360=1, rate="14,65")]
         with mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_reference_rates",
-            return_value=expected,
-        ) as mock_ref, mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_download",
-        ) as mock_dl:
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=(expected, "GetList"),
+        ) as mock_fetch:
             result = self.client._fetch_from_api("2026-06-17", "2026-06-17")
         self.assertEqual(result, expected)
-        mock_ref.assert_called_once_with("2026-06-17", page_size=100)
-        mock_dl.assert_not_called()
-
-    def test_fetch_from_api_past_uses_download(self):
-        expected = [RateRecord(day252=1, day360=1, rate="14,65")]
-        with mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_download",
-            return_value=expected,
-        ) as mock_dl, mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_reference_rates",
-        ) as mock_ref:
-            result = self.client._fetch_from_api("2026-06-10", "2026-06-17")
-        self.assertEqual(result, expected)
-        mock_dl.assert_called_once_with("2026-06-10")
-        mock_ref.assert_not_called()
-
-    def test_fetch_from_api_empty_download_falls_back_to_reference(self):
-        fallback = [RateRecord(day252=1, day360=1, rate="14,65")]
-        with mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_download",
-            return_value=[],
-        ), mock.patch(
-            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_reference_rates",
-            return_value=fallback,
-        ) as mock_ref:
-            result = self.client._fetch_from_api("2026-06-10", "2026-06-17")
-        self.assertEqual(result, fallback)
-        mock_ref.assert_called_once_with("2026-06-10", page_size=100)
+        mock_fetch.assert_called_once_with(
+            "2026-06-17", today="2026-06-17", page_size=100
+        )
 
     def test_fetch_one_cache_hit_returns_cached(self):
         expected = [RateRecord(day252=1, day360=1, rate="14,65")]
@@ -405,7 +378,14 @@ class CachedB3ClientTest(unittest.TestCase):
         self.assertEqual(records, expected)
         self.assertFalse(from_cache)
         mock_api.assert_called_once_with("2026-06-17", "2026-06-17")
-        self.mock_cache.put.assert_called_once_with("2026-06-17", expected, ttl_minutes=30)
+        self.mock_cache.put.assert_called_once_with(
+            "2026-06-17",
+            expected,
+            ttl_minutes=30,
+            complete=True,
+            expected_count=len(expected),
+            source="GetList",
+        )
 
     def test_fetch_one_force_skips_cache(self):
         expected = [RateRecord(day252=1, day360=1, rate="14,65")]
@@ -427,7 +407,14 @@ class CachedB3ClientTest(unittest.TestCase):
         ) as mock_dt:
             mock_dt.now.return_value = today
             self.client.fetch_reference_rates("2026-06-17")
-        self.mock_cache.put.assert_called_once_with("2026-06-17", expected, ttl_minutes=30)
+        self.mock_cache.put.assert_called_once_with(
+            "2026-06-17",
+            expected,
+            ttl_minutes=30,
+            complete=True,
+            expected_count=len(expected),
+            source="GetList",
+        )
 
     def test_fetch_reference_rates_put_without_ttl_for_past(self):
         today = datetime(2026, 6, 17, 12, 0, 0, tzinfo=timezone.utc)
@@ -440,7 +427,14 @@ class CachedB3ClientTest(unittest.TestCase):
         ) as mock_dt:
             mock_dt.now.return_value = today
             self.client.fetch_reference_rates("2026-06-10")
-        self.mock_cache.put.assert_called_once_with("2026-06-10", expected, ttl_minutes=None)
+        self.mock_cache.put.assert_called_once_with(
+            "2026-06-10",
+            expected,
+            ttl_minutes=None,
+            complete=True,
+            expected_count=len(expected),
+            source="GetList",
+        )
 
     def test_fetch_reference_rates_uses_utc_now(self):
         import b3_selic_pre.infrastructure.cached_client as cc
@@ -503,7 +497,14 @@ class CachedB3ClientTest(unittest.TestCase):
         ):
             self.client.fetch_rates_download("2026-06-17", source_callback=messages.append)
         self.assertEqual(messages, ["Arquivo oficial B3"])
-        self.mock_cache.put.assert_called_once_with("2026-06-17", expected, ttl_minutes=None)
+        self.mock_cache.put.assert_called_once_with(
+            "2026-06-17",
+            expected,
+            ttl_minutes=None,
+            complete=True,
+            expected_count=len(expected),
+            source="GetDownloadFile",
+        )
 
     def test_fetch_rates_download_hit_notifies_cache(self):
         self.mock_cache.get.return_value = [RateRecord(day252=1, day360=1, rate="14,65")]
@@ -665,7 +666,7 @@ class CLICacheIntegrationTest(unittest.TestCase):
             "b3_selic_pre.presentation.cli.CachedB3Client",
         ) as mock_client_cls:
             mock_client = mock.Mock()
-            mock_client.fetch_reference_rates.side_effect = fake_cached_fetch
+            mock_client.fetch_rates_for_date.side_effect = fake_cached_fetch
             mock_client_cls.return_value = mock_client
             with mock.patch("b3_selic_pre.presentation.cli.print"):
                 from b3_selic_pre.presentation.cli import main
@@ -673,3 +674,249 @@ class CLICacheIntegrationTest(unittest.TestCase):
         self.assertEqual(len(records_arg), 1)
         self.assertEqual(records_arg[0][0], "2026-06-17")
         self.assertTrue(records_arg[0][1])
+
+
+class DiskCacheIntegrityTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__cache_integrity_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        self.cache = DiskCache(cache_dir=str(self.tmpdir))
+        self.records = [
+            RateRecord(day252=1, day360=1, rate="14,65"),
+            RateRecord(day252=365, day360=365, rate="14,50"),
+        ]
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _payload(self, **overrides):
+        data = {
+            "schema_version": 2,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+            "ttl_minutes": None,
+            "complete": True,
+            "expected_count": 1,
+            "source": "GetList",
+            "records": [{"day252": 1, "day360": 1, "rate": "14,65"}],
+        }
+        data.update(overrides)
+        return data
+
+    def test_put_empty_does_not_create_file(self):
+        self.cache.put("2026-06-17", [])
+        self.assertFalse(self.cache._cache_path("2026-06-17").exists())
+
+    def test_put_partial_does_not_create_file(self):
+        self.cache.put("2026-06-17", self.records[:1], expected_count=2)
+        self.assertFalse(self.cache._cache_path("2026-06-17").exists())
+
+    def test_put_incomplete_does_not_create_file(self):
+        self.cache.put("2026-06-17", self.records, complete=False)
+        self.assertFalse(self.cache._cache_path("2026-06-17").exists())
+
+    def test_put_payload_has_completeness_metadata(self):
+        self.cache.put(
+            "2026-06-17",
+            self.records,
+            expected_count=2,
+            source="GetList",
+        )
+        data = json.loads(
+            self.cache._cache_path("2026-06-17").read_text(encoding="utf-8")
+        )
+        self.assertEqual(data["schema_version"], 2)
+        self.assertIs(data["complete"], True)
+        self.assertEqual(data["expected_count"], 2)
+        self.assertEqual(data["source"], "GetList")
+
+    def test_get_empty_records_deletes(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text(
+            json.dumps(self._payload(records=[], expected_count=0)),
+            encoding="utf-8",
+        )
+        self.assertIsNone(self.cache.get("2026-06-17"))
+        self.assertFalse(path.exists())
+
+    def test_get_incomplete_entry_deletes(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text(
+            json.dumps(self._payload(complete=False)),
+            encoding="utf-8",
+        )
+        self.assertIsNone(self.cache.get("2026-06-17"))
+        self.assertFalse(path.exists())
+
+    def test_get_legacy_entry_deletes(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text(
+            json.dumps(
+                {
+                    "cached_at": datetime.now(timezone.utc).isoformat(),
+                    "ttl_minutes": None,
+                    "records": [{"day252": 1, "day360": 1, "rate": "14,65"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.assertIsNone(self.cache.get("2026-06-17"))
+        self.assertFalse(path.exists())
+
+    def test_put_empty_does_not_overwrite_valid_entry(self):
+        self.cache.put("2026-06-17", self.records)
+        self.cache.put("2026-06-17", [])
+        self.assertEqual(self.cache.get("2026-06-17"), self.records)
+
+    def test_put_partial_does_not_overwrite_valid_entry(self):
+        self.cache.put("2026-06-17", self.records)
+        self.cache.put("2026-06-17", self.records[:1], expected_count=2)
+        self.assertEqual(self.cache.get("2026-06-17"), self.records)
+
+
+class CachedB3ClientSourceTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__cache_source_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        self.cache_patcher = mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.DiskCache",
+            return_value=mock.Mock(spec=DiskCache),
+        )
+        self.mock_cache_cls = self.cache_patcher.start()
+        self.mock_cache = self.mock_cache_cls.return_value
+        self.mock_cache.get.return_value = None
+        from b3_selic_pre.infrastructure.cached_client import CachedB3Client
+        self.client = CachedB3Client(cache_dir=str(self.tmpdir))
+
+    def tearDown(self):
+        self.cache_patcher.stop()
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_cache_hit_skips_source(self):
+        expected = [RateRecord(day252=1, day360=1, rate="14,65")]
+        self.mock_cache.get.return_value = expected
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date"
+        ) as mock_fetch:
+            result = self.client.fetch_rates_for_date("2026-06-17")
+        self.assertEqual(result, expected)
+        mock_fetch.assert_not_called()
+
+    def test_today_uses_source_selection_and_caches(self):
+        today = datetime.now(timezone.utc).date().isoformat()
+        expected = [RateRecord(day252=1, day360=1, rate="14,65")]
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=(expected, "GetList"),
+        ) as mock_fetch:
+            result = self.client.fetch_rates_for_date(today)
+        self.assertEqual(result, expected)
+        mock_fetch.assert_called_once_with(today, today=today)
+        self.mock_cache.put.assert_called_once_with(
+            today,
+            expected,
+            ttl_minutes=30,
+            complete=True,
+            expected_count=len(expected),
+            source="GetList",
+        )
+
+    def test_past_uses_source_selection_and_caches_without_ttl(self):
+        today = datetime.now(timezone.utc).date().isoformat()
+        expected = [RateRecord(day252=1, day360=1, rate="14,40")]
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=(expected, "GetDownloadFile"),
+        ) as mock_fetch:
+            result = self.client.fetch_rates_for_date("2026-06-10")
+        self.assertEqual(result, expected)
+        mock_fetch.assert_called_once_with("2026-06-10", today=today)
+        self.mock_cache.put.assert_called_once_with(
+            "2026-06-10",
+            expected,
+            ttl_minutes=None,
+            complete=True,
+            expected_count=len(expected),
+            source="GetDownloadFile",
+        )
+
+    def test_empty_result_is_not_cached(self):
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=([], "GetList"),
+        ):
+            result = self.client.fetch_rates_for_date("2026-06-17")
+        self.assertEqual(result, [])
+        self.mock_cache.put.assert_not_called()
+
+    def test_force_empty_result_does_not_overwrite_cache(self):
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=([], "GetList"),
+        ):
+            self.client.fetch_rates_for_date("2026-06-17", force=True)
+        self.mock_cache.put.assert_not_called()
+
+
+class CurrentDateCacheIntegrationTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__cache_today_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        from b3_selic_pre.infrastructure.cached_client import CachedB3Client
+        self.client = CachedB3Client(cache_dir=str(self.tmpdir))
+        self.today = datetime.now(timezone.utc).date().isoformat()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_today_getlist_result_is_cached_and_reused(self):
+        expected = [RateRecord(day252=1, day360=3, rate="13,65")]
+        messages = []
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=(expected, "GetList"),
+        ) as mock_fetch:
+            first = self.client.fetch_rates_for_date(
+                self.today, source_callback=messages.append
+            )
+            second = self.client.fetch_rates_for_date(
+                self.today, source_callback=messages.append
+            )
+        self.assertEqual(first, expected)
+        self.assertEqual(second, expected)
+        mock_fetch.assert_called_once()
+        self.assertEqual(messages, ["API B3", f"Cache ({self.today})"])
+        path = DiskCache(self.tmpdir)._cache_path(self.today)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["schema_version"], 2)
+        self.assertEqual(data["source"], "GetList")
+        self.assertEqual(data["ttl_minutes"], 30)
+        self.assertIs(data["complete"], True)
+
+    def test_expired_today_cache_is_refetched(self):
+        old = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        path = DiskCache(self.tmpdir)._cache_path(self.today)
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "cached_at": old,
+                    "ttl_minutes": 30,
+                    "complete": True,
+                    "expected_count": 1,
+                    "source": "GetList",
+                    "records": [{"day252": 1, "day360": 3, "rate": "13,65"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        expected = [RateRecord(day252=2, day360=4, rate="13,70")]
+        with mock.patch(
+            "b3_selic_pre.infrastructure.cached_client.b3_client.fetch_rates_for_date",
+            return_value=(expected, "GetList"),
+        ) as mock_fetch:
+            result = self.client.fetch_rates_for_date(self.today)
+        self.assertEqual(result, expected)
+        mock_fetch.assert_called_once()

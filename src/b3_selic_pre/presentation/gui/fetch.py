@@ -15,6 +15,7 @@ from b3_selic_pre.application.use_cases import (
 )
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
 from b3_selic_pre.presentation.logging_utils import log_exception
+from b3_selic_pre.presentation.view_model import historical_status
 
 App = Any
 
@@ -52,25 +53,15 @@ class FetchMixin:
         def _source_cb(source: str) -> None:
             self._data_source = source
 
-        if reference_date == datetime.now(timezone.utc).date().isoformat():
-
-            def _progress_cb(current: int, total: int) -> None:
-                self.root.after(0, lambda: self._on_fetch_progress(current, total))
-
-            def source(d: str) -> Data:
-                return self._client.fetch_reference_rates(
-                    d, force=True, source_callback=_source_cb,
-                    page_size=100, progress_callback=_progress_cb,
-                )
-        else:
-            def source(d: str) -> Data:
-                return self._client.fetch_rates_download(
-                    d, force=True, source_callback=_source_cb,
-                )
+        def _progress_cb(current: int, total: int) -> None:
+            self.root.after(0, lambda: self._on_fetch_progress(current, total))
 
         def worker() -> None:
             try:
-                records = source(reference_date)
+                records = self._client.fetch_rates_for_date(
+                    reference_date, force=True, source_callback=_source_cb,
+                    page_size=100, progress_callback=_progress_cb,
+                )
             except Exception as exc:
                 try:
                     log_exception(logger, exc, "Falha ao buscar dados")
@@ -148,19 +139,18 @@ class FetchMixin:
         """Processa os dados históricos carregados e atualiza a interface."""
         self._historical_fetching = False
         self._set_ui_locked(False)
+        self.historical_data = historical
         self.records = list(historical.get(
             max(historical.keys()), []
-        ))
-        self.historical_data = historical
+        )) if historical else []
         self._redraw_chart()
         self._update_button_states()
         self.settings["last_date"] = self.date_var.get().strip()
-        total = sum(len(v) for v in historical.values())
-        dates = len(historical)
         now = datetime.now(timezone.utc).strftime("%H:%M:%S")
-        self.set_status(
-            f"Dados históricos carregados: {dates} datas, {total} registros.  |  {self._data_source}  |  {now}",
-            msg_type="success")
+        message, msg_type = historical_status(
+            historical, self._data_source, now
+        )
+        self.set_status(message, msg_type=msg_type)
 
     def handle_fetch_error(self: App, exc: Exception) -> None:
         """Trata erros de busca e exibe a mensagem na barra de status."""

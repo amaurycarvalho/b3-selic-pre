@@ -2,7 +2,11 @@
 
 from b3_selic_pre.application.use_cases import build_rates_table
 from b3_selic_pre.domain.models import RateRecord
-from b3_selic_pre.presentation.view_model import ChartMode, GuiViewModel
+from b3_selic_pre.presentation.view_model import (
+    ChartMode,
+    GuiViewModel,
+    historical_status,
+)
 
 
 def _records(*rates):
@@ -141,3 +145,69 @@ class TestEvolutionState:
         )
         assert model.export_text is not None
         assert model.export_text.startswith("DATA;ANO;TAXA_MEDIA\n")
+
+
+class TestEmptyHistoricalData:
+    def test_all_empty_historical_lists_fall_back_to_base(self):
+        model = GuiViewModel(
+            records=_records(14.5),
+            historical_data={"2026-06-17": [], "2026-06-10": []},
+            evolution_active=True,
+            view_mode="consolidated",
+        )
+        assert not model.has_historical
+        assert model.chart_mode == ChartMode.CONSOLIDATED
+        assert not model.controls.three_d_enabled
+
+    def test_one_usable_date_keeps_evolution_mode(self):
+        records = _records(14.5)
+        model = GuiViewModel(
+            records=records,
+            historical_data={"2026-06-17": [], "2026-06-10": records},
+            evolution_active=True,
+            view_mode="raw",
+        )
+        assert model.has_historical
+        assert model.chart_mode == ChartMode.EVOLUTION_DETAILED
+        assert model.controls.three_d_enabled
+
+    def test_export_falls_back_when_history_is_empty(self):
+        records = _records(14.5)
+        model = GuiViewModel(
+            records=records,
+            historical_data={"2026-06-17": []},
+            evolution_active=True,
+        )
+        assert model.export_text == build_rates_table(records)
+
+
+class TestHistoricalStatus:
+    def test_all_dates_available(self):
+        records = _records(14.5)
+        message, msg_type = historical_status(
+            {"2026-06-17": records}, "Histórico B3", "12:00:00"
+        )
+        assert msg_type == "success"
+        assert "1 datas, 1 registros" in message
+        assert "indisponíveis" not in message
+
+    def test_missing_dates_are_reported(self):
+        records = _records(14.5)
+        message, msg_type = historical_status(
+            {"2026-06-10": [], "2026-06-17": records},
+            "Histórico B3",
+            "12:00:00",
+        )
+        assert msg_type == "warning"
+        assert "2026-06-10" in message
+        assert "indisponíveis" in message
+
+    def test_all_dates_empty_is_error(self):
+        message, msg_type = historical_status(
+            {"2026-06-10": [], "2026-06-17": []},
+            "Histórico B3",
+            "12:00:00",
+        )
+        assert msg_type == "error"
+        assert "0 datas" in message
+        assert "indisponíveis" in message

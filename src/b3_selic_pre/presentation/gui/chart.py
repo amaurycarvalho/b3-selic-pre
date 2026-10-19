@@ -45,6 +45,10 @@ class ChartMixin:
         self.view_consolidated_rb.configure(state=view_state)
         self.view_raw_rb.configure(state=view_state)
         self.evolution_cb.configure(state=view_state)
+        three_d_state = (
+            self.tk.NORMAL if controls.three_d_enabled else self.tk.DISABLED
+        )
+        self.cb_3d.configure(state=three_d_state)
         analysis_state = self.tk.NORMAL if controls.analysis_enabled else self.tk.DISABLED
         self.sidebar_cb.configure(state=analysis_state)
 
@@ -88,20 +92,24 @@ class ChartMixin:
     def toggle_evolution(self: App) -> None:
         """Ativa ou desativa o modo de evolução da curva."""
         self.settings["evolution"] = self.evolution_var.get()
-        controls = self._view_model().controls
-        if controls.three_d_enabled:
-            self.cb_3d.configure(state=self.tk.NORMAL)
-            if self.historical_data:
-                self._redraw_chart()
-            else:
-                today = nearest_business_day(
-                    datetime.now(timezone.utc).date().isoformat()
-                )
-                if self.date_var.get().strip() != today:
-                    self.date_var.set(today)
-                self._fetch_historical_rates(today)
-        else:
+        if not self.evolution_var.get():
             self.var_3d.set(False)
             self.settings["show_3d"] = False
             self.cb_3d.configure(state=self.tk.DISABLED)
             self._redraw_chart()
+            return
+        view_model = self._view_model()
+        self.cb_3d.configure(
+            state=self.tk.NORMAL
+            if view_model.has_historical
+            else self.tk.DISABLED
+        )
+        if self.historical_data and view_model.has_historical:
+            self._redraw_chart()
+            return
+        today = nearest_business_day(
+            datetime.now(timezone.utc).date().isoformat()
+        )
+        if self.date_var.get().strip() != today:
+            self.date_var.set(today)
+        self._fetch_historical_rates(today)

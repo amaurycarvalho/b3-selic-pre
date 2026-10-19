@@ -140,6 +140,9 @@ def render_curve_evolution(fig: Figure, date_rates: dict[str, list[RateRecord]])
     import matplotlib.pyplot as plt
     import numpy as np
     fig.clf()
+    date_rates = {
+        date_str: records for date_str, records in date_rates.items() if records
+    }
     if not date_rates:
         _render_empty(fig, "Sem dados", "Ano", "TAXA")
         return
@@ -175,6 +178,9 @@ def render_detailed_evolution(fig: Figure, date_rates: dict[str, list[RateRecord
     import matplotlib.pyplot as plt
     import numpy as np
     fig.clf()
+    date_rates = {
+        date_str: records for date_str, records in date_rates.items() if records
+    }
     if not date_rates:
         _render_empty(fig, "Sem dados", "Dias úteis", "TAXA")
         return
@@ -240,6 +246,9 @@ def render_3d_evolution(
     reflete o nível da taxa. Linhas pretas traçam a curva de cada data.
     """
     fig.clf()
+    date_rates = {
+        date_str: records for date_str, records in date_rates.items() if records
+    }
     if not date_rates:
         _render_empty(
             fig, "Sem dados", "Ano" if consolidated else "Dias úteis", "Taxa"

@@ -1,6 +1,7 @@
 """Interface de linha de comando do b3-selic-pre."""
 
 import argparse
+import logging
 import sys
 
 from b3_selic_pre import __version__
@@ -10,7 +11,13 @@ from b3_selic_pre.application.use_cases import (
 )
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
+from b3_selic_pre.infrastructure.logging_setup import configure_logging
 from b3_selic_pre.presentation.gui import launch_gui
+from b3_selic_pre.presentation.logging_utils import (
+    install_exception_hooks,
+    is_communication_error,
+    log_exception,
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -74,9 +81,27 @@ def main(argv: list[str] | None = None) -> None:
     if args.gui:
         launch_gui()
         return
-    ref_date = resolve_reference_date(args.date, use_today=args.today)
-    client = CachedB3Client()
-    records = client.fetch_reference_rates(ref_date, force=args.no_cache)
-    output = build_rates_table(records, yearly=args.yearly)
+    active_log = configure_logging()
+    logger = logging.getLogger(__name__)
+    install_exception_hooks(logger)
+    if active_log is not None:
+        logger.info(
+            "Iniciando b3-selic-pre %s (CLI); log em %s",
+            __version__,
+            active_log,
+        )
+    else:
+        logger.info("Iniciando b3-selic-pre %s (CLI)", __version__)
+    try:
+        ref_date = resolve_reference_date(args.date, use_today=args.today)
+        client = CachedB3Client()
+        records = client.fetch_reference_rates(ref_date, force=args.no_cache)
+        output = build_rates_table(records, yearly=args.yearly)
+    except Exception as exc:
+        log_exception(logger, exc, "Erro ao buscar dados")
+        if is_communication_error(exc):
+            print(f"Erro ao buscar dados: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+        raise
     if output:
         print(output)

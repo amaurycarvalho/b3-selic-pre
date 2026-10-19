@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import datetime, timezone
 from typing import Any
@@ -13,10 +14,13 @@ from b3_selic_pre.application.use_cases import (
     validate_query_date,
 )
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+from b3_selic_pre.presentation.logging_utils import log_exception
 
 App = Any
 
 Data = Any
+
+logger = logging.getLogger(__name__)
 
 
 class FetchMixin:
@@ -67,8 +71,14 @@ class FetchMixin:
         def worker() -> None:
             try:
                 records = source(reference_date)
-            except (ConnectionError, TimeoutError, ValueError) as exc:
-                self.root.after(0, lambda error=exc: self.handle_fetch_error(error))
+            except Exception as exc:
+                try:
+                    log_exception(logger, exc, "Falha ao buscar dados")
+                finally:
+                    self.root.after(
+                        0,
+                        lambda error=exc: self.handle_fetch_error(error),
+                    )
                 return
             self.root.after(0, lambda: self.handle_fetch_success(records))
         threading.Thread(target=worker, daemon=True).start()
@@ -99,8 +109,18 @@ class FetchMixin:
                     reference_date, source_callback=_source_cb,
                     progress_callback=progress,
                 )
-            except (ConnectionError, TimeoutError, ValueError) as exc:
-                self.root.after(0, lambda error=exc: self.handle_fetch_error(error))
+            except Exception as exc:
+                try:
+                    log_exception(
+                        logger,
+                        exc,
+                        "Falha ao buscar dados históricos",
+                    )
+                finally:
+                    self.root.after(
+                        0,
+                        lambda error=exc: self.handle_fetch_error(error),
+                    )
                 return
             self.root.after(0, lambda: self.handle_historical_fetch_success(historical))
         threading.Thread(target=worker, daemon=True).start()

@@ -3,25 +3,15 @@
 from __future__ import annotations
 
 import json
-import os
-import platform
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from b3_selic_pre.domain.models import RateRecord
+from b3_selic_pre.infrastructure.xdg import cache_base
 
 
 def _xdg_cache_dir() -> Path:
-    system = platform.system()
-    if system == "Linux":
-        base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    elif system == "Windows":
-        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    elif system == "Darwin":
-        base = Path.home() / "Library" / "Caches"
-    else:
-        base = Path.home() / ".cache"
-    return base / "b3-selic-pre" / "rates"
+    return cache_base() / "b3-selic-pre" / "rates"
 
 
 class DiskCache:

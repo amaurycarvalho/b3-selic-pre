@@ -11,9 +11,12 @@ import os
 import platform
 from pathlib import Path
 
+DEFAULT_LOG_RETENTION_DAYS = 7
+
 DEFAULT_SETTINGS = {
     "last_date": "",
     "view_mode": "raw",
+    "log_retention_days": DEFAULT_LOG_RETENTION_DAYS,
     "evolution": False,
     "show_3d": False,
     "sidebar": False,
@@ -84,6 +87,13 @@ class Settings:
     def get(self: Settings, key: str, default: object = None) -> object:
         """Return the value for ``key`` or ``default`` if absent."""
         return self._data.get(key, default)
+
+    def log_retention_days(self: Settings) -> int:
+        """Return the validated log retention period in days."""
+        value = self.get("log_retention_days", DEFAULT_LOG_RETENTION_DAYS)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            return DEFAULT_LOG_RETENTION_DAYS
+        return value
 
     def set(self: Settings, key: str, value: object) -> None:
         """Store ``value`` under ``key`` and persist the settings file."""

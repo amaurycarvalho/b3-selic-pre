@@ -3,13 +3,30 @@
 from __future__ import annotations
 
 import concurrent.futures
+import functools
 from collections.abc import Callable
 from datetime import datetime, timezone
 
+from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.use_cases import evolution_dates
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure import b3_client
 from b3_selic_pre.infrastructure.disk_cache import DiskCache
+
+
+def _wrap_communication_errors(
+    method: Callable[..., object],
+) -> Callable[..., object]:
+    """Translate network failures into the application communication error."""
+
+    @functools.wraps(method)
+    def wrapper(*args: object, **kwargs: object) -> object:
+        try:
+            return method(*args, **kwargs)
+        except b3_client.COMMUNICATION_EXCEPTIONS as exc:
+            raise CommunicationError(str(exc) or type(exc).__name__) from exc
+
+    return wrapper
 
 
 class CachedB3Client:
@@ -26,6 +43,7 @@ class CachedB3Client:
         self._ttl_minutes = ttl_minutes
         self._max_age_days = max_age_days
 
+    @_wrap_communication_errors
     def fetch_reference_rates(
         self: CachedB3Client,
         date_str: str,
@@ -49,6 +67,7 @@ class CachedB3Client:
             source_callback("API B3")
         return records
 
+    @_wrap_communication_errors
     def fetch_rates_download(
         self: CachedB3Client,
         date_str: str,
@@ -69,6 +88,7 @@ class CachedB3Client:
             source_callback("Arquivo oficial B3")
         return records
 
+    @_wrap_communication_errors
     def fetch_historical_rates(
         self: CachedB3Client,
         base_date: str,

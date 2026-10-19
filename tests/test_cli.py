@@ -1,6 +1,10 @@
+import sys
 import unittest
+from pathlib import Path
 from unittest import mock
 
+from b3_selic_pre import __version__
+from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.presentation.cli import main, parse_args
 
 
@@ -120,6 +124,13 @@ class MainArgvTest(unittest.TestCase):
 
         records = [RateRecord(day252=1, day360=1, rate="14.65")]
         with mock.patch(
+            "b3_selic_pre.presentation.cli.configure_logging",
+            return_value=None,
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.install_exception_hooks"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.logging.getLogger"
+        ), mock.patch(
             "b3_selic_pre.presentation.cli.resolve_reference_date",
             return_value="2026-06-10",
         ) as mock_resolve, mock.patch(
@@ -134,6 +145,86 @@ class MainArgvTest(unittest.TestCase):
         mock_client.fetch_reference_rates.assert_called_once_with(
             "2026-06-10", force=False
         )
+
+    def test_main_logs_startup_line(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli.configure_logging",
+            return_value=Path("/tmp/b3-selic-pre.log"),
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.install_exception_hooks"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.logging.getLogger"
+        ) as mock_get_logger, mock.patch(
+            "b3_selic_pre.presentation.cli.resolve_reference_date",
+            return_value="2026-06-10",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as mock_cls:
+            mock_client = mock.Mock()
+            mock_client.fetch_reference_rates.return_value = []
+            mock_cls.return_value = mock_client
+            with mock.patch("b3_selic_pre.presentation.cli.print"):
+                main(["--today"])
+        mock_get_logger.return_value.info.assert_called_once_with(
+            "Iniciando b3-selic-pre %s (CLI); log em %s",
+            __version__,
+            Path("/tmp/b3-selic-pre.log"),
+        )
+
+    def test_main_communication_error_exits_with_code_one(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli.configure_logging",
+            return_value=None,
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.install_exception_hooks"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.logging.getLogger"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.resolve_reference_date",
+            return_value="2026-06-10",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as mock_cls, mock.patch(
+            "b3_selic_pre.presentation.cli.log_exception"
+        ) as mock_log, mock.patch(
+            "b3_selic_pre.presentation.cli.print"
+        ) as mock_print:
+            mock_cls.return_value.fetch_reference_rates.side_effect = (
+                CommunicationError("offline")
+            )
+            with self.assertRaises(SystemExit) as context:
+                main(["--today"])
+        self.assertEqual(context.exception.code, 1)
+        self.assertIsInstance(mock_log.call_args.args[1], CommunicationError)
+        self.assertEqual(mock_log.call_args.args[2], "Erro ao buscar dados")
+        mock_print.assert_called_once_with(
+            "Erro ao buscar dados: offline", file=sys.stderr
+        )
+
+    def test_main_non_communication_error_is_reraised(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli.configure_logging",
+            return_value=None,
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.install_exception_hooks"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.logging.getLogger"
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.resolve_reference_date",
+            return_value="2026-06-10",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as mock_cls, mock.patch(
+            "b3_selic_pre.presentation.cli.log_exception"
+        ) as mock_log, mock.patch(
+            "b3_selic_pre.presentation.cli.print"
+        ):
+            mock_cls.return_value.fetch_reference_rates.side_effect = ValueError(
+                "bad"
+            )
+            with self.assertRaises(ValueError):
+                main(["--today"])
+        self.assertIsInstance(mock_log.call_args.args[1], ValueError)
 
 
 if __name__ == "__main__":

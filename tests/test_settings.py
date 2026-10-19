@@ -123,5 +123,53 @@ class SettingsAccessTest(unittest.TestCase):
         mock_write.assert_called_once()
 
 
+class LogRetentionDaysTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__log_retention_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        self.settings = Settings(path=self.tmpdir / "settings.json")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_missing_key_uses_default(self):
+        del self.settings._data["log_retention_days"]
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_valid_integer_is_used(self):
+        self.settings._data["log_retention_days"] = 3
+        self.assertEqual(self.settings.log_retention_days(), 3)
+
+    def test_string_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = "7"
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_float_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = 7.0
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_boolean_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = True
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_none_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = None
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_zero_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = 0
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_negative_falls_back_to_default(self):
+        self.settings._data["log_retention_days"] = -1
+        self.assertEqual(self.settings.log_retention_days(), 7)
+
+    def test_large_integer_is_used(self):
+        large = 10**100
+        self.settings._data["log_retention_days"] = large
+        self.assertEqual(self.settings.log_retention_days(), large)
+
+
 if __name__ == "__main__":
     unittest.main()

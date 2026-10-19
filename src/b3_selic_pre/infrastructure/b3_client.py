@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import base64
 import concurrent.futures
+import http.client
 import json
 import math
+import socket
+import ssl
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 
@@ -22,6 +26,15 @@ from b3_selic_pre.domain.constants import (
     DEFAULT_RATE_ID,
 )
 from b3_selic_pre.domain.models import RateRecord
+
+COMMUNICATION_EXCEPTIONS = (
+    urllib.error.URLError,
+    http.client.HTTPException,
+    TimeoutError,
+    ConnectionError,
+    ssl.SSLError,
+    socket.gaierror,
+)
 
 
 def build_payload(

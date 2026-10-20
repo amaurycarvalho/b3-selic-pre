@@ -43,6 +43,7 @@ A CLI usa subcomandos de verbo. Os principais são:
 | `consultar` | Consulta as taxas de uma data (`--curva curta\|longa\|ambas`). |
 | `atualizar` | Carrega a evolução da curva e imprime a análise determinística. |
 | `exportar` | Exporta curvas, análise e/ou log da aplicação. |
+| `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
 | `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
 
@@ -52,6 +53,24 @@ Parâmetros comuns: `--data AAAA-MM-DD` (padrão: hoje), `--no-cache` e
 
 Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
 exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
+
+### Servidor MCP
+
+O comando `b3-selic-pre mcp` inicia um servidor MCP via `stdio`, somente
+leitura, para agentes externos consultarem a curva, a evolução, a análise e as
+estatísticas usando o cache local.
+
+```bash
+./b3-selic-pre-linux mcp                 # atende usando o cache existente
+./b3-selic-pre-linux mcp --atualizar     # carrega hoje antes de atender
+./b3-selic-pre-linux mcp --data 2026-06-10
+```
+
+Durante o atendimento o servidor não acessa a B3/CVM e não grava estado. Ele
+expõe as tools `data_referencia`, `consultar_curva`, `exportar_curva_curta`,
+`exportar_curva_longa`, `analise`, `evolucao`, `estatisticas` e `listar_datas`.
+Detalhes de protocolo, tools e execução em Docker estão em
+[Servidor MCP](docs/misc/mcp.md).
 
 ### Interface Gráfica
 

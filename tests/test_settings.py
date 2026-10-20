@@ -228,3 +228,32 @@ class LogRetentionDaysTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SettingsDataReferenciaTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__settings_referencia_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        self.path = self.tmpdir / "settings.json"
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_default_is_empty(self):
+        settings = Settings(path=self.path)
+        self.assertEqual(settings.get("data_referencia"), "")
+
+    def test_persists_data_referencia_atomically(self):
+        settings = Settings(path=self.path)
+        settings["data_referencia"] = "2026-06-17"
+        payload = json.loads(self.path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["data_referencia"], "2026-06-17")
+        self.assertEqual(list(self.tmpdir.glob("*.tmp")), [])
+
+    def test_missing_key_does_not_break_loading(self):
+        self.path.write_text(
+            json.dumps({"last_date": "2026-06-10"}), encoding="utf-8"
+        )
+        settings = Settings(path=self.path)
+        self.assertEqual(settings.get("data_referencia"), "")

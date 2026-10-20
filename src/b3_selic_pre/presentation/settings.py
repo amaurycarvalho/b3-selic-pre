@@ -9,12 +9,14 @@ from __future__ import annotations
 import json
 import os
 import platform
+import uuid
 from pathlib import Path
 
 DEFAULT_LOG_RETENTION_DAYS = 7
 
 DEFAULT_SETTINGS = {
     "last_date": "",
+    "data_referencia": "",
     "view_mode": "raw",
     "log_retention_days": DEFAULT_LOG_RETENTION_DAYS,
     "evolution": False,
@@ -84,14 +86,20 @@ class Settings:
             pass
 
     def _save(self: Settings) -> None:
+        tmp_path: Path | None = None
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(
+            tmp_path = self.path.with_name(
+                f".{self.path.name}.{uuid.uuid4().hex}.tmp"
+            )
+            tmp_path.write_text(
                 json.dumps(self._data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
+            os.replace(tmp_path, self.path)
         except OSError:
-            pass
+            if tmp_path is not None:
+                tmp_path.unlink(missing_ok=True)
 
     def get(self: Settings, key: str, default: object = None) -> object:
         """Return the value for ``key`` or ``default`` if absent."""

@@ -11,6 +11,7 @@ b3-selic-pre gui                     # abre a GUI
 b3-selic-pre consultar [opções]
 b3-selic-pre atualizar [opções]
 b3-selic-pre exportar [opções]
+b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
 b3-selic-pre --version
@@ -25,6 +26,7 @@ Executar sem argumentos é equivalente a `gui`.
 | `consultar`    | Consulta as taxas de uma data e imprime CSV no terminal.                         |
 | `atualizar`    | Carrega a curva e a janela de evolução, gera e imprime a análise determinística. |
 | `exportar`     | Exporta evolução da curva, análise e/ou log da aplicação.                        |
+| `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
 
@@ -32,11 +34,13 @@ Executar sem argumentos é equivalente a `gui`.
 
 | Parâmetro                     | Comandos                             | Descrição                                        |
 | ----------------------------- | ------------------------------------ | ------------------------------------------------ |
-| `--data AAAA-MM-DD`           | `consultar`, `atualizar`, `exportar` | Data de referência. Padrão: data local corrente. |
+| `--data AAAA-MM-DD`           | `consultar`, `atualizar`, `exportar`, `mcp` | Data de referência. Padrão: data local corrente. |
 | `--no-cache`                  | `consultar`, `atualizar`, `exportar` | Ignora o cache em disco e busca os dados na B3.  |
 | `--curva curta\|longa\|ambas` | `consultar`, `exportar`              | Representação da curva.                          |
 | `--silencioso`                | `atualizar`                          | Carrega os dados sem imprimir a análise.         |
 | `--analise`                   | `exportar`                           | Inclui o texto determinístico da análise.        |
+| `--analise-curva curta\|longa` | `exportar`                          | Representação usada na análise (padrão: curta); exige `--analise`. |
+| `--atualizar`                 | `mcp`                                | Carrega os dados de hoje antes de iniciar o servidor. |
 | `--log`                       | `exportar`                           | Inclui uma cópia do log ativo.                   |
 | `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`                           | Destino da exportação.                           |
 | `--help`                      | todos                                | Exibe a ajuda.                                   |
@@ -122,6 +126,7 @@ b3-selic-pre exportar --curva longa
 b3-selic-pre exportar --curva ambas --analise
 b3-selic-pre exportar --curva ambas --analise --log --saida exports/
 b3-selic-pre exportar --analise
+b3-selic-pre exportar --analise --analise-curva longa
 b3-selic-pre exportar --log
 ```
 
@@ -131,7 +136,7 @@ b3-selic-pre exportar --log
 | --------------- | ------------------ | ------------------------------------------------------------ |
 | `--curva curta` | `curva-curta.csv`  | `DATA;DU252;DC365;TAXA`, uma linha por registro por data     |
 | `--curva longa` | `curva-longa.csv`  | `DATA;ANO;TAXA_MEDIA`                                        |
-| `--analise`     | `analise.txt`      | Texto com as seções `Análise da Curva` e `Evolução da Curva` |
+| `--analise`     | `analise.txt`      | Texto com as seções `Análise da Curva` e `Evolução da Curva`; com `longa`, usa a taxa média por ano |
 | `--log`         | `b3-selic-pre.log` | Cópia do log ativo no momento da exportação                  |
 
 ### Destino
@@ -157,6 +162,46 @@ b3-selic-pre exportar --data 2026-06-10 \
 O snapshot do log não inclui o registro da própria invocação de `exportar`,
 porque esse registro é gravado ao final do processo. Ele contém as invocações
 anteriores.
+
+
+### `--analise-curva`
+
+`--analise-curva curta|longa` seleciona a representação usada no texto da
+análise. O padrão é `curta`. A opção exige `--analise` e é independente de
+`--curva`:
+
+```bash
+# CSV consolidado + análise sobre a taxa média por ano
+b3-selic-pre exportar --curva longa --analise --analise-curva longa
+
+# Apenas a análise longa no stdout
+b3-selic-pre exportar --analise --analise-curva longa
+```
+
+A análise longa usa a mesma base do CSV `DATA;ANO;TAXA_MEDIA` (taxa média por
+ano). A tabela de `consultar --curva longa` continua mostrando mínimo e máximo
+por ano; são representações diferentes.
+
+## `mcp`
+
+```bash
+b3-selic-pre mcp
+b3-selic-pre mcp --atualizar
+b3-selic-pre mcp --data 2026-06-10
+b3-selic-pre mcp --atualizar --data 2026-06-10
+```
+
+Inicia o servidor MCP via `stdio`, usando apenas o cache local durante o
+atendimento. `--atualizar` carrega a data de hoje antes de atender; `--data`
+carrega a data informada. Quando ambos são usados, há uma única carga com a data
+informada.
+
+O subcomando não aceita `--no-cache`, `--curva`, `--analise`, `--log` ou
+`--saida`. Falhas na preparação encerram com código diferente de zero e o
+servidor não inicia. Em `EOF`, o servidor encerra com `0`.
+
+Consulte [Servidor MCP](mcp.md) para o protocolo, as tools, os erros e a
+execução em Docker.
 
 ## Logging
 
@@ -192,10 +237,13 @@ Invocações `--help`, `--version`, erros de parsing, falhas de comunicação e
 exceções não tratadas também geram o registro. A retenção de backups usa a
 configuração `log_retention_days` (padrão: 7 dias), a mesma da GUI.
 
+No modo `mcp`, logs e diagnósticos vão para `stderr` e o arquivo de log ativo
+não é gravado.
+
 ## Códigos de retorno
 
 | Código | Significado                                                     |
 | ------ | --------------------------------------------------------------- |
-| `0`    | Sucesso, incluindo `--help` e `--version`.                      |
-| `1`    | Falha de comunicação com a B3 ou ausência de dados necessários. |
+| `0`    | Sucesso, incluindo `--help`, `--version` e EOF do servidor MCP. |
+| `1`    | Falha de comunicação, preparação do MCP ou ausência de dados.   |
 | `2`    | Erro de uso, sintaxe inválida ou validação de data/parâmetros.  |

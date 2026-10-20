@@ -11,24 +11,36 @@ from datetime import datetime
 from pathlib import Path
 
 from b3_selic_pre import __version__
+from b3_selic_pre.infrastructure.action_lock import ActionLock
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
+from b3_selic_pre.infrastructure.disk_cache import DiskCache
 from b3_selic_pre.infrastructure.logging_setup import (
     LOG_ACTIVE_NAME,
     configure_logging,
+    configure_stderr_logging,
     log_dir,
 )
 from b3_selic_pre.presentation import cli_commands, cli_parser
-from b3_selic_pre.presentation.gui import launch_gui
 from b3_selic_pre.presentation.logging_utils import (
+    communication_exit_code,
     install_exception_hooks,
-    is_communication_error,
-    log_exception,
     log_invocation,
 )
 from b3_selic_pre.presentation.settings import Settings
 
 _SHORTCUT_MESSAGE = "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"
+
+
+def launch_gui(*args: object, **kwargs: object) -> None:
+    """Importa e inicia a GUI apenas quando o modo gráfico é solicitado."""
+    from b3_selic_pre.presentation.gui import launch_gui as _launch_gui
+
+    _launch_gui(*args, **kwargs)
+
+
+def _wait_message() -> None:
+    print("Aguardando outra ação de dados...", file=sys.stderr)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -96,18 +108,39 @@ def _log_text(active_log: Path | None) -> str | None:
         return None
 
 
+def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
+    from b3_selic_pre.presentation.mcp.command import run_mcp_command
+
+    return run_mcp_command(
+        args,
+        settings,
+        cache=DiskCache(),
+        client_factory=CachedB3Client,
+        lock_factory=lambda: ActionLock(on_wait=_wait_message),
+    )
+
+
 def _dispatch(
     args: argparse.Namespace, settings: Settings, active_log: Path | None
 ) -> int:
     if args.comando == "consultar":
         return cli_commands.consultar(args, CachedB3Client())
     if args.comando == "atualizar":
-        return cli_commands.atualizar(args, settings, CachedB3Client())
+        try:
+            with ActionLock(on_wait=_wait_message):
+                return cli_commands.atualizar(
+                    args, settings, CachedB3Client()
+                )
+        except TimeoutError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
     if args.comando == "exportar":
         log_content = _log_text(active_log) if args.log else None
         return cli_commands.exportar(
             args, settings, CachedB3Client(), log_content
         )
+    if args.comando == "mcp":
+        return _run_mcp(args, settings)
     if args.comando == "criar-atalho":
         create_shortcut()
         print(_SHORTCUT_MESSAGE)
@@ -119,14 +152,27 @@ def _dispatch(
     return 2
 
 
+
+def _configure_logging_mode(
+    argv: list[str], settings: Settings
+) -> Path | None:
+    """Configure file logging or stderr-only logging for MCP."""
+    # MCP must not create or write the active file log while serving.
+    if argv and argv[0] == "mcp":
+        configure_stderr_logging()
+        return None
+    return configure_logging(
+        retention_days=settings.log_retention_days()
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Ponto de entrada da CLI: despacha subcomandos e registra a invocação."""
     if argv is None:
         argv = sys.argv[1:]
     settings = Settings()
-    active_log = configure_logging(
-        retention_days=settings.log_retention_days()
-    )
+    # The MCP command has its own logging contract; all others share the file log.
+    active_log = _configure_logging_mode(argv, settings)
     logger = logging.getLogger(__name__)
     install_exception_hooks(logger)
     mode = "GUI" if not argv or argv[0] == "gui" else "CLI"
@@ -154,10 +200,9 @@ def main(argv: list[str] | None = None) -> int:
         return codigo
     except Exception as exc:
         codigo = 1
-        log_exception(logger, exc, "Erro ao executar comando")
-        if is_communication_error(exc):
-            print(f"Erro ao buscar dados: {exc}", file=sys.stderr)
-            return 1
+        code = communication_exit_code(logger, exc)
+        if code is not None:
+            return code
         raise
     finally:
         log_invocation(

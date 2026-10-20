@@ -291,3 +291,20 @@ class ConfigureLoggingTest(LoggingTestBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StderrLoggingTest(unittest.TestCase):
+    def test_configure_stderr_logging_uses_only_stderr(self):
+        from b3_selic_pre.infrastructure.logging_setup import (
+            configure_stderr_logging,
+        )
+
+        with mock.patch("logging.basicConfig") as basic:
+            configure_stderr_logging()
+
+        handlers = basic.call_args.kwargs["handlers"]
+        self.assertEqual(len(handlers), 1)
+        self.assertIsInstance(handlers[0], logging.StreamHandler)
+        import sys
+        self.assertIs(handlers[0].stream, sys.stderr)
+        self.assertTrue(basic.call_args.kwargs["force"])

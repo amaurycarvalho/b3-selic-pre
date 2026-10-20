@@ -932,3 +932,74 @@ class CurrentDateCacheIntegrationTest(unittest.TestCase):
             result = self.client.fetch_rates_for_date(self.today)
         self.assertEqual(result, expected)
         mock_fetch.assert_called_once()
+
+
+class DiskCacheReadOnlyTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(__file__).parent / "__cache_readonly_test__"
+        self.tmpdir.mkdir(exist_ok=True)
+        self.cache = DiskCache(cache_dir=str(self.tmpdir))
+        self.records = [RateRecord(day252=1, day360=1, rate="14,65")]
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_corrupt_entry_is_miss_without_deletion(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text("not json", encoding="utf-8")
+        self.assertIsNone(self.cache.get("2026-06-17", read_only=True))
+        self.assertTrue(path.exists())
+
+    def test_incomplete_entry_is_miss_without_deletion(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text(
+            json.dumps({"schema_version": 2, "complete": False}),
+            encoding="utf-8",
+        )
+        self.assertIsNone(self.cache.get("2026-06-17", read_only=True))
+        self.assertTrue(path.exists())
+
+    def test_expired_entry_is_miss_without_deletion(self):
+        path = self.cache._cache_path("2026-06-17")
+        old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "cached_at": old,
+                    "ttl_minutes": 30,
+                    "complete": True,
+                    "expected_count": 1,
+                    "records": [
+                        {"day252": 1, "day360": 1, "rate": "14,65"}
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.assertIsNone(self.cache.get("2026-06-17", read_only=True))
+        self.assertTrue(path.exists())
+
+    def test_read_only_miss_does_not_create_file(self):
+        self.assertIsNone(self.cache.get("2026-06-17", read_only=True))
+        self.assertFalse(self.cache._cache_path("2026-06-17").exists())
+
+    def test_list_entries_and_last_cached_date(self):
+        self.cache.put("2026-06-10", self.records)
+        self.cache.put("2026-06-17", self.records)
+        entries = self.cache.list_entries()
+        self.assertEqual([entry.date for entry in entries], ["2026-06-10", "2026-06-17"])
+        self.assertEqual(entries[0].count, 1)
+        self.assertEqual(self.cache.last_cached_date(), "2026-06-17")
+
+    def test_list_entries_skips_invalid_file(self):
+        path = self.cache._cache_path("2026-06-17")
+        path.write_text("not json", encoding="utf-8")
+        self.assertEqual(self.cache.list_entries(), [])
+
+    def test_atomic_put_leaves_no_temp_file(self):
+        self.cache.put("2026-06-17", self.records)
+        temp_files = list(self.tmpdir.glob("*.tmp"))
+        self.assertEqual(temp_files, [])
+        self.assertEqual(self.cache.get("2026-06-17"), self.records)

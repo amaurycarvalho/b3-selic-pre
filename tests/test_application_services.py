@@ -6,6 +6,7 @@ import pytest
 
 from b3_selic_pre.application.analyze import CurvaJurosConfig, EvolutionConfig
 from b3_selic_pre.application.cli_services import (
+    PrecomputedAnalysis,
     build_analysis_text,
     build_evolution_text,
     build_export_artifacts,
@@ -269,3 +270,92 @@ class TestConfigFromMapping:
         config = EvolutionConfig.from_mapping({"weak_max": 12.0})
         assert config.weak_max == 12.0
         assert config.moderate_max == 30.0
+
+
+class TestCurveLongaAnalysis:
+    def _multi_year(self):
+        return [
+            RateRecord(day252=1, day360=1, rate="10,00"),
+            RateRecord(day252=2, day360=2, rate="14,00"),
+            RateRecord(day252=3, day360=366, rate="20,00"),
+            RateRecord(day252=4, day360=367, rate="22,00"),
+        ]
+
+    def test_to_curve_longa_uses_yearly_averages(self):
+        from b3_selic_pre.application.use_cases import to_curve_longa
+
+        result = to_curve_longa(self._multi_year())
+
+        assert [(r.day252, r.day360, r.rate) for r in result] == [
+            (0, 0, "12,00"),
+            (252, 365, "21,00"),
+        ]
+
+    def test_to_curve_longa_historical_keeps_empty_dates(self):
+        from b3_selic_pre.application.use_cases import (
+            to_curve_longa_historical,
+        )
+
+        result = to_curve_longa_historical(
+            {"2026-06-10": self._multi_year(), "2026-06-17": []}
+        )
+
+        assert [r.rate for r in result["2026-06-10"]] == ["12,00", "21,00"]
+        assert result["2026-06-17"] == []
+
+    def test_analysis_longa_uses_yearly_slope(self):
+        records = self._multi_year()
+
+        curta = build_analysis_text(records)
+        longa = build_analysis_text(records, curva="longa")
+
+        assert "1200 bps" in curta
+        assert "900 bps" in longa
+
+    def test_precomputed_analysis_is_not_reused_across_curves(self):
+        records = self._multi_year()
+        precomputed = PrecomputedAnalysis(curva="curta", texto="PRE")
+
+        assert (
+            build_analysis_text(
+                records, curva="curta", precomputed=precomputed
+            )
+            == "PRE"
+        )
+        longa = build_analysis_text(
+            records, curva="longa", precomputed=precomputed
+        )
+        assert longa != "PRE"
+        assert "900 bps" in longa
+
+    def test_export_artifacts_support_analise_curva(self):
+        records = self._multi_year()
+        historical = {
+            "2026-06-10": records,
+            "2026-06-17": records,
+        }
+
+        artifacts = build_export_artifacts(
+            records,
+            historical_data=historical,
+            include_analise=True,
+            analise_curva="longa",
+        )
+
+        analysis = next(a for a in artifacts if a.name == "analise.txt")
+        assert "Curva Longa" in analysis.content
+        assert "900 bps" in analysis.content
+
+    def test_evolution_text_longa_uses_averages(self):
+        current = self._multi_year()
+        previous = [
+            RateRecord(day252=1, day360=1, rate="9,00"),
+            RateRecord(day252=2, day360=2, rate="13,00"),
+            RateRecord(day252=3, day360=366, rate="19,00"),
+            RateRecord(day252=4, day360=367, rate="21,00"),
+        ]
+
+        text = build_evolution_text(current, previous, curva="longa")
+
+        assert "Regime" in text
+        assert "100 bps" in text

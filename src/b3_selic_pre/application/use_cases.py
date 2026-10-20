@@ -125,6 +125,31 @@ def average_rate_by_year(records: list[RateRecord]) -> dict[int, float]:
     return {g["year"]: (g["min_rate"] + g["max_rate"]) / 2 for g in consolidated}
 
 
+def to_curve_longa(records: list[RateRecord]) -> list[RateRecord]:
+    """Converta uma curva bruta na série de taxas médias por ano."""
+    averages = average_rate_by_year(records)
+    return [
+        RateRecord(
+            day252=year * 252,
+            day360=year * 365,
+            rate=f"{averages[year]:.2f}".replace(".", ","),
+        )
+        for year in sorted(averages)
+    ]
+
+
+def to_curve_longa_historical(
+    historical_data: dict[str, list[RateRecord]] | None,
+) -> dict[str, list[RateRecord]] | None:
+    """Converta cada curva de um histórico para a série de médias anuais."""
+    if historical_data is None:
+        return None
+    return {
+        date_str: to_curve_longa(records)
+        for date_str, records in historical_data.items()
+    }
+
+
 def rate_statistics(records: list[RateRecord]) -> RateStatistics | None:
     """Calcula a menor e a maior taxa dos registros, ou ``None`` sem dados."""
     if not records:

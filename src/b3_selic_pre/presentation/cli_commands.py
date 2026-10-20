@@ -62,11 +62,28 @@ def consultar(args: argparse.Namespace, client: RatesClient) -> int:
     return 0
 
 
-def _fetch_update(
-    client: RatesClient, data: str, no_cache: bool
+def load_update(
+    client: RatesClient,
+    data: str,
+    no_cache: bool = False,
+    source_callback: object | None = None,
+    progress_callback: object | None = None,
 ) -> tuple[list[RateRecord], dict[str, list[RateRecord]]]:
-    records = client.fetch_rates_for_date(data, force=no_cache)
-    historical = client.fetch_historical_rates(data, force=no_cache)
+    """Carrega a curva e a janela de evolução reutilizando o cliente informado."""
+    callbacks: dict[str, object] = {}
+    if source_callback is not None:
+        callbacks["source_callback"] = source_callback
+    records = client.fetch_rates_for_date(
+        data, force=no_cache, **callbacks
+    )
+    historical_callbacks = dict(callbacks)
+    if progress_callback is not None:
+        historical_callbacks["progress_callback"] = progress_callback
+    historical = client.fetch_historical_rates(
+        data,
+        force=no_cache,
+        **historical_callbacks,
+    )
     return records or historical.get(data, []), historical
 
 
@@ -95,10 +112,11 @@ def atualizar(args: argparse.Namespace, settings: Settings, client: RatesClient)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    records, historical = _fetch_update(client, data, args.no_cache)
+    records, historical = load_update(client, data, args.no_cache)
     if not records:
         print(f"Nenhum registro encontrado para {data}.", file=sys.stderr)
         return 1
+    settings["data_referencia"] = data
     if args.silencioso:
         return 0
     _print_update(records, historical, settings)
@@ -136,6 +154,13 @@ def exportar(
             file=sys.stderr,
         )
         return 2
+    analise_curva = getattr(args, "analise_curva", None)
+    if analise_curva is not None and not args.analise:
+        print(
+            "--analise-curva exige --analise.",
+            file=sys.stderr,
+        )
+        return 2
     try:
         data = resolve_data(args.data)
     except ValueError as exc:
@@ -149,6 +174,7 @@ def exportar(
         include_analise=args.analise,
         log_text=log_content,
         config=config_from_settings(settings),
+        analise_curva=analise_curva or "curta",
     )
     if not artifacts:
         print(

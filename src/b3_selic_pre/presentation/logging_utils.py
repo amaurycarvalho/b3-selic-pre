@@ -174,3 +174,14 @@ def install_tk_exception_hook(
             previous(exc_type, exc_value, exc_tb)
 
     root.report_callback_exception = tk_hook
+
+
+def communication_exit_code(
+    logger: logging.Logger, exc: Exception
+) -> int | None:
+    """Log an exception and return 1 for communication failures, else None."""
+    log_exception(logger, exc, "Erro ao executar comando")
+    if is_communication_error(exc):
+        print(f"Erro ao buscar dados: {exc}", file=sys.stderr)
+        return 1
+    return None

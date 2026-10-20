@@ -6,7 +6,7 @@ import argparse
 
 from b3_selic_pre import __version__
 
-SUBCOMMANDS = ("consultar", "atualizar", "exportar", "gui", "criar-atalho")
+SUBCOMMANDS = ("consultar", "atualizar", "exportar", "mcp", "gui", "criar-atalho")
 CURVAS = ("curta", "longa", "ambas")
 
 
@@ -74,6 +74,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Inclui o texto determinístico da análise.",
     )
     exportar.add_argument(
+        "--analise-curva",
+        choices=("curta", "longa"),
+        default=None,
+        help=(
+            "Representação usada na análise (padrão: curta); "
+            "exige --analise."
+        ),
+    )
+    exportar.add_argument(
         "--log",
         action="store_true",
         help="Inclui uma cópia do log ativo da aplicação.",
@@ -82,6 +91,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--saida",
         default=None,
         help="Arquivo ou diretório de destino; omitido imprime um artefato.",
+    )
+
+    mcp = subparsers.add_parser(
+        "mcp", help="Inicia o servidor MCP via stdio."
+    )
+    mcp.add_argument(
+        "--atualizar",
+        action="store_true",
+        help="Carrega os dados de hoje antes de iniciar o servidor.",
+    )
+    mcp.add_argument(
+        "--data",
+        default=None,
+        help="Data de referência AAAA-MM-DD para preparar antes do servidor.",
     )
 
     subparsers.add_parser("gui", help="Abre a interface gráfica desktop.")

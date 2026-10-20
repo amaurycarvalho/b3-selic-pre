@@ -7,9 +7,16 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from b3_selic_pre.domain.models import RateRecord
+from b3_selic_pre.infrastructure.cache_payload import (
+    SCHEMA_VERSION,
+    CacheEntry,
+    is_valid_entry,
+    load_payload,
+    parse_records,
+    read_entry,
+    write_atomic,
+)
 from b3_selic_pre.infrastructure.xdg import cache_base
-
-SCHEMA_VERSION = 2
 
 
 def _xdg_cache_dir() -> Path:
@@ -30,81 +37,27 @@ class DiskCache:
         self: DiskCache,
         date_str: str,
         ttl_minutes: int | None = None,
+        read_only: bool = False,
     ) -> list[RateRecord] | None:
         """Return cached records for ``date_str`` or ``None`` when missing/expired."""
         path = self._cache_path(date_str)
-        data = self._load_payload(path)
+        data = load_payload(path, read_only=read_only)
         if data is None:
             return None
-        if not self._is_valid_entry(data):
-            path.unlink(missing_ok=True)
+        if not is_valid_entry(data):
+            if not read_only:
+                path.unlink(missing_ok=True)
             return None
         if self._is_expired(data, ttl_minutes):
-            path.unlink(missing_ok=True)
+            if not read_only:
+                path.unlink(missing_ok=True)
             return None
         try:
-            return self._parse_records(data)
+            return parse_records(data)
         except (KeyError, TypeError, ValueError):
-            path.unlink(missing_ok=True)
+            if not read_only:
+                path.unlink(missing_ok=True)
             return None
-
-    def _load_payload(self: DiskCache, path: Path) -> dict | None:
-        """Load the JSON payload from ``path`` or ``None`` when missing/corrupt."""
-        if not path.exists():
-            return None
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            path.unlink(missing_ok=True)
-            return None
-        if not isinstance(data, dict):
-            path.unlink(missing_ok=True)
-            return None
-        return data
-
-    @staticmethod
-    def _is_valid_entry(data: dict) -> bool:
-        """Return whether the payload has the current schema and complete data."""
-        if data.get("schema_version") != SCHEMA_VERSION:
-            return False
-        if data.get("complete") is not True:
-            return False
-        raw_records = data.get("records")
-        if not isinstance(raw_records, list) or not raw_records:
-            return False
-        expected_count = data.get("expected_count")
-        if not isinstance(expected_count, int):
-            return False
-        return len(raw_records) == expected_count
-
-    def _is_expired(self: DiskCache, data: dict, ttl_minutes: int | None) -> bool:
-        """Return ``True`` when the payload is stale according to TTL settings."""
-        cached_at = data.get("cached_at")
-        stored_ttl = data.get("ttl_minutes")
-        if (
-            stored_ttl is not None
-            and cached_at is not None
-            and not self._is_valid(cached_at, stored_ttl)
-        ):
-            return True
-        return ttl_minutes is not None and not self._is_valid(
-            cached_at, ttl_minutes
-        )
-
-    @staticmethod
-    def _parse_records(data: dict) -> list[RateRecord]:
-        """Parse ``data["records"]`` into rate records, raising on invalid input."""
-        raw_records = data.get("records")
-        if not isinstance(raw_records, list):
-            raise TypeError("invalid records payload")
-        return [
-            RateRecord(
-                day252=int(r["day252"]),
-                day360=int(r["day360"]),
-                rate=str(r["rate"]),
-            )
-            for r in raw_records
-        ]
 
     def put(
         self: DiskCache,
@@ -135,8 +88,32 @@ class DiskCache:
                 for r in records
             ],
         }
-        path = self._cache_path(date_str)
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        write_atomic(
+            self._cache_path(date_str),
+            json.dumps(data, ensure_ascii=False),
+        )
+
+    def list_entries(self: DiskCache) -> list[CacheEntry]:
+        """Return all valid cache entries without modifying the cache."""
+        entries: list[CacheEntry] = []
+        if not self.cache_dir.exists():
+            return entries
+        for path in sorted(self.cache_dir.glob("*.json")):
+            try:
+                date.fromisoformat(path.stem)
+            except ValueError:
+                continue
+            entry = read_entry(path)
+            if entry is not None:
+                entries.append(entry)
+        return entries
+
+    def last_cached_date(self: DiskCache) -> str | None:
+        """Return the most recent valid cache date, or ``None`` when empty."""
+        entries = self.list_entries()
+        if not entries:
+            return None
+        return max(entry.date for entry in entries)
 
     def _is_valid(self: DiskCache, cached_at: str, ttl_minutes: int | None) -> bool:
         if ttl_minutes is None or ttl_minutes <= 0:
@@ -148,13 +125,26 @@ class DiskCache:
         age = datetime.now(timezone.utc) - cached_dt
         return age < timedelta(minutes=ttl_minutes)
 
+    def _is_expired(self: DiskCache, data: dict, ttl_minutes: int | None) -> bool:
+        """Return ``True`` when the payload is stale according to TTL settings."""
+        cached_at = data.get("cached_at")
+        stored_ttl = data.get("ttl_minutes")
+        if (
+            stored_ttl is not None
+            and cached_at is not None
+            and not self._is_valid(cached_at, stored_ttl)
+        ):
+            return True
+        return ttl_minutes is not None and not self._is_valid(
+            cached_at, ttl_minutes
+        )
+
     def housekeeping(self: DiskCache, max_age_days: int = 365) -> None:
         """Delete cached files older than ``max_age_days``."""
         cutoff = datetime.now(timezone.utc).date() - timedelta(days=max_age_days)
         for path in self.cache_dir.glob("*.json"):
-            date_str = path.stem
             try:
-                file_date = date.fromisoformat(date_str)
+                file_date = date.fromisoformat(path.stem)
             except ValueError:
                 continue
             if file_date < cutoff:

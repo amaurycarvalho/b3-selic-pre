@@ -1,121 +1,165 @@
 ## Context
 
-O RFC-001 propõe extrair dados de movimentações diárias do Tesouro Direto do portal Tesouro Transparente (CKAN). A proposta atual usa uma classe monolítica `ExtratorTesouroDireto` que mistura HTTP, parsing HTML, download de CSV e processamento de dados num único artefato, com dependências externas (`requests`, `beautifulsoup4`, `pandas`) não presentes no projeto.
+O RFC-001 propõe extrair dados de vendas do Tesouro Direto do portal Tesouro Transparente (CKAN). A versão original descreve uma classe monolítica com `requests`, `BeautifulSoup`, `pandas` e scraping HTML, incompatível com o estado atual do projeto.
 
-O projeto `b3-selic-pre` segue Clean Architecture em 4 camadas (ADR-001), usa apenas `urllib` para HTTP, possui cache em disco com XDG paths, dependency injection via `opener` para testabilidade, e entry points CLI + GUI. O design precisa reestruturar a feature do RFC-001 para aderir a esses padrões, minimizando atrito com o ecossistema existente.
+O `b3-selic-pre` hoje:
+- usa Clean Architecture em 4 camadas, com guardas automáticas de dependência (`tests/test_architecture.py`);
+- usa apenas `urllib` para HTTP e `csv`/`json` da biblioteca padrão;
+- tem cache em disco com escrita atômica, validação de completude e leitura somente leitura (`DiskCache`, `cache_payload.write_atomic`);
+- tem contrato `CommunicationError` para falhas de rede/HTTP e logging compartilhado;
+- tem CLI baseada em subcomandos de verbo, sem flags legadas no nível raiz;
+- tem GUI em janela única, com gráfico, sidebar, statusbar, escudo de inicialização e orçamento de testes de UI;
+- tem servidor MCP somente leitura, sem rede durante o atendimento.
 
-O portal Tesouro Transparente é baseado em CKAN, que expõe uma API REST JSON documentada (`/api/3/action/package_show`). Isso elimina a necessidade de scraping HTML e permite acesso programático confiável a metadados e URLs de recursos.
+Este design é **preliminar**. O schema real do CSV não foi verificado com sucesso neste ambiente (as requisições ao CKAN expiraram), e o RFC original admite que a estrutura deve ser confirmada após o download.
+
+## Blocking Discovery Spike
+
+Antes de qualquer implementação, um spike deve responder:
+
+1. Qual é o endpoint CKAN correto e o identificador real do dataset (`package_show`)?
+2. Quais são as colunas reais do CSV, com nomes exatos, acentos, tipos e obrigatoriedade?
+3. O dataset contém apenas vendas ou também resgates/saldo?
+4. Qual é o encoding (UTF-8, UTF-8 com BOM, Latin-1), o delimitador e o tamanho do arquivo?
+5. O servidor oferece `ETag`/`Last-Modified` e responde `304 Not Modified`?
+6. Qual é a periodicidade de atualização e a defasagem real?
+
+Até a conclusão do spike:
+- o modelo de domínio é provisório;
+- a lista de colunas, filtros e agregações é provisória;
+- a change não pode ser implementada;
+- as specs devem ser revisadas com o schema verificado.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Reestruturar a feature em 4 camadas Clean Architecture: domain, application, infrastructure, presentation
-- Usar a API CKAN JSON para descoberta de dataset (substitui scraping HTML)
-- Usar `urllib` nativo para todas as requisições HTTP
-- Usar `csv.Sniffer` + `csv.DictReader` nativos para parsing do CSV (substitui `pandas`)
-- Implementar cache em disco com XDG paths, seguindo o padrão `DiskCache` existente
-- Implementar `CachedTesouroClient` wrappando o client com lógica de cache
-- Adicionar entry point CLI (`--tesouro` flag) com saída formatada
-- Adicionar aba/painel na GUI para visualização das movimentações
-- Atualizar o documento RFC-001 para refletir o design alinhado
-- Manter testabilidade via `opener` injection e `FakeResponse`
+- Reestruturar a feature em capabilities comportamentais, não em camadas.
+- Usar a API CKAN JSON para descoberta do dataset, sem scraping HTML.
+- Usar `urllib`, `csv` e `json` da biblioteca padrão.
+- Implementar cache cumulativo com escrita atômica, TTL de 6 horas e validação antes de substituir a versão anterior.
+- Implementar o subcomando `tesouro` na CLI, alinhado ao contrato de subcomandos.
+- Implementar uma janela separada "Tesouro Direto" na GUI, sem alterar o gráfico principal.
+- Reutilizar os padrões existentes de XDG, retry, logging, erros e formatação.
+- Manter testes headless para as regras e testes de UI apenas para montagem/wiring.
 
 **Non-Goals:**
-- Cruzamento dos dados do Tesouro Direto com a curva SELIC (melhoria futura)
-- Armazenamento em banco de dados (PostgreSQL/SQLite) -- arquivos locais bastam
-- Visualização com matplotlib (gráficos de movimentação) -- v1 usa tabela/texto
-- Análise textual/classificação dos dados (similar ao motor de análise existente)
-- Automatização de execuções diárias (cron job) -- consulta sob demanda
-- Suporte a outros datasets do Tesouro Transparente além de "Vendas do Tesouro Direto"
+- Tools MCP para Tesouro.
+- Exportação Tesouro no subcomando `exportar` ou botão de cópia dedicado.
+- Gráficos de movimentação.
+- Banco de dados (PostgreSQL/SQLite).
+- Agendamento/cron.
+- Cruzamento com a curva SELIC.
+- Atualização do PRD antes do spike e da aprovação de implementação.
+- Suporte a outros datasets do Tesouro Transparente.
 
 ## Decisions
 
-### 1. API CKAN JSON em vez de scraping HTML
+### 1. CKAN JSON em vez de scraping HTML
 
-**Decisão:** Usar `GET /api/3/action/package_show?id=vendas-do-tesouro-direto` para obter metadados e URLs de recursos.
+**Decisão:** usar `GET /api/3/action/package_show` para obter metadados e a URL do recurso CSV.
 
-**Alternativa rejeitada:** Parsing de HTML com BeautifulSoup (`bs4`). O scraping é frágil -- qualquer mudança no layout quebra. A API CKAN é estável, retorna JSON estruturado e não requer dependências extras.
+**Alternativa rejeitada:** scraping com `BeautifulSoup`. É frágil, exige dependência externa e foi a fonte dos problemas da proposta original.
 
-**Racional:** A API CKAN fornece o `resource_id`, `package_id`, URL de download, e metadados completos num único request JSON. O parsing é trivial com `json.loads()`, já usado extensivamente no `b3_client.py`. Nenhuma dependência nova necessária.
+**Racional:** a API CKAN retorna JSON estruturado e é o caminho documentado do portal. O parsing usa `json.loads()`, já usado na infraestrutura.
 
-### 2. Módulo `csv` nativo em vez de `pandas`
+### 2. `urllib` + `csv` + `json` nativos
 
-**Decisão:** Usar `csv.Sniffer` para detectar dialeto e `csv.DictReader` para leitura tipada.
+**Decisão:** download com `urllib.request`, leitura em chunks, parsing com `csv` e serialização com `json`.
 
-**Alternativa rejeitada:** `pandas.read_csv()`. O `pandas` é uma dependência pesada (~30 MB) não presente no projeto. Para um CSV de ~7 MB com colunas simples, o módulo `csv` nativo é suficiente e evita aumentar o binário PyInstaller.
+**Alternativa rejeitada:** `requests`, `pandas` e `lxml`. Aumentam o binário e não são usados pelo projeto.
 
-**Racional:** O `b3_client.py` já faz parsing manual de CSV em `fetch_rates_download()` com `split(';')`. O módulo `csv` nativo oferece detecção automática de separador, tratamento de quoting e leitura linha-a-linha com baixo consumo de memória.
+**Racional:** reduz dependências, mantém o padrão de injeção de `opener` e permite testar sem rede.
 
-### 3. Cache em disco com reuso do padrão DiskCache
+### 3. Cache cumulativo de arquivo único
 
-**Decisão:** Criar um `TesouroCache` que segue a mesma interface do `DiskCache` existente (get/put/housekeeping), armazenando em `~/.cache/b3-selic-pre/tesouro/`.
+**Decisão:** manter um único CSV cumulativo (`vendastesourodireto.csv`) e um arquivo de metadados no diretório `$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
 
-**Alternativa rejeitada:** Estender o `DiskCache` existente para suportar múltiplos tipos de dados. Isso acoplaria o cache genérico a domínios específicos, violando o SRP. Melhor criar uma instância separada com o mesmo padrão.
+- TTL de 6 horas.
+- Download condicional com `ETag`/`If-Modified-Since`; `304` reutiliza o cache.
+- Download para arquivo temporário, validação e substituição atômica via `cache_payload.write_atomic`.
+- Se o download falhar, a versão válida anterior é preservada.
+- Sem housekeeping: o dataset é cumulativo e o RFC confirma que basta a última versão.
+- Leitura somente leitura para consumidores que não devem alterar o cache.
 
-**Racional:** O dataset é cumulativo (sempre o arquivo completo desde 2002), então:
-- Cache key é a data de download (não há "cache por data de consulta" como na curva SELIC)
-- TTL aplicável se quisermos re-baixar após N horas (ex: 6h, já que atualiza diariamente)
-- Download condicional via `If-Modified-Since` / `ETag` para evitar baixar 7 MB desnecessariamente
+**Alternativa rejeitada:** cache por data de download e housekeeping copiados do `DiskCache`. Não fazem sentido para um arquivo cumulativo.
 
-Storage path: `$XDG_CACHE_HOME/b3-selic-pre/tesouro/vendastesourodireto.csv` + `vendastesourodireto.json` (metadados).
+### 4. Modelo de domínio provisório
 
-### 4. Modelo de domínio como frozen dataclass
+**Decisão:** definir um frozen dataclass `RegistroTesouroDireto` com os campos provisórios `data`, `titulo`, `venda`, `resgate`, `saldo` e `vencimento`.
 
-**Decisão:** Definir `MovimentacaoTesouroDireto` com campos: `data`, `titulo`, `venda`, `resgate`, `saldo`, `vencimento`.
+**Racional:** segue o padrão de `RateRecord`. O nome e os campos finais dependem do spike; se o dataset for apenas de vendas, o modelo pode ser renomeado para `VendaTesouroDireto` e os campos ajustados.
 
-```python
-@dataclass(frozen=True)
-class MovimentacaoTesouroDireto:
-    data: str          # YYYY-MM-DD
-    titulo: str        # Nome do título
-    venda: float       # Volume de vendas (R$)
-    resgate: float     # Volume de resgates (R$)
-    saldo: float       # Saldo (R$)
-    vencimento: str    # YYYY-MM-DD
-```
+**Trade-off:** valores monetários como `float` são suficientes para exibição e agregações simples. Se o spike revelar necessidade de precisão exata, avaliar `Decimal` ou preservar o texto original.
 
-**Racional:** Segue o padrão de `RateRecord` (`domain/models.py`). Frozen garante imutabilidade. Dataclass fornece `__eq__`, `__repr__` e desestruturação gratuita. Valores monetários como `float` (precisão suficiente para agregações -- `Decimal` seria overengineering neste estágio).
-
-### 5. Estrutura de arquivos na camada application
-
-**Decisão:** Criar `application/tesouro/` como subpacote, espelhando `application/analyze/`.
-
-```
-application/tesouro/
-├── __init__.py        # Re-exporta processar_csv()
-├── _processamento.py  # Leitura, validação e estruturação do CSV
-└── _formatting.py     # Formatação de saída (JSON, texto tabular)
-```
-
-**Racional:** A análise de curva SELIC já usa subpacote (`analyze/`) com módulos internos prefixados `_`. Isso mantém a API pública limpa (`application/tesouro/processar_csv`) enquanto isola implementação.
-
-### 6. Entry points: CLI flag e aba na GUI
+### 5. CLI: subcomando `tesouro`
 
 **Decisão:**
-- **CLI:** Adicionar `--tesouro` como subcomando ao `argparse` existente
-- **GUI:** Adicionar aba "Tesouro Direto" no `ttk.Notebook` com tabela scrollable (Treeview) e botão "Atualizar"
 
-**Alternativa rejeitada:** Criar um executável separado (ex: `b3-tesouro-direto`). Isso duplicaria infraestrutura de build/distribuição e confundiria o usuário. Melhor integrar como feature adicional do mesmo aplicativo.
+```text
+b3-selic-pre tesouro [--titulo T] [--inicio AAAA-MM-DD] [--fim AAAA-MM-DD]
+                     [--json] [--no-cache]
+```
 
-**Racional:** A GUI já tem padrão de abas (implícito na sidebar) e a CLI já tem estrutura de subcomandos. Adicionar uma aba ao Notebook existente é idiomático para Tkinter.
+- Saída padrão em CSV com delimitador `;` e separador decimal `.`.
+- `--json` retorna metadados e registros estruturados.
+- `--no-cache` força o download.
+- Códigos: `0` sucesso, `1` falha de comunicação/dados, `2` uso/validação.
+- Nenhuma flag no nível raiz; a CLI continua baseada em subcomandos.
 
-### 7. Testabilidade via opener injection
+**Alternativa rejeitada:** `--tesouro` como flag raiz. Contradiz `cli-interface`.
 
-**Decisão:** As funções de infraestrutura (`fetch_metadados`, `fetch_csv`) recebem `opener=urllib.request.urlopen` como parâmetro, permitindo injeção de `FakeResponse` nos testes.
+### 6. GUI: janela separada
 
-**Racional:** Padrão já usado em `b3_client.py:fetch_reference_rates_page()`. Sem dependência de bibliotecas de mock externas.
+**Decisão:** adicionar um botão "Tesouro Direto" na barra superior e abrir uma janela `Toplevel` independente, com tabela, filtros, botão de atualização e status próprio.
+
+**Alternativa rejeitada:** aba em `ttk.Notebook`. A GUI não usa Notebook; introduzir abas exigiria reestruturar a janela principal e arriscaria o escudo de inicialização, o gráfico e as specs atuais.
+
+**Racional:** preserva a janela principal e o gráfico, reutiliza `GuiDependencies` e permite um view-model headless.
+
+### 7. Erros e logging
+
+**Decisão:**
+
+- `CommunicationError` para falhas de rede, HTTP, timeout e corpo vazio após retries.
+- Erros de dados (`ValueError` ou erro de domínio) para CSV malformado, colunas ausentes e valores inválidos.
+- Falhas de comunicação em linha única no log; exceções inesperadas com traceback.
+- CLI em `stderr` com código `1` ou `2`; GUI mostra a mensagem na janela e permanece utilizável.
+
+### 8. Reuso de infraestrutura existente
+
+- `xdg.cache_base()` para o diretório base.
+- `cache_payload.write_atomic()` para escrita atômica.
+- `b3_retry` para retry com backoff e jitter.
+- `application/formatting.py` para CSV e formatação numérica.
+- `ActionLock` para serializar downloads, se CLI e GUI puderem disparar ao mesmo tempo.
+- `application/errors.CommunicationError`.
+- `GuiDependencies` e `gui/launch.py` para composição.
+
+### 9. Testes e governança
+
+- Testes headless para cliente, cache, parsing, filtros, agregação e formatação.
+- Testes de UI apenas para montagem/wiring, marcados `@pytest.mark.ui`.
+- Respeitar o orçamento atual de 5 testes de UI; reduzir outro teste ou obter aprovação explícita se for necessário ampliar.
+- Rodar `make lint`, `make complexity` e a suíte completa, por envolver `domain`, CLI, GUI e cache.
+- Manter as guardas de arquitetura: `domain` puro, `application` sem UI/rede.
 
 ## Risks / Trade-offs
 
-- **[CKAN API pode ser descontinuada ou mudar]** → Mitigação: A API CKAN é padrão internacional usado por centenas de portais de dados abertos. O Tesouro Nacional usa CKAN desde 2015. Fallback: se a API JSON falhar, tentar a URL HTML como último recurso e emitir warning.
-- **[Schema do CSV pode divergir do esperado]** → Mitigação: `csv.Sniffer` detecta automaticamente o separador. Mapeamento de colunas por nome (case-insensitive) com fallback para colunas desconhecidas (ignoradas, não quebram). Log warning para colunas não reconhecidas.
-- **[7 MB de download pode ser lento em conexões ruins]** → Mitigação: Download condicional via `ETag`/`If-Modified-Since`. Progress callback para GUI mostrar barra. Timeout de 60s.
-- **[Feature pode aumentar binário PyInstaller se mal implementada]** → Mitigação: Nenhuma dependência nova. Uso de `urllib` e `csv` nativos. Estimativa de impacto: < 5 KB de código Python adicional.
-- **[Duplicação parcial com `b3_client.py` em padrões HTTP]** → Trade-off aceito: cada fonte de dados tem suas peculiaridades (JSON paginado vs CSV simples, CKAN vs B3 API). Extrair um `HttpClient` genérico seria prematuro. Se surgir uma terceira fonte, aí sim abstrair.
+- **[Schema real divergente]** → o spike é bloqueante; as specs e o modelo serão revisados antes da implementação.
+- **[CKAN indisponível ou instável]** → o MCP continua sem rede; o Tesouro falha com `CommunicationError` e a GUI permanece utilizável.
+- **[CSV grande (~7 MB)]** → download em chunks, timeout de 60s e progresso na GUI; parsing em streaming quando possível.
+- **[Encoding/delimitador imprevisíveis]** → tentar UTF-8 com BOM, UTF-8 e Latin-1; validar o delimitador e as colunas antes de cachear.
+- **[Cache corrompido]** → tratar como miss, baixar novamente e substituir atomicamente.
+- **[Duplicação com a B3]** → manter adaptadores separados; extrair um cliente HTTP genérico só se surgir uma terceira fonte.
+- **[Orçamento de testes de UI]** → preferir view-model headless e limitar testes de janela ao wiring.
 
 ## Open Questions
 
-- **O CSV usa vírgula ou ponto-e-vírgula como separador?** O RFC assume vírgula, mas dados governamentais brasileiros frequentemente usam `;`. O `csv.Sniffer` resolve isso em runtime.
-- **O encoding do CSV é UTF-8 ou Latin-1?** Testar ambos com fallback, como `b3_client.py` já faz (`utf-8` → `latin-1`).
-- **A GUI deve ter gráfico de barras/linha das movimentações?** Decidido como Non-Goal para v1. Pode ser adicionado como melhoria futura.
-- **O cache deve expirar?** Dataset atualiza diariamente com defasagem de D+2. TTL de 6h no CSV garante que o usuário veja dados frescos sem abusar do servidor do Tesouro.
+Estas questões devem ser resolvidas pelo spike bloqueante:
+
+- O identificador do dataset é `vendas-do-tesouro-direto` ou um UUID?
+- O dataset é de vendas ou de movimentações completas?
+- Quais são os nomes reais das colunas e os tipos?
+- O CSV usa `;` ou `,`? UTF-8 ou Latin-1?
+- Há `ETag` e `Last-Modified` utilizáveis?
+- Qual é a defasagem real entre a data dos dados e a publicação?

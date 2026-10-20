@@ -27,7 +27,7 @@ def _records(*rates):
 
 
 def _settings():
-    settings = mock.Mock()
+    settings = mock.MagicMock()
     settings.log_retention_days.return_value = 7
     settings.get.return_value = {}
     return settings
@@ -48,6 +48,11 @@ class CliTestBase(unittest.TestCase):
         )
         self.configure_logging = self.configure_patch.start()
         self.addCleanup(self.configure_patch.stop)
+        self.configure_stderr_patch = mock.patch(
+            "b3_selic_pre.presentation.cli.configure_stderr_logging"
+        )
+        self.configure_stderr_logging = self.configure_stderr_patch.start()
+        self.addCleanup(self.configure_stderr_patch.stop)
         self.hooks_patch = mock.patch(
             "b3_selic_pre.presentation.cli.install_exception_hooks"
         )
@@ -59,7 +64,7 @@ class CliTestBase(unittest.TestCase):
         self.log_invocation = self.log_invocation_patch.start()
         self.addCleanup(self.log_invocation_patch.stop)
         self.log_exception_patch = mock.patch(
-            "b3_selic_pre.presentation.cli.log_exception"
+            "b3_selic_pre.presentation.logging_utils.log_exception"
         )
         self.log_exception = self.log_exception_patch.start()
         self.addCleanup(self.log_exception_patch.stop)
@@ -77,7 +82,14 @@ class ParserTest(CliTestBase):
         code, output, _ = self._main(["--help"])
 
         self.assertEqual(code, 0)
-        for command in ("consultar", "atualizar", "exportar", "gui", "criar-atalho"):
+        for command in (
+            "consultar",
+            "atualizar",
+            "exportar",
+            "mcp",
+            "gui",
+            "criar-atalho",
+        ):
             self.assertIn(command, output)
 
     def test_version_prints_version(self):
@@ -115,6 +127,24 @@ class ParserTest(CliTestBase):
         self.assertFalse(exportar.analise)
         self.assertFalse(exportar.log)
         self.assertIsNone(exportar.saida)
+        self.assertIsNone(exportar.analise_curva)
+
+        mcp = cli.parse_args(["mcp"])
+        self.assertEqual(mcp.comando, "mcp")
+        self.assertFalse(mcp.atualizar)
+        self.assertIsNone(mcp.data)
+
+        prepared = cli.parse_args(
+            ["mcp", "--atualizar", "--data", "2026-06-10"]
+        )
+        self.assertTrue(prepared.atualizar)
+        self.assertEqual(prepared.data, "2026-06-10")
+
+    def test_mcp_rejects_unsupported_option(self):
+        code, _, stderr = self._main(["mcp", "--no-cache"])
+
+        self.assertEqual(code, 2)
+        self.assertIn("unrecognized arguments", stderr)
 
 
 class DataResolutionTest(CliTestBase):
@@ -521,3 +551,146 @@ class GuiLaunchLoggingTest(unittest.TestCase):
 
         configure.assert_not_called()
         root.mainloop.assert_called_once()
+
+
+class DataReferenciaWriteTest(CliTestBase):
+    def test_atualizar_persists_data_referencia(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli_commands.resolve_data",
+            return_value="2026-06-17",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as client_class:
+            client = client_class.return_value
+            client.fetch_rates_for_date.return_value = _records(14.5)
+            client.fetch_historical_rates.return_value = {
+                "2026-06-17": _records(14.5)
+            }
+            code, _, _ = self._main(
+                ["atualizar", "--data", "2026-06-17"]
+            )
+
+        self.assertEqual(code, 0)
+        self.settings.__setitem__.assert_called_once_with(
+            "data_referencia", "2026-06-17"
+        )
+
+    def test_consultar_does_not_persist_data_referencia(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli_commands.resolve_data",
+            return_value="2026-06-17",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as client_class:
+            client_class.return_value.fetch_rates_for_date.return_value = (
+                _records(14.5)
+            )
+            code, _, _ = self._main(
+                ["consultar", "--data", "2026-06-17"]
+            )
+
+        self.assertEqual(code, 0)
+        self.settings.__setitem__.assert_not_called()
+
+    def test_exportar_does_not_persist_data_referencia(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli_commands.resolve_data",
+            return_value="2026-06-17",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as client_class:
+            client_class.return_value.fetch_historical_rates.return_value = {
+                "2026-06-17": _records(14.5)
+            }
+            code, _, _ = self._main(
+                ["exportar", "--data", "2026-06-17", "--curva", "longa"]
+            )
+
+        self.assertEqual(code, 0)
+        self.settings.__setitem__.assert_not_called()
+
+
+class ExportarAnaliseCurvaTest(CliTestBase):
+    def _run(self, *extra):
+        with mock.patch(
+            "b3_selic_pre.presentation.cli_commands.resolve_data",
+            return_value="2026-06-17",
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.CachedB3Client"
+        ) as client_class:
+            client_class.return_value.fetch_historical_rates.return_value = {
+                "2026-06-10": _records(14.4, 14.9),
+                "2026-06-17": _records(14.5, 15.0),
+            }
+            return self._main(
+                ["exportar", "--data", "2026-06-17", *extra]
+            )
+
+    def test_analise_longa(self):
+        code, output, _ = self._run(
+            "--analise", "--analise-curva", "longa"
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("Curva Longa", output)
+
+    def test_analise_curta_is_default(self):
+        code, output, _ = self._run("--analise")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Análise da Curva", output)
+        self.assertNotIn("Curva Longa", output)
+
+    def test_analise_curva_requires_analise(self):
+        code, _, stderr = self._run(
+            "--curva", "curta", "--analise-curva", "longa"
+        )
+
+        self.assertEqual(code, 2)
+        self.assertIn("--analise-curva exige --analise", stderr)
+
+
+class McpDispatchTest(CliTestBase):
+    def test_mcp_dispatches_to_command(self):
+        with mock.patch(
+            "b3_selic_pre.presentation.mcp.command.run_mcp_command",
+            return_value=0,
+        ) as run:
+            code, _, _ = self._main(
+                ["mcp", "--data", "2026-06-10"]
+            )
+
+        self.assertEqual(code, 0)
+        run.assert_called_once()
+        self.assertIs(run.call_args.args[1], self.settings)
+        self.configure_stderr_logging.assert_called_once_with()
+        self.configure_logging.assert_not_called()
+
+
+class AtualizarLockTest(CliTestBase):
+    def test_atualizar_runs_under_action_lock(self):
+        events = []
+
+        class _Lock:
+            def __enter__(self):
+                events.append("enter")
+                return self
+
+            def __exit__(self, *args):
+                events.append("exit")
+
+        def _atualizar(*args, **kwargs):
+            events.append("atualizar")
+            return 0
+
+        with mock.patch(
+            "b3_selic_pre.presentation.cli.ActionLock",
+            return_value=_Lock(),
+        ), mock.patch(
+            "b3_selic_pre.presentation.cli.cli_commands.atualizar",
+            side_effect=_atualizar,
+        ):
+            code, _, _ = self._main(["atualizar"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(events, ["enter", "atualizar", "exit"])

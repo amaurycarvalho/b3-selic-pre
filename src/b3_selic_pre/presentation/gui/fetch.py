@@ -14,6 +14,7 @@ from b3_selic_pre.application.use_cases import (
     validate_query_date,
 )
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+from b3_selic_pre.presentation.gui_reference import record_reference
 from b3_selic_pre.presentation.logging_utils import log_exception
 from b3_selic_pre.presentation.view_model import historical_status
 
@@ -122,6 +123,7 @@ class FetchMixin:
         self._redraw_chart()
         self._update_button_states()
         self.settings["last_date"] = self.date_var.get().strip()
+        record_reference(self.settings, self._last_reference_date, bool(records))
         self._update_stats()
         if self.evolution_var.get() and not self.historical_data and records:
             self._fetch_historical_rates(self._last_reference_date)
@@ -146,6 +148,11 @@ class FetchMixin:
         self._redraw_chart()
         self._update_button_states()
         self.settings["last_date"] = self.date_var.get().strip()
+        record_reference(
+            self.settings,
+            self._last_reference_date,
+            bool(historical and any(historical.values())),
+        )
         now = datetime.now(timezone.utc).strftime("%H:%M:%S")
         message, msg_type = historical_status(
             historical, self._data_source, now

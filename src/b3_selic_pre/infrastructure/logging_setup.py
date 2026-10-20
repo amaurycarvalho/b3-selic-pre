@@ -6,6 +6,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+import sys
 import time
 from datetime import date, timedelta
 from pathlib import Path
@@ -123,6 +124,17 @@ def _make_handler(active_path: Path) -> logging.Handler:
     )
     handler.namer = _daily_namer
     return handler
+
+
+def configure_stderr_logging(level: int = logging.INFO) -> None:
+    """Configure logging to stderr only, without touching the active log file."""
+    logging.basicConfig(
+        level=level,
+        format=LOG_FORMAT,
+        datefmt=LOG_DATE_FORMAT,
+        handlers=[logging.StreamHandler(sys.stderr)],
+        force=True,
+    )
 
 
 def configure_logging(

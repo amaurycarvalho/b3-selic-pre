@@ -29,6 +29,7 @@ class ActionsMixin:
             self.today_button: "Define a data atual e busca automaticamente",
             self.fetch_button: "Busca as taxas para a data informada",
             self.data_button: "Copia os dados para a área de transferência",
+            self.about_button: "Sobre o aplicativo",
             self.copy_toolbar_btn: "Copia o gráfico como imagem",
             self.view_raw_rb: "Exibe todos os vencimentos disponíveis",
             self.view_consolidated_rb: "Agrupa os vencimentos por ano",

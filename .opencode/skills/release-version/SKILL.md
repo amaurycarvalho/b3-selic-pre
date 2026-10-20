@@ -26,15 +26,18 @@ Update the application release version across the codebase and regenerate all ch
      ```
    - Do NOT proceed with any of the steps below.
 
-2. **Update app_version in **init**.py**
+2. **Update app_version and release date in **init**.py**
 
-   Read `src/b3_selic_pre/__init__.py` and find the line containing `__version__ =`.
+   Read `src/b3_selic_pre/__init__.py` and find the lines containing `__version__ =` and `__release_date__ =`.
 
-   Replace the current value with the new version string:
+   Replace the version value with the new version string and the release date with the current date in ISO format (`YYYY-MM-DD`):
 
    ```
    __version__ = "<new-version>"
+   __release_date__ = "<current-date>"
    ```
+
+   Obtain the current date from the system (for example, `date +%F`); do not guess it.
 
 3. **Update b3-selic-pre.spec**
 
@@ -68,6 +71,7 @@ Replace the current version:
 
    Read back the modified files and confirm:
    - `src/b3_selic_pre/__init__.py` has `__version__ = "<new-version>"`
+   - `src/b3_selic_pre/__init__.py` has `__release_date__` set to the current date in `YYYY-MM-DD`
    - `b3-selic-pre.spec` has the correct `'CFBundleShortVersionString':` and `'CFBundleVersion':` fields
    - `pyproject.toml` has `version = "<new-version>"`
 
@@ -77,7 +81,7 @@ Replace the current version:
 Release version updated to <version>
 
 Files updated:
-- src/b3_selic_pre/__init__.py (__version__)
+- src/b3_selic_pre/__init__.py (__version__, __release_date__)
 - b3-selic-pre.spec
 - pyproject.toml
 

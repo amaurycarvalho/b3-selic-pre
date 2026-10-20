@@ -141,6 +141,13 @@ dist/b3-selic-pre --version                 # exibir versão
 
 ---
 
+## Fontes de Dados
+
+A aplicação consulta apenas os endpoints do portal de derivativos da B3
+(`GetList` e `GetDownloadFile`), sem autenticação nem telemetria. URLs, payloads,
+paginação, retry, cache e riscos estão documentados em
+[Fontes de dados externas](docs/misc/datasources.md).
+
 ## Saiba Mais
 
 - [Repositório do projeto](https://github.com/amaurycarvalho/b3-selic-pre)

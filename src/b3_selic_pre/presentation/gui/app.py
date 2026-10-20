@@ -13,11 +13,13 @@ from tkcalendar import DateEntry
 from b3_selic_pre import __version__
 from b3_selic_pre.application.use_cases import default_reference_date
 from b3_selic_pre.presentation.charts import render_chart
+from b3_selic_pre.presentation.gui.about import AboutMixin
 from b3_selic_pre.presentation.gui.actions import ActionsMixin
 from b3_selic_pre.presentation.gui.chart import ChartMixin
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.fetch import FetchMixin
 from b3_selic_pre.presentation.gui.sidebar import SidebarMixin
+from b3_selic_pre.presentation.gui.startup import SETTLE_MS, StartupShield
 from b3_selic_pre.presentation.gui.status import StatusMixin
 from b3_selic_pre.presentation.gui.window import WindowMixin
 from b3_selic_pre.presentation.settings import Settings
@@ -27,7 +29,8 @@ TkModule = Any
 
 
 class SelicPreApp(
-    WindowMixin, StatusMixin, ActionsMixin, ChartMixin, SidebarMixin, FetchMixin
+    WindowMixin, StatusMixin, ActionsMixin, AboutMixin, ChartMixin,
+    SidebarMixin, FetchMixin,
 ):
     """Aplicação Tkinter de consulta às taxas referenciais SELIC."""
 
@@ -45,17 +48,26 @@ class SelicPreApp(
         self.ttk = ttk
         self.deps = dependencies or GuiDependencies()
         self.records = []
+        self._startup_finished = False
         self._load_icons(root, tk)
         self._setup_state(tk)
         self._apply_saved_settings(root, tk)
         root.bind("<Configure>", self._on_window_configure, add="+")
+        self._startup_shield = StartupShield(root)
+        self._startup_shield.show()
         self._build_top_bar(root, tk, ttk)
+        self._raise_startup_shield()
         ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X)
+        self._raise_startup_shield()
         self._build_view_options(root, tk, ttk)
+        self._raise_startup_shield()
         self._build_chart_area(root, tk, ttk)
+        self._raise_startup_shield()
         self._build_toolbar(root, tk, ttk)
+        self._raise_startup_shield()
         ttk.Separator(root, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(4, 0))
         self._build_statusbar(root, tk, ttk)
+        self._raise_startup_shield()
         self._lockable_widgets = [
             self.date_entry, self.today_button,
             self.fetch_button,
@@ -63,8 +75,6 @@ class SelicPreApp(
             self.view_raw_rb, self.view_consolidated_rb,
             self.evolution_cb, self.cb_3d, self.sidebar_cb,
         ]
-        self._setup_tooltips()
-        self._setup_shortcuts()
         self._statusbar_default_fg = self.statusbar_label.cget("foreground")
         self._msg_colors = {
             "info": self._statusbar_default_fg,
@@ -79,6 +89,46 @@ class SelicPreApp(
             "error": "✖",
         }
         self._update_button_states()
+        self._startup_shield.raise_above_siblings()
+        self._disable_startup_controls()
+        root.after(SETTLE_MS, self._finish_startup)
+
+    def _raise_startup_shield(self: SelicPreApp) -> None:
+        """Keep the shield above widgets created after it."""
+        shield = getattr(self, "_startup_shield", None)
+        if shield is not None:
+            shield.raise_above_siblings()
+
+    def _disable_startup_controls(self: SelicPreApp) -> None:
+        """Disable lockable widgets while the startup shield is visible."""
+        for widget in self._lockable_widgets:
+            try:
+                widget.configure(state=self.tk.DISABLED)
+            except self.tk.TclError:
+                pass
+
+    def _root_alive(self: SelicPreApp) -> bool:
+        """Return whether the root window still exists."""
+        try:
+            return bool(self.root.winfo_exists())
+        except (self.tk.TclError, RuntimeError):
+            return False
+
+    def _finish_startup(self: SelicPreApp) -> None:
+        """Remove the shield and restore controls, shortcuts and tooltips."""
+        if getattr(self, "_startup_finished", False):
+            return
+        self._startup_finished = True
+        shield = getattr(self, "_startup_shield", None)
+        self._startup_shield = None
+        if not self._root_alive():
+            return
+        if shield is not None:
+            shield.destroy()
+        self._set_ui_locked(False)
+        self._update_button_states()
+        self._setup_shortcuts()
+        self._setup_tooltips()
 
     def _load_icons(self: SelicPreApp, root: Widget, tk: TkModule) -> None:
         """Define o título da janela e carrega os ícones usados pela interface."""
@@ -89,7 +139,10 @@ class SelicPreApp(
             self.icon_img = img
             root.iconphoto(True, img)
         self.icons = {}
-        for name in ['document-open-recent', 'view-refresh', 'edit-copy', 'content-loading']:
+        for name in [
+            'document-open-recent', 'view-refresh', 'edit-copy',
+            'content-loading', 'help-about',
+        ]:
             if getattr(sys, 'frozen', False):
                 path = os.path.join(sys._MEIPASS, f'{name}.png')
             else:
@@ -139,6 +192,7 @@ class SelicPreApp(
         """Constrói a barra superior com o seletor de data e os botões."""
         top_frame = ttk.Frame(root, padding=12)
         top_frame.pack(fill=tk.X)
+        self._raise_startup_shield()
         ttk.Label(top_frame, text="Data de referência:").pack(side=tk.LEFT)
         self.date_entry = self._create_date_entry(top_frame, tk, ttk)
         self.date_entry.pack(side=tk.LEFT, padx=(6, 10))
@@ -159,7 +213,12 @@ class SelicPreApp(
             top_frame, image=self.icons['edit-copy'],
             command=self.copy_data, style="Icon.TButton",
         )
-        self.data_button.pack(side=tk.LEFT)
+        self.data_button.pack(side=tk.LEFT, padx=(12, 0))
+        self.about_button = ttk.Button(
+            top_frame, image=self.icons['help-about'],
+            command=self._open_about, style="Icon.TButton",
+        )
+        self.about_button.pack(side=tk.LEFT, padx=(16, 0))
         self.shortcut_button = None
         if not self.deps.shortcut_exists():
             self.shortcut_button = ttk.Button(

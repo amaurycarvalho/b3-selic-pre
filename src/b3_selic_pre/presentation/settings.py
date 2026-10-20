@@ -40,6 +40,12 @@ DEFAULT_SETTINGS = {
     },
 }
 
+FIRST_RUN_DEFAULTS = {
+    "view_mode": "consolidated",
+    "evolution": True,
+    "sidebar": True,
+}
+
 
 def _xdg_path() -> Path:
     app = "b3-selic-pre"
@@ -61,7 +67,10 @@ class Settings:
     def __init__(self: Settings, path: str | None = None) -> None:
         """Initialize settings, optionally pointing to a custom file."""
         self.path = path or _xdg_path()
+        self.is_first_run = not self.path.exists()
         self._data = dict(DEFAULT_SETTINGS)
+        if self.is_first_run:
+            self._data.update(FIRST_RUN_DEFAULTS)
         self._load()
 
     def _load(self: Settings) -> None:

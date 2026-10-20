@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Package Structure
+
+## Purpose
+
+Define the Python package layout, build configuration, packaging of runtime assets, and distribution contracts that keep the application installable and shippable across supported platforms.
+
+## Requirements
 
 ### Requirement: Project uses src/ layout with Clean Architecture layers
 

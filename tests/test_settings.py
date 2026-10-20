@@ -75,17 +75,60 @@ class SettingsLoadTest(unittest.TestCase):
             settings = Settings(path=Path("/tmp/settings.json"))
         self.assertEqual(settings.get("view_mode"), "raw")
 
-    def test_load_missing_file_keeps_defaults(self):
+    def test_load_missing_file_uses_first_run_defaults(self):
         with mock.patch("pathlib.Path.exists", return_value=False):
             settings = Settings(path=Path("/tmp/settings.json"))
-        self.assertEqual(settings.get("view_mode"), "raw")
+        self.assertTrue(settings.is_first_run)
+        self.assertEqual(settings.get("view_mode"), "consolidated")
+        self.assertTrue(settings.get("evolution"))
+        self.assertTrue(settings.get("sidebar"))
+        self.assertFalse(settings.get("show_3d"))
 
-    def test_load_corrupt_file_keeps_defaults(self):
+    def test_missing_file_does_not_write_settings(self):
+        with mock.patch("pathlib.Path.exists", return_value=False), mock.patch(
+            "pathlib.Path.write_text"
+        ) as mock_write:
+            Settings(path=Path("/tmp/settings.json"))
+        mock_write.assert_not_called()
+
+    def test_load_corrupt_file_keeps_compatibility_defaults(self):
         with mock.patch("pathlib.Path.exists", return_value=True), mock.patch(
             "pathlib.Path.read_text", return_value="{invalid json"
         ):
             settings = Settings(path=Path("/tmp/settings.json"))
+        self.assertFalse(settings.is_first_run)
         self.assertEqual(settings.get("view_mode"), "raw")
+        self.assertFalse(settings.get("evolution"))
+        self.assertFalse(settings.get("sidebar"))
+
+    def test_existing_file_missing_keys_uses_compatibility_defaults(self):
+        with mock.patch("pathlib.Path.exists", return_value=True), mock.patch(
+            "pathlib.Path.read_text",
+            return_value=json.dumps({"last_date": "2026-06-10"}),
+        ):
+            settings = Settings(path=Path("/tmp/settings.json"))
+        self.assertFalse(settings.is_first_run)
+        self.assertEqual(settings["last_date"], "2026-06-10")
+        self.assertEqual(settings.get("view_mode"), "raw")
+        self.assertFalse(settings.get("evolution"))
+        self.assertFalse(settings.get("sidebar"))
+
+    def test_existing_preferences_prevail_over_first_run_defaults(self):
+        data = {
+            "view_mode": "detailed",
+            "evolution": False,
+            "sidebar": False,
+            "show_3d": True,
+        }
+        with mock.patch("pathlib.Path.exists", return_value=True), mock.patch(
+            "pathlib.Path.read_text", return_value=json.dumps(data)
+        ):
+            settings = Settings(path=Path("/tmp/settings.json"))
+        self.assertFalse(settings.is_first_run)
+        self.assertEqual(settings["view_mode"], "detailed")
+        self.assertFalse(settings["evolution"])
+        self.assertFalse(settings["sidebar"])
+        self.assertTrue(settings["show_3d"])
 
 
 class SettingsAccessTest(unittest.TestCase):
@@ -99,7 +142,7 @@ class SettingsAccessTest(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_get_existing_key(self):
-        self.assertEqual(self.settings.get("view_mode"), "raw")
+        self.assertEqual(self.settings.get("view_mode"), "consolidated")
 
     def test_get_missing_key_returns_default(self):
         self.assertEqual(self.settings.get("nao_existe", "padrao"), "padrao")
@@ -108,7 +151,7 @@ class SettingsAccessTest(unittest.TestCase):
         self.assertIsNone(self.settings.get("nao_existe"))
 
     def test_getitem_existing_key(self):
-        self.assertEqual(self.settings["view_mode"], "raw")
+        self.assertEqual(self.settings["view_mode"], "consolidated")
 
     def test_getitem_missing_key_raises(self):
         with self.assertRaises(KeyError):
@@ -121,6 +164,18 @@ class SettingsAccessTest(unittest.TestCase):
             self.settings["view_mode"] = "detailed"
         self.assertEqual(self.settings["view_mode"], "detailed")
         mock_write.assert_called_once()
+
+    def test_first_set_persists_first_run_defaults(self):
+        with mock.patch("pathlib.Path.write_text") as mock_write, mock.patch(
+            "pathlib.Path.mkdir"
+        ):
+            self.settings["last_date"] = "2026-10-20"
+        payload = json.loads(mock_write.call_args.args[0])
+        self.assertEqual(payload["last_date"], "2026-10-20")
+        self.assertEqual(payload["view_mode"], "consolidated")
+        self.assertTrue(payload["evolution"])
+        self.assertTrue(payload["sidebar"])
+        self.assertFalse(payload["show_3d"])
 
 
 class LogRetentionDaysTest(unittest.TestCase):

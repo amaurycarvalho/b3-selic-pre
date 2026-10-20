@@ -344,6 +344,14 @@ The ScoringPolicy SHALL define the following mapping:
 
 Classification labels: 0–2 Estável, 3–5 Moderada, 6–8 Relevante, 9–11 Significativa, 12+ Estrutural.
 
+#### Scenario: Known fact resolves from the weight table
+- **WHEN** a scored Fact such as `TORCAO` is evaluated
+- **THEN** the ScoringPolicy SHALL resolve it to `(score_base +2, weight_level ×3)`
+
+#### Scenario: Intensity label follows the score range
+- **WHEN** the aggregate score falls in `0–2`, `3–5`, `6–8`, `9–11`, or `12+`
+- **THEN** the classified intensity SHALL be Estável, Moderada, Relevante, Significativa, or Estrutural respectively
+
 ### Requirement: Report structure — 5 blocks with traceability
 The system SHALL generate a report with 5 blocks: (1) CLASSE PRIMÁRIA, (2) ESTRUTURA, (3) QUALIDADE, (4) INTENSIDADE, (5) RESUMO. Each fact SHALL display its confidence and `derived_from_features` trace. The summary SHALL concatenate templates in fixed order (Primary → Structure → Quality → Intensity). Empty blocks SHALL be omitted.
 
@@ -360,7 +368,15 @@ The system SHALL generate a report with 5 blocks: (1) CLASSE PRIMÁRIA, (2) ESTR
 - **THEN** an empty report or "Sem dados para análise" is returned
 
 ### Requirement: GUI collapsible sidebar
-The system SHALL provide a collapsible sidebar panel on the right side of the GUI window that displays the analysis report. The panel SHALL start collapsed and SHALL expand/collapse via a toggle button.
+The system SHALL provide a collapsible sidebar panel on the right side of the GUI window that displays the analysis report. The panel SHALL start expanded on the first run, when no settings file exists, and SHALL start collapsed on subsequent runs. It SHALL expand/collapse via a toggle button.
+
+#### Scenario: Sidebar starts expanded on first run
+- **WHEN** the application starts and the settings file does not exist
+- **THEN** the analysis panel SHALL start expanded and display the report area
+
+#### Scenario: Sidebar starts collapsed on subsequent runs
+- **WHEN** the application starts and the settings file exists
+- **THEN** the analysis panel SHALL start collapsed unless the saved sidebar preference is enabled
 
 #### Scenario: Sidebar toggles open
 - **WHEN** the user clicks the toggle button "▶ Análise"

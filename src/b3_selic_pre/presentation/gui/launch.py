@@ -11,7 +11,9 @@ from b3_selic_pre.infrastructure.desktop import (
     create_shortcut,
     shortcut_exists,
 )
-from b3_selic_pre.infrastructure.logging_setup import configure_logging
+from b3_selic_pre.infrastructure.links import open_directory, open_url
+from b3_selic_pre.infrastructure.logging_setup import configure_logging, log_dir
+from b3_selic_pre.infrastructure.release_check import fetch_latest_version
 from b3_selic_pre.presentation.gui.app import SelicPreApp
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.logging_utils import (
@@ -47,6 +49,10 @@ def launch_gui() -> None:
         create_shortcut=create_shortcut,
         icon_source=_icon_source,
         settings=settings,
+        open_url=open_url,
+        open_directory=open_directory,
+        log_directory=lambda: str(log_dir()),
+        latest_version=fetch_latest_version,
     )
     app = SelicPreApp(root, dependencies)
 

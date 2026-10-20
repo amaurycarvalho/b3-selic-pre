@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [rfc001-tesouro-direto-redesign](openspec/changes/rfc001-tesouro-direto-redesign/) Reprojetar a extração do Tesouro Direto com spike de descoberta como pré-requisito bloqueante
+### [add-tesouro-direto-vendas](openspec/changes/add-tesouro-direto-vendas/) Adicionar a consulta de vendas do Tesouro Direto à CLI e à GUI, com schema confirmado e cache cumulativo
+
+### [add-tesouro-direto-resgates-estoque](openspec/changes/add-tesouro-direto-resgates-estoque/) Adicionar a consulta de resgates (recompras, cupom e vencimentos) e do estoque mensal do Tesouro Direto à CLI e à GUI
 
 ## [1.0.0] - 2026-10-20
 

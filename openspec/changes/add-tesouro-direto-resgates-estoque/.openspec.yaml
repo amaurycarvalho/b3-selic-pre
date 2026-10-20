@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-20
+goal: Adicionar consulta de resgates e estoque do Tesouro Direto à CLI e à GUI,
+  reutilizando a infraestrutura da feature de vendas.

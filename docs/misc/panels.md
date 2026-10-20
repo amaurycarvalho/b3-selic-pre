@@ -27,7 +27,7 @@ Recursos disponíveis:
 - Cópia de dados para área de transferência
 - Cópia do gráfico como imagem
 - Exportação do gráfico em PNG
-- Criação de atalho no desktop (botão "Criar Atalho Desktop" ou `--create-shortcut`)
+- Criação de atalho no desktop (botão "Criar Atalho Desktop" ou `criar-atalho`)
 - Painel de análise textual (sidebar) com indicadores de nível e evolução
 
 ## Painel de Análise (sidebar)

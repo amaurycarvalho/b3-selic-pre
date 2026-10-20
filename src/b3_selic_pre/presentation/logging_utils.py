@@ -99,6 +99,31 @@ def _log_uncaught(
     log_exception(logger, exc, context)
 
 
+def log_invocation(
+    logger: logging.Logger,
+    comando: str,
+    argumentos: str,
+    inicio: str,
+    fim: str,
+    duracao: float,
+    codigo_saida: int,
+) -> None:
+    """Registra uma única linha INFO com os metadados de uma invocação."""
+    try:
+        logger.info(
+            "CLI comando=%s argumentos=%s inicio=%s fim=%s "
+            "duracao=%.3fs codigo_saida=%s",
+            comando,
+            argumentos,
+            inicio,
+            fim,
+            duracao,
+            codigo_saida,
+        )
+    except Exception:
+        return
+
+
 def install_exception_hooks(logger: logging.Logger | None = None) -> None:
     """Install main-thread and secondary-thread exception hooks."""
     target = logger or logging.getLogger(__name__)

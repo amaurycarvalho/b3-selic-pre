@@ -663,14 +663,26 @@ class CLICacheIntegrationTest(unittest.TestCase):
             return [RateRecord(day252=1, day360=1, rate="14.65")]
 
         with mock.patch(
+            "b3_selic_pre.presentation.cli_commands.resolve_data",
+            return_value="2026-06-17",
+        ), mock.patch(
             "b3_selic_pre.presentation.cli.CachedB3Client",
         ) as mock_client_cls:
             mock_client = mock.Mock()
             mock_client.fetch_rates_for_date.side_effect = fake_cached_fetch
             mock_client_cls.return_value = mock_client
-            with mock.patch("b3_selic_pre.presentation.cli.print"):
+            with mock.patch(
+                "b3_selic_pre.presentation.cli.Settings"
+            ), mock.patch(
+                "b3_selic_pre.presentation.cli.configure_logging",
+                return_value=None,
+            ), mock.patch(
+                "b3_selic_pre.presentation.cli.install_exception_hooks"
+            ), mock.patch(
+                "b3_selic_pre.presentation.cli.log_invocation"
+            ), mock.patch("b3_selic_pre.presentation.cli.print"):
                 from b3_selic_pre.presentation.cli import main
-                main(["2026-06-17", "--no-cache"])
+                main(["consultar", "--data", "2026-06-17", "--no-cache"])
         self.assertEqual(len(records_arg), 1)
         self.assertEqual(records_arg[0][0], "2026-06-17")
         self.assertTrue(records_arg[0][1])

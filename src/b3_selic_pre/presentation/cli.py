@@ -1,107 +1,171 @@
 """Interface de linha de comando do b3-selic-pre."""
 
+from __future__ import annotations
+
 import argparse
 import logging
+import shlex
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
 
 from b3_selic_pre import __version__
-from b3_selic_pre.application.use_cases import (
-    build_rates_table,
-    resolve_reference_date,
-)
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
 from b3_selic_pre.infrastructure.desktop import create_shortcut
-from b3_selic_pre.infrastructure.logging_setup import configure_logging
+from b3_selic_pre.infrastructure.logging_setup import (
+    LOG_ACTIVE_NAME,
+    configure_logging,
+    log_dir,
+)
+from b3_selic_pre.presentation import cli_commands, cli_parser
 from b3_selic_pre.presentation.gui import launch_gui
 from b3_selic_pre.presentation.logging_utils import (
     install_exception_hooks,
     is_communication_error,
     log_exception,
+    log_invocation,
 )
+from b3_selic_pre.presentation.settings import Settings
+
+_SHORTCUT_MESSAGE = "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Interpreta os argumentos da linha de comando e retorna as opções analisadas."""
-    parser = argparse.ArgumentParser(
-        description="Consulta taxas referenciais SELIC Pré na B3."
-    )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "date",
-        nargs="?",
-        default=None,
-        help="Data de referência no formato YYYY-MM-DD.",
-    )
-    group.add_argument(
-        "--today",
-        action="store_true",
-        help="Exibe taxas do dia corrente no terminal.",
-    )
-    parser.add_argument(
-        "--gui",
-        action="store_true",
-        help="Abre a interface gráfica desktop.",
-    )
-    parser.add_argument(
-        "--yearly",
-        action="store_true",
-        help="Exibe taxas consolidadas por ano (ANO, MENOR TAXA, MAIOR TAXA).",
-    )
-    parser.add_argument(
-        "--create-shortcut",
-        action="store_true",
-        help="Cria atalho no desktop e menu de aplicações e sai.",
-    )
-    parser.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Ignora o cache em disco e baixa os dados da B3 novamente.",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"b3-selic-pre {__version__}",
-        help="Exibe a versão do programa e sai.",
-    )
-    return parser.parse_args(argv)
+    """Interpreta os argumentos da linha de comando e retorna as opções."""
+    return cli_parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Ponto de entrada da CLI: despacha para GUI, atalho ou impressão das taxas."""
-    if argv is None:
-        argv = sys.argv[1:]
-    if len(argv) == 0:
-        launch_gui()
-        return
-    args = parse_args(argv)
-    if args.create_shortcut:
-        create_shortcut()
-        print("Atalho criado em ~/Desktop/ e ~/.local/share/applications/")
-        return
-    if args.gui:
-        launch_gui()
-        return
-    active_log = configure_logging()
-    logger = logging.getLogger(__name__)
-    install_exception_hooks(logger)
+def _now_iso() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _exit_code(code: object) -> int:
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    return 1
+
+
+def _command_hint(argv: list[str]) -> str:
+    if not argv:
+        return "gui"
+    first = argv[0]
+    if first in cli_parser.SUBCOMMANDS:
+        return first
+    if first in ("--help", "-h"):
+        return "help"
+    if first == "--version":
+        return "version"
+    return "desconhecido"
+
+
+def _format_argv(argv: list[str]) -> str:
+    return shlex.join(argv) if argv else "(nenhum)"
+
+
+def _format_args(args: argparse.Namespace) -> str:
+    pairs = []
+    for key, value in sorted(vars(args).items()):
+        if key == "comando" or value is None or value is False:
+            continue
+        pairs.append(key if value is True else f"{key}={value}")
+    return " ".join(pairs) if pairs else "(nenhum)"
+
+
+def _log_startup(
+    logger: logging.Logger, active_log: Path | None, mode: str
+) -> None:
     if active_log is not None:
         logger.info(
-            "Iniciando b3-selic-pre %s (CLI); log em %s",
+            "Iniciando b3-selic-pre %s (%s); log em %s",
             __version__,
+            mode,
             active_log,
         )
     else:
-        logger.info("Iniciando b3-selic-pre %s (CLI)", __version__)
+        logger.info("Iniciando b3-selic-pre %s (%s)", __version__, mode)
+
+
+def _log_text(active_log: Path | None) -> str | None:
+    path = active_log or (log_dir() / LOG_ACTIVE_NAME)
     try:
-        ref_date = resolve_reference_date(args.date, use_today=args.today)
-        client = CachedB3Client()
-        records = client.fetch_rates_for_date(ref_date, force=args.no_cache)
-        output = build_rates_table(records, yearly=args.yearly)
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _dispatch(
+    args: argparse.Namespace, settings: Settings, active_log: Path | None
+) -> int:
+    if args.comando == "consultar":
+        return cli_commands.consultar(args, CachedB3Client())
+    if args.comando == "atualizar":
+        return cli_commands.atualizar(args, settings, CachedB3Client())
+    if args.comando == "exportar":
+        log_content = _log_text(active_log) if args.log else None
+        return cli_commands.exportar(
+            args, settings, CachedB3Client(), log_content
+        )
+    if args.comando == "criar-atalho":
+        create_shortcut()
+        print(_SHORTCUT_MESSAGE)
+        return 0
+    if args.comando == "gui":
+        launch_gui(settings=settings, active_log=active_log, configure=False)
+        return 0
+    print("Informe um subcomando. Use --help para ver as opções.", file=sys.stderr)
+    return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Ponto de entrada da CLI: despacha subcomandos e registra a invocação."""
+    if argv is None:
+        argv = sys.argv[1:]
+    settings = Settings()
+    active_log = configure_logging(
+        retention_days=settings.log_retention_days()
+    )
+    logger = logging.getLogger(__name__)
+    install_exception_hooks(logger)
+    mode = "GUI" if not argv or argv[0] == "gui" else "CLI"
+    _log_startup(logger, active_log, mode)
+    inicio = _now_iso()
+    started = time.monotonic()
+    comando = _command_hint(argv)
+    argumentos = _format_argv(argv)
+    codigo = 0
+    try:
+        if not argv:
+            launch_gui(
+                settings=settings,
+                active_log=active_log,
+                configure=False,
+            )
+            return 0
+        args = parse_args(argv)
+        comando = args.comando or "gui"
+        argumentos = _format_args(args)
+        codigo = _dispatch(args, settings, active_log)
+        return codigo
+    except SystemExit as exc:
+        codigo = _exit_code(exc.code)
+        return codigo
     except Exception as exc:
-        log_exception(logger, exc, "Erro ao buscar dados")
+        codigo = 1
+        log_exception(logger, exc, "Erro ao executar comando")
         if is_communication_error(exc):
             print(f"Erro ao buscar dados: {exc}", file=sys.stderr)
-            raise SystemExit(1) from exc
+            return 1
         raise
-    if output:
-        print(output)
+    finally:
+        log_invocation(
+            logger,
+            comando,
+            argumentos,
+            inicio,
+            _now_iso(),
+            time.monotonic() - started,
+            codigo,
+        )

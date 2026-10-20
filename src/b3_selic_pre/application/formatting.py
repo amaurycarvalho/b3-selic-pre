@@ -55,3 +55,21 @@ def format_evolution_csv(date_rates: dict[str, list[RateRecord]]) -> str:
         for year in sorted(rates):
             writer.writerow([date_str, year, f"{rates[year]:.2f}"])
     return output.getvalue()
+
+
+def format_detailed_evolution_csv(
+    date_rates: dict[str, list[RateRecord]],
+) -> str:
+    """Formata a evolução detalhada das taxas por data e dia útil como CSV."""
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";", lineterminator="\n")
+    writer.writerow(["DATA", "DU252", "DC365", "TAXA"])
+    for date_str in sorted(date_rates.keys()):
+        for record in sorted(date_rates[date_str], key=lambda item: item.day252):
+            writer.writerow([
+                date_str,
+                record.day252,
+                record.day360,
+                record.rate,
+            ])
+    return output.getvalue()

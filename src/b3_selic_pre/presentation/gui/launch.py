@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from b3_selic_pre import __version__
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
@@ -23,24 +24,30 @@ from b3_selic_pre.presentation.logging_utils import (
 from b3_selic_pre.presentation.settings import Settings
 
 
-def launch_gui() -> None:
+def launch_gui(
+    settings: Settings | None = None,
+    active_log: Path | None = None,
+    *,
+    configure: bool = True,
+) -> None:
     """Inicia a janela principal montando os adapters de infraestrutura."""
     import tkinter as tk
 
-    settings = Settings()
-    active_log = configure_logging(
-        retention_days=settings.log_retention_days()
-    )
+    settings = settings or Settings()
     logger = logging.getLogger(__name__)
-    install_exception_hooks(logger)
-    if active_log is not None:
-        logger.info(
-            "Iniciando b3-selic-pre %s (GUI); log em %s",
-            __version__,
-            active_log,
+    if configure:
+        active_log = configure_logging(
+            retention_days=settings.log_retention_days()
         )
-    else:
-        logger.info("Iniciando b3-selic-pre %s (GUI)", __version__)
+        install_exception_hooks(logger)
+        if active_log is not None:
+            logger.info(
+                "Iniciando b3-selic-pre %s (GUI); log em %s",
+                __version__,
+                active_log,
+            )
+        else:
+            logger.info("Iniciando b3-selic-pre %s (GUI)", __version__)
     root = tk.Tk()
     install_tk_exception_hook(root, logger)
     dependencies = GuiDependencies(

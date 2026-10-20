@@ -57,7 +57,7 @@ def shortcut_exists() -> bool:
 
 def create_shortcut() -> None:
     """Create the desktop shortcut and launcher files for b3-selic-pre."""
-    exec_line = _resolve_executable() + " --gui"
+    exec_line = _resolve_executable() + " gui"
     icon_src = _icon_source()
     desktop_dir = _detect_desktop_dir()
     icons_dst = os.path.expanduser("~/.local/share/icons")

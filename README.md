@@ -23,15 +23,35 @@ Baixe o binário da plataforma desejada na [página de releases](https://github.
 Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 ```bash
-./b3-selic-pre-linux                        # interface gráfica
-./b3-selic-pre-linux --gui                  # interface gráfica
-./b3-selic-pre-linux --today                # consultar data atual
-./b3-selic-pre-linux 2026-06-10             # data específica
-./b3-selic-pre-linux 2026-06-10 --yearly    # consolidado por ano
-./b3-selic-pre-linux --create-shortcut      # criar atalho no desktop (Linux)
-./b3-selic-pre-linux --help                 # exibir ajuda com todos os parâmetros
-./b3-selic-pre-linux --version              # exibir versão
+./b3-selic-pre-linux                              # interface gráfica
+./b3-selic-pre-linux gui                          # interface gráfica
+./b3-selic-pre-linux consultar --data 2026-06-10  # curva curta
+./b3-selic-pre-linux consultar --data 2026-06-10 --curva longa
+./b3-selic-pre-linux atualizar --data 2026-06-10   # carrega evolução e análise
+./b3-selic-pre-linux exportar --curva ambas --analise --saida exports/
+./b3-selic-pre-linux criar-atalho                  # criar atalho no desktop (Linux)
+./b3-selic-pre-linux --help                       # exibir ajuda
+./b3-selic-pre-linux --version                    # exibir versão
 ```
+
+### Linha de Comando
+
+A CLI usa subcomandos de verbo. Os principais são:
+
+| Comando | Uso |
+| --- | --- |
+| `consultar` | Consulta as taxas de uma data (`--curva curta\|longa\|ambas`). |
+| `atualizar` | Carrega a evolução da curva e imprime a análise determinística. |
+| `exportar` | Exporta curvas, análise e/ou log da aplicação. |
+| `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
+| `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
+
+Parâmetros comuns: `--data AAAA-MM-DD` (padrão: hoje), `--no-cache` e
+`--curva curta|longa|ambas`. A sintaxe antiga (`--today`, `--yearly`, `--gui`,
+`--create-shortcut` e data posicional) foi removida.
+
+Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
+exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
 
 ### Interface Gráfica
 
@@ -111,32 +131,36 @@ Por fim, execute novamente os testes de mutação e verifique se eles passam pel
 Via o binário após `make build`:
 
 ```bash
-.venv/bin/b3-selic-pre --today                      # consultar data atual
-.venv/bin/b3-selic-pre 2026-06-10                   # data específica
-.venv/bin/b3-selic-pre 2026-06-10 --yearly          # consolidado por ano
-.venv/bin/b3-selic-pre --gui                        # interface gráfica
-.venv/bin/b3-selic-pre --create-shortcut            # criar atalho no desktop (Linux)
-.venv/bin/b3-selic-pre --help                       # exibir ajuda com todos os parâmetros
-.venv/bin/b3-selic-pre --version                    # exibir versão
+.venv/bin/b3-selic-pre                              # interface gráfica
+.venv/bin/b3-selic-pre gui                          # interface gráfica
+.venv/bin/b3-selic-pre consultar --data 2026-06-10  # curva curta
+.venv/bin/b3-selic-pre consultar --data 2026-06-10 --curva longa
+.venv/bin/b3-selic-pre atualizar --data 2026-06-10   # evolução + análise
+.venv/bin/b3-selic-pre exportar --curva ambas --analise --saida exports/
+.venv/bin/b3-selic-pre criar-atalho                  # criar atalho no desktop (Linux)
+.venv/bin/b3-selic-pre --help                        # exibir ajuda
+.venv/bin/b3-selic-pre --version                     # exibir versão
 ```
 
 Ou via módulo Python:
 
 ```bash
-.venv/bin/python3 -m b3_selic_pre --today           # consultar data atual
-.venv/bin/python3 -m b3_selic_pre --gui             # interface gráfica
+.venv/bin/python3 -m b3_selic_pre                     # interface gráfica
+.venv/bin/python3 -m b3_selic_pre consultar --data 2026-06-10
 ```
 
 #### A partir do executável gerado pelo Makefile
 
 ```bash
-dist/b3-selic-pre --today                   # consultar data atual
-dist/b3-selic-pre 2026-06-10                # data específica
-dist/b3-selic-pre 2026-06-10 --yearly       # consolidado por ano
-dist/b3-selic-pre --gui                     # interface gráfica
-dist/b3-selic-pre --create-shortcut         # criar atalho no desktop (Linux)
-dist/b3-selic-pre --help                    # exibir ajuda com todos os parâmetros
-dist/b3-selic-pre --version                 # exibir versão
+dist/b3-selic-pre                              # interface gráfica
+dist/b3-selic-pre gui                          # interface gráfica
+dist/b3-selic-pre consultar --data 2026-06-10  # curva curta
+dist/b3-selic-pre consultar --data 2026-06-10 --curva longa
+dist/b3-selic-pre atualizar --data 2026-06-10   # evolução + análise
+dist/b3-selic-pre exportar --curva ambas --analise --saida exports/
+dist/b3-selic-pre criar-atalho                  # criar atalho no desktop (Linux)
+dist/b3-selic-pre --help                        # exibir ajuda
+dist/b3-selic-pre --version                     # exibir versão
 ```
 
 ---

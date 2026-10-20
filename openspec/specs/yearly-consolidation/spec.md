@@ -23,15 +23,16 @@ The system SHALL provide a function `average_rate_by_year(records)` that compute
 - **THEN** `average_rate_by_year` returns `{1: 14.5}`
 
 ### Requirement: CLI yearly consolidation flag
-The CLI SHALL support a `--yearly` flag that, when present, outputs the consolidated-by-year table instead of the raw records.
+
+The CLI SHALL expose yearly consolidation through `consultar --curva longa`. When `--curva curta` is used or `--curva` is omitted, the CLI SHALL output the raw records.
 
 #### Scenario: CLI with --yearly outputs consolidated CSV
-- **WHEN** the user runs `b3_selic_pre.py <date> --yearly`
+- **WHEN** the user runs `b3-selic-pre consultar --data 2026-06-10 --curva longa`
 - **THEN** the output is a CSV with columns `ANO,MENOR_TAXA,MAIOR_TAXA`
 
 #### Scenario: CLI without --yearly outputs raw records
-- **WHEN** the user runs `b3_selic_pre.py <date>` without the `--yearly` flag
-- **THEN** the output is the existing raw CSV format `DU252,DC365,TAXA`
+- **WHEN** the user runs `b3-selic-pre consultar --data 2026-06-10` with `--curva` omitted or set to `curta`
+- **THEN** the output is the raw CSV format `DU252,DC365,TAXA`
 
 ### Requirement: GUI yearly toggle
 The GUI SHALL provide radio buttons labeled "Curva curta", "Curva longa", and "Evolução da curva" that switch the chart display between raw mode (green line, TAXA × DU252), consolidated mode (blue menor_taxa line + red maior_taxa line), and evolution mode (5 superposed curves with quiver arrows).

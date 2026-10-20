@@ -43,9 +43,6 @@ from b3_selic_pre.presentation.charts import (
     render_curve_evolution,
     render_detailed_evolution,
 )
-from b3_selic_pre.presentation.cli import main
-
-
 class FakeResponse:
     def __init__(self, data):
         self.data = data
@@ -217,78 +214,6 @@ class B3SelicPreTest(unittest.TestCase):
 
     def test_format_yearly_rows_empty(self):
         self.assertEqual(format_yearly_rows([]), "ANO,MENOR_TAXA,MAIOR_TAXA\n")
-
-    def test_main_yearly_flag_uses_consolidated_output(self):
-        records_arg = []
-
-        def fake_fetch(date, force=False, **kwargs):
-            records_arg.append((date, force))
-            return [
-                RateRecord(day252=1, day360=1, rate="14.65"),
-                RateRecord(day252=365, day360=365, rate="14.50"),
-            ]
-
-        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
-            mock_client = mock.Mock()
-            mock_client.fetch_rates_for_date.side_effect = fake_fetch
-            mock_cls.return_value = mock_client
-            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-                main(["2026-01-01", "--yearly"])
-        self.assertEqual(len(records_arg), 1)
-        self.assertEqual(records_arg[0][0], "2026-01-01")
-        mock_print.assert_called_once_with(
-            'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
-        )
-
-    def test_main_no_args_launches_gui(self):
-        with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:
-            main([])
-        mock_gui.assert_called_once()
-
-    def test_main_today_flag_prints_csv(self):
-        records_arg = []
-
-        def fake_fetch(date, force=False, **kwargs):
-            records_arg.append((date, force))
-            return [
-                RateRecord(day252=1, day360=1, rate="14.65"),
-                RateRecord(day252=365, day360=365, rate="14.50"),
-            ]
-
-        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
-            mock_client = mock.Mock()
-            mock_client.fetch_rates_for_date.side_effect = fake_fetch
-            mock_cls.return_value = mock_client
-            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-                main(["--today"])
-        self.assertEqual(len(records_arg), 1)
-        mock_print.assert_called_once()
-
-    def test_main_today_yearly_flag_prints_yearly_csv(self):
-        records_arg = []
-
-        def fake_fetch(date, force=False, **kwargs):
-            records_arg.append((date, force))
-            return [
-                RateRecord(day252=1, day360=1, rate="14.65"),
-                RateRecord(day252=365, day360=365, rate="14.50"),
-            ]
-
-        with mock.patch("b3_selic_pre.presentation.cli.CachedB3Client") as mock_cls:
-            mock_client = mock.Mock()
-            mock_client.fetch_rates_for_date.side_effect = fake_fetch
-            mock_cls.return_value = mock_client
-            with mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-                main(["--today", "--yearly"])
-        self.assertEqual(len(records_arg), 1)
-        mock_print.assert_called_once_with(
-            'ANO,MENOR_TAXA,MAIOR_TAXA\n0,"14,65","14,65"\n1,"14,50","14,50"\n'
-        )
-
-    def test_main_gui_flag_launches_gui(self):
-        with mock.patch("b3_selic_pre.presentation.cli.launch_gui") as mock_gui:
-            main(["--gui"])
-        mock_gui.assert_called_once()
 
     def test_average_rate_by_year_midpoint(self):
         records = [
@@ -902,7 +827,7 @@ class ShortcutTest(unittest.TestCase):
             "[Desktop Entry]\n"
             "Name=Taxas Referenciais SELIC (B3)\n"
             "Comment=Consulta taxas referenciais SELIC Pré na B3\n"
-            "Exec=/usr/bin/python3 /app/b3_selic_pre.py --gui\n"
+            "Exec=/usr/bin/python3 /app/b3_selic_pre.py gui\n"
             f"Icon={os.path.expanduser('~/.local/share/icons/b3-selic-pre.png')}\n"
             "Terminal=false\n"
             "Type=Application\n"
@@ -1004,16 +929,6 @@ class ShortcutTest(unittest.TestCase):
         for path, mode in calls["chmod"]:
             self.assertEqual(mode, 0o755)
             self.assertTrue(path.endswith("b3-selic-pre.desktop"))
-
-    def test_main_create_shortcut_calls_create_shortcut(self):
-        with mock.patch("b3_selic_pre.presentation.cli.create_shortcut") as mock_cs, \
-             mock.patch("b3_selic_pre.presentation.cli.print") as mock_print:
-            main(["--create-shortcut"])
-        mock_cs.assert_called_once()
-        mock_print.assert_called_once_with(
-            "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

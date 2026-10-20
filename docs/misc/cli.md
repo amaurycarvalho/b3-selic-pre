@@ -1,0 +1,201 @@
+# Linha de Comando (CLI)
+
+Documentação técnica dos subcomandos, parâmetros e formatos de saída do
+`b3-selic-pre`.
+
+## Sinopse
+
+```text
+b3-selic-pre                         # abre a GUI
+b3-selic-pre gui                     # abre a GUI
+b3-selic-pre consultar [opções]
+b3-selic-pre atualizar [opções]
+b3-selic-pre exportar [opções]
+b3-selic-pre criar-atalho
+b3-selic-pre --help
+b3-selic-pre --version
+```
+
+Executar sem argumentos é equivalente a `gui`.
+
+## Subcomandos
+
+| Subcomando     | Finalidade                                                                       |
+| -------------- | -------------------------------------------------------------------------------- |
+| `consultar`    | Consulta as taxas de uma data e imprime CSV no terminal.                         |
+| `atualizar`    | Carrega a curva e a janela de evolução, gera e imprime a análise determinística. |
+| `exportar`     | Exporta evolução da curva, análise e/ou log da aplicação.                        |
+| `gui`          | Abre a interface gráfica.                                                        |
+| `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
+
+## Parâmetros comuns
+
+| Parâmetro                     | Comandos                             | Descrição                                        |
+| ----------------------------- | ------------------------------------ | ------------------------------------------------ |
+| `--data AAAA-MM-DD`           | `consultar`, `atualizar`, `exportar` | Data de referência. Padrão: data local corrente. |
+| `--no-cache`                  | `consultar`, `atualizar`, `exportar` | Ignora o cache em disco e busca os dados na B3.  |
+| `--curva curta\|longa\|ambas` | `consultar`, `exportar`              | Representação da curva.                          |
+| `--silencioso`                | `atualizar`                          | Carrega os dados sem imprimir a análise.         |
+| `--analise`                   | `exportar`                           | Inclui o texto determinístico da análise.        |
+| `--log`                       | `exportar`                           | Inclui uma cópia do log ativo.                   |
+| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`                           | Destino da exportação.                           |
+| `--help`                      | todos                                | Exibe a ajuda.                                   |
+| `--version`                   | todos                                | Exibe a versão e encerra.                        |
+
+## Regras de data
+
+- O formato é `AAAA-MM-DD`.
+- Datas futuras são rejeitadas.
+- O histórico disponível cobre os últimos 30 dias.
+- Se a data cair em sábado ou domingo, a CLI usa a sexta-feira anterior.
+- A data é resolvida pela camada de aplicação, com as mesmas regras da GUI.
+
+## `--curva`
+
+| Comando     | `curta`                                                      | `longa`                                           | `ambas`                  |
+| ----------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------ |
+| `consultar` | Tabela bruta da data (`DU252,DC365,TAXA`)                    | Consolidado por ano (`ANO,MENOR_TAXA,MAIOR_TAXA`) | As duas seções no stdout |
+| `exportar`  | Evolução detalhada das cinco datas (`DATA;DU252;DC365;TAXA`) | Evolução consolidada (`DATA;ANO;TAXA_MEDIA`)      | Os dois CSVs             |
+
+No `consultar`, o padrão é `curta`. No `exportar`, `--curva` é opcional e pode
+ser combinado com `--analise` e `--log`.
+
+## `consultar`
+
+```bash
+b3-selic-pre consultar --data 2026-06-10
+b3-selic-pre consultar --data 2026-06-10 --curva longa
+b3-selic-pre consultar --data 2026-06-10 --curva ambas
+b3-selic-pre consultar --data 2026-06-10 --no-cache
+```
+
+Exemplo de saída bruta:
+
+```csv
+DU252,DC365,TAXA
+1,1,"14,90"
+4,6,"14,87"
+```
+
+Exemplo de saída consolidada:
+
+```csv
+ANO,MENOR_TAXA,MAIOR_TAXA
+0,"14,50","15,10"
+1,"14,20","14,90"
+```
+
+Com `--curva ambas`, cada tabela é precedida por um cabeçalho
+(`Curva curta` e `Curva longa`). Para consumo por planilhas, prefira
+`exportar`, que gera arquivos separados.
+
+## `atualizar`
+
+```bash
+b3-selic-pre atualizar
+b3-selic-pre atualizar --data 2026-06-10
+b3-selic-pre atualizar --data 2026-06-10 --no-cache
+b3-selic-pre atualizar --data 2026-06-10 --silencioso
+```
+
+O comando:
+
+1. carrega a curva da data de referência;
+2. carrega a janela de evolução de cinco datas (data base e 7, 14, 21 e 28 dias antes);
+3. gera o texto determinístico da análise da curva;
+4. gera o texto da evolução entre a data base e a data anterior disponível;
+5. imprime os dois textos no stdout, salvo com `--silencioso`.
+
+Datas históricas sem dados são omitidas da evolução e listadas no final da
+saída como `Datas indisponíveis: ...`.
+
+A análise usa as preferências persistidas de `curva_juros` e `curva_evolucao`,
+as mesmas usadas pela GUI.
+
+## `exportar`
+
+Conteúdos combináveis:
+
+```bash
+b3-selic-pre exportar --curva curta
+b3-selic-pre exportar --curva longa
+b3-selic-pre exportar --curva ambas --analise
+b3-selic-pre exportar --curva ambas --analise --log --saida exports/
+b3-selic-pre exportar --analise
+b3-selic-pre exportar --log
+```
+
+### Formatos
+
+| Conteúdo        | Arquivo padrão     | Formato                                                      |
+| --------------- | ------------------ | ------------------------------------------------------------ |
+| `--curva curta` | `curva-curta.csv`  | `DATA;DU252;DC365;TAXA`, uma linha por registro por data     |
+| `--curva longa` | `curva-longa.csv`  | `DATA;ANO;TAXA_MEDIA`                                        |
+| `--analise`     | `analise.txt`      | Texto com as seções `Análise da Curva` e `Evolução da Curva` |
+| `--log`         | `b3-selic-pre.log` | Cópia do log ativo no momento da exportação                  |
+
+### Destino
+
+- Sem `--saida`, um único artefato é impresso no stdout.
+- Com mais de um artefato, `--saida` deve ser um diretório; os arquivos são
+  gravados com os nomes da tabela acima.
+- Com um único artefato, `--saida` pode ser um arquivo ou um diretório.
+- Arquivos existentes com o mesmo nome são sobrescritos.
+- O diretório é criado se não existir.
+
+Exemplos:
+
+```bash
+# um CSV no terminal
+b3-selic-pre exportar --data 2026-06-10 --curva longa
+
+# pacote completo em um diretório
+b3-selic-pre exportar --data 2026-06-10 \
+  --curva ambas --analise --log --saida /tmp/b3-export
+```
+
+O snapshot do log não inclui o registro da própria invocação de `exportar`,
+porque esse registro é gravado ao final do processo. Ele contém as invocações
+anteriores.
+
+## Logging
+
+A CLI reutiliza o mesmo arquivo, formato e rotação diária da aplicação. O
+diretório padrão é o cache da plataforma:
+
+```text
+<XDG_CACHE_HOME>/b3-selic-pre/logs/b3-selic-pre.log
+```
+
+Em Linux sem `XDG_CACHE_HOME`, o caminho é
+`~/.cache/b3-selic-pre/logs/b3-selic-pre.log`.
+
+Cada invocação gera uma linha INFO com:
+
+```text
+CLI comando=consultar argumentos=data=2026-06-10 curva=longa \
+    inicio=2026-10-20T10:00:00-03:00 fim=2026-10-20T10:00:01-03:00 \
+    duracao=0.842s codigo_saida=0
+```
+
+Campos:
+
+| Campo            | Descrição                                                                   |
+| ---------------- | --------------------------------------------------------------------------- |
+| `comando`        | Subcomando acionado; `gui` para execução sem argumentos ou `gui`.           |
+| `argumentos`     | Argumentos reconhecidos em `chave=valor`; em erro de parsing, o argv bruto. |
+| `inicio` / `fim` | Instantes em ISO 8601 com fuso local.                                       |
+| `duracao`        | Duração em segundos.                                                        |
+| `codigo_saida`   | Código de retorno da invocação.                                             |
+
+Invocações `--help`, `--version`, erros de parsing, falhas de comunicação e
+exceções não tratadas também geram o registro. A retenção de backups usa a
+configuração `log_retention_days` (padrão: 7 dias), a mesma da GUI.
+
+## Códigos de retorno
+
+| Código | Significado                                                     |
+| ------ | --------------------------------------------------------------- |
+| `0`    | Sucesso, incluindo `--help` e `--version`.                      |
+| `1`    | Falha de comunicação com a B3 ou ausência de dados necessários. |
+| `2`    | Erro de uso, sintaxe inválida ou validação de data/parâmetros.  |

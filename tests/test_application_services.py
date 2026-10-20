@@ -5,6 +5,12 @@ from unittest import mock
 import pytest
 
 from b3_selic_pre.application.analyze import CurvaJurosConfig, EvolutionConfig
+from b3_selic_pre.application.cli_services import (
+    build_analysis_text,
+    build_evolution_text,
+    build_export_artifacts,
+)
+from b3_selic_pre.application.formatting import format_detailed_evolution_csv
 from b3_selic_pre.application.use_cases import (
     FutureQueryDateError,
     OldQueryDateError,
@@ -124,6 +130,92 @@ class TestExportServices:
         assert build_export_text(
             records, historical_data=None, evolution_active=True
         ) == build_rates_table(records)
+
+
+class TestDetailedEvolutionCsv:
+    def test_orders_by_date_and_day_util(self):
+        historical = {
+            "2026-06-17": [
+                RateRecord(day252=2, day360=60, rate="14,6"),
+                RateRecord(day252=1, day360=1, rate="14,5"),
+            ],
+            "2026-06-10": [
+                RateRecord(day252=1, day360=1, rate="14,4"),
+            ],
+        }
+
+        text = format_detailed_evolution_csv(historical)
+
+        assert text == (
+            "DATA;DU252;DC365;TAXA\n"
+            "2026-06-10;1;1;14,4\n"
+            "2026-06-17;1;1;14,5\n"
+            "2026-06-17;2;60;14,6\n"
+        )
+
+
+class TestCliServices:
+    def test_build_analysis_text_without_records_is_empty(self):
+        assert build_analysis_text([]) == ""
+
+    def test_build_analysis_text_uses_configuration(self):
+        records = _records(14.5, 15.0)
+        config = CurvaJurosConfig.from_mapping({"expected_inflation": 4.0})
+
+        text = build_analysis_text(records, config=config)
+
+        assert "Nível Nominal" in text
+        assert "juro real: 10.50%" in text
+
+    def test_build_evolution_text_without_previous_is_empty(self):
+        records = _records(14.5)
+        assert build_evolution_text(records, []) == ""
+
+    def test_build_evolution_text_contains_regime(self):
+        current = _records(14.5, 15.0)
+        previous = _records(14.4, 14.9)
+
+        text = build_evolution_text(current, previous)
+
+        assert "Regime" in text
+
+    def test_build_export_artifacts_selects_all_contents(self):
+        records = _records(14.5, 15.0)
+        historical = {
+            "2026-06-10": _records(14.4, 14.9),
+            "2026-06-17": records,
+        }
+
+        artifacts = build_export_artifacts(
+            records,
+            historical_data=historical,
+            curva="ambas",
+            include_analise=True,
+            log_text="log line\n",
+        )
+
+        assert [artifact.name for artifact in artifacts] == [
+            "curva-curta.csv",
+            "curva-longa.csv",
+            "analise.txt",
+            "b3-selic-pre.log",
+        ]
+        assert "DATA;DU252;DC365;TAXA" in artifacts[0].content
+        assert "DATA;ANO;TAXA_MEDIA" in artifacts[1].content
+        assert "Análise da Curva" in artifacts[2].content
+        assert "Evolução da Curva" in artifacts[2].content
+        assert artifacts[3].content == "log line\n"
+
+    def test_build_export_artifacts_without_data_returns_nothing(self):
+        artifacts = build_export_artifacts(
+            [],
+            historical_data=None,
+            curva="ambas",
+            include_analise=True,
+            log_text=None,
+        )
+
+        assert artifacts == []
 
 
 class TestReferenceDateResolution:

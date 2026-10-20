@@ -11,6 +11,7 @@ from b3_selic_pre.presentation.logging_utils import (
     install_tk_exception_hook,
     is_communication_error,
     log_exception,
+    log_invocation,
 )
 
 
@@ -100,6 +101,43 @@ class LogExceptionTest(unittest.TestCase):
         with self.assertLogs(logger, level="ERROR"):
             log_exception(logger, error, "context")
         self.assertTrue(getattr(error, "_b3_selic_logged", False))
+
+
+class LogInvocationTest(unittest.TestCase):
+    def test_logs_single_line_with_metadata(self):
+        logger = logging.getLogger("test_invocation")
+        with self.assertLogs(logger, level="INFO") as captured:
+            log_invocation(
+                logger,
+                "consultar",
+                "data=2026-06-10 curva=longa",
+                "2026-06-10T10:00:00-03:00",
+                "2026-06-10T10:00:01-03:00",
+                1.25,
+                0,
+            )
+
+        self.assertEqual(len(captured.records), 1)
+        message = captured.records[0].getMessage()
+        self.assertIn("comando=consultar", message)
+        self.assertIn("argumentos=data=2026-06-10 curva=longa", message)
+        self.assertIn("duracao=1.250s", message)
+        self.assertIn("codigo_saida=0", message)
+        self.assertNotIn("\n", message)
+
+    def test_logging_failure_is_swallowed(self):
+        logger = mock.Mock()
+        logger.info.side_effect = RuntimeError("logging failed")
+
+        log_invocation(
+            logger,
+            "gui",
+            "(nenhum)",
+            "inicio",
+            "fim",
+            0.5,
+            0,
+        )
 
 
 class ExceptionHooksTest(unittest.TestCase):

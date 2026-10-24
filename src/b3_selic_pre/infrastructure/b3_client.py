@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import concurrent.futures
-import http.client
-import socket
-import ssl
 import time
-import urllib.error
 from collections.abc import Callable
 from datetime import datetime, timezone
 
 from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.use_cases import evolution_dates
-from b3_selic_pre.domain.constants import DEFAULT_MAX_PAGES, DEFAULT_PAGE_SIZE
+from b3_selic_pre.domain.constants import (
+    DEFAULT_B3_TIMEOUT_SECONDS,
+    DEFAULT_MAX_PAGES,
+    DEFAULT_PAGE_SIZE,
+)
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure.b3_download import fetch_rates_download
 from b3_selic_pre.infrastructure.b3_list import (
@@ -24,6 +24,7 @@ from b3_selic_pre.infrastructure.b3_list import (
     fetch_reference_rates_page,
     normalize_records,
 )
+from b3_selic_pre.infrastructure.b3_retry import TRANSIENT_ERRORS
 
 __all__ = [
     "COMMUNICATION_EXCEPTIONS",
@@ -38,14 +39,7 @@ __all__ = [
     "normalize_records",
 ]
 
-COMMUNICATION_EXCEPTIONS = (
-    urllib.error.URLError,
-    http.client.HTTPException,
-    TimeoutError,
-    ConnectionError,
-    ssl.SSLError,
-    socket.gaierror,
-)
+COMMUNICATION_EXCEPTIONS = TRANSIENT_ERRORS
 
 _PER_DATE_FAILURES = (CommunicationError, *COMMUNICATION_EXCEPTIONS)
 
@@ -57,7 +51,7 @@ def fetch_rates_for_date(
     page_size: int = DEFAULT_PAGE_SIZE,
     max_pages: int = DEFAULT_MAX_PAGES,
     opener: Callable[[str, int], object] | None = None,
-    timeout: int = 30,
+    timeout: int = DEFAULT_B3_TIMEOUT_SECONDS,
     sleep: Callable[[float], object] = time.sleep,
     progress_callback: Callable[[int, int | None], None] | None = None,
 ) -> tuple[list[RateRecord], str]:

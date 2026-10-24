@@ -19,6 +19,6 @@
 
 ## 4. Verificação
 
-- [ ] 4.1 Testar workflow manualmente via `workflow_dispatch` e confirmar que os 3 binários são gerados (requer push ao GitHub)
-- [ ] 4.2 Verificar que os binários iniciam sem erro (`--help` e `--gui`) (requer download dos artefatos)
-- [ ] 4.3 Verificar que o `.desktop` é incluído no release do Linux (requer execução do workflow no GitHub)
+- [x] 4.1 Testar workflow manualmente via `workflow_dispatch` e confirmar que os 3 binários são gerados (requer push ao GitHub)
+- [x] 4.2 Verificar que os binários iniciam sem erro (`--help` e `--gui`) (requer download dos artefatos)
+- [x] 4.3 Verificar que o `.desktop` é incluído no release do Linux (requer execução do workflow no GitHub)

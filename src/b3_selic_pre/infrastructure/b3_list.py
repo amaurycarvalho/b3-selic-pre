@@ -13,6 +13,7 @@ from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.use_cases import validate_reference_date
 from b3_selic_pre.domain.constants import (
     B3_BASE_URL,
+    DEFAULT_B3_TIMEOUT_SECONDS,
     DEFAULT_LANGUAGE,
     DEFAULT_MAX_PAGES,
     DEFAULT_PAGE_NUMBER,
@@ -102,7 +103,7 @@ def fetch_reference_rates_page(
     page_number: int = DEFAULT_PAGE_NUMBER,
     page_size: int = DEFAULT_PAGE_SIZE,
     opener: Callable[[str, int], object] | None = None,
-    timeout: int = 30,
+    timeout: int = DEFAULT_B3_TIMEOUT_SECONDS,
 ) -> tuple[list[RateRecord], int | None, int | None]:
     """Fetch a single page of reference rates from B3."""
     if opener is None:
@@ -191,7 +192,7 @@ def _validate_collection(
 def fetch_reference_rates(
     reference_date: str,
     opener: Callable[[str, int], object] | None = None,
-    timeout: int = 30,
+    timeout: int = DEFAULT_B3_TIMEOUT_SECONDS,
     page_size: int = DEFAULT_PAGE_SIZE,
     max_pages: int = DEFAULT_MAX_PAGES,
     progress_callback: Callable[[int, int | None], None] | None = None,

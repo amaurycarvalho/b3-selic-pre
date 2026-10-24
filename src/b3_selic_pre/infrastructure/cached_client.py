@@ -40,7 +40,7 @@ class CachedB3Client:
     def __init__(
         self: CachedB3Client,
         cache_dir: str | None = None,
-        ttl_minutes: int = 30,
+        ttl_minutes: int = 360,
         max_age_days: int = 365,
     ) -> None:
         """Initialize the client with the given cache settings."""

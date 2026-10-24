@@ -28,14 +28,20 @@ class _Settings:
         return self.data.get(key, default)
 
 
+def _business_day(value):
+    while value.weekday() >= 5:
+        value -= timedelta(days=1)
+    return value
+
+
 def _today():
-    return datetime.now(timezone.utc).date().isoformat()
+    today = _business_day(datetime.now(timezone.utc).date())
+    return today.isoformat()
 
 
 def _days_ago(days):
-    return (
-        datetime.now(timezone.utc).date() - timedelta(days=days)
-    ).isoformat()
+    today = datetime.strptime(_today(), "%Y-%m-%d").date()
+    return (today - timedelta(days=days)).isoformat()
 
 
 def _records(*rates):

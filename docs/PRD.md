@@ -19,7 +19,7 @@ Pequenos investidores do mercado financeiro brasileiro precisam acompanhar diari
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | P0         | Consultar taxa por data | Obter a curva SELIC Pré de uma data específica via CLI ou GUI.                                                     |
 | P0         | Visualização gráfica    | Gráfico de linhas (dias corridos vs taxa) com curva detalhada e consolidada por ano.                               |
-| P0         | Cache em disco          | Dados armazenados em `~/.cache/b3-selic-pre/` com TTL de 30 min para hoje e retenção infinita para datas passadas. |
+| P0         | Cache em disco          | Dados armazenados em `~/.cache/b3-selic-pre/` com TTL de 6 h para hoje e retenção infinita para datas passadas. |
 | P1         | Evolução histórica      | Sobreposição de curvas dos últimos 28, 21, 14, 7 e 0 dias com setas (quiver).                                      |
 | P1         | Painel de análise       | Resumo executivo em linguagem natural com classificação de patamar, inclinação, prêmio de risco e estabilidade.    |
 | P1         | Visão 3D                | Superfície 3D da evolução histórica da curva.                                                                      |

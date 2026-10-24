@@ -28,12 +28,12 @@ The system SHALL apply a configurable TTL (Time-To-Live) only to the current dat
 - **THEN** the system SHALL treat it as valid regardless of age
 
 #### Scenario: Today's cache expires after TTL
-- **WHEN** the cached data for today is older than the TTL (default: 30 minutes)
+- **WHEN** the cached data for today is older than the TTL (default: 6 hours)
 - **THEN** the system SHALL treat it as expired and re-fetch from B3
 
 #### Scenario: TTL is configurable
 - **WHEN** the system is initialized with a custom TTL value
-- **THEN** the system SHALL use that value instead of the default 30 minutes
+- **THEN** the system SHALL use that value instead of the default 6 hours
 
 ### Requirement: Corrupted cache file handling
 The system SHALL handle corrupted cache files gracefully.

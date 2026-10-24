@@ -333,7 +333,7 @@ class CachedB3ClientTest(unittest.TestCase):
     def test_init_stores_defaults(self):
         from b3_selic_pre.infrastructure.cached_client import CachedB3Client
         client = CachedB3Client()
-        self.assertEqual(client._ttl_minutes, 30)
+        self.assertEqual(client._ttl_minutes, 360)
         self.assertEqual(client._max_age_days, 365)
 
     def test_init_passes_cache_dir_to_disk_cache(self):
@@ -360,7 +360,7 @@ class CachedB3ClientTest(unittest.TestCase):
         date_str, records, from_cache = self.client._fetch_one("2026-06-17", False, "2026-06-17")
         self.assertEqual(records, expected)
         self.assertTrue(from_cache)
-        self.mock_cache.get.assert_called_once_with("2026-06-17", ttl_minutes=30)
+        self.mock_cache.get.assert_called_once_with("2026-06-17", ttl_minutes=360)
 
     def test_fetch_one_past_date_uses_none_ttl(self):
         expected = [RateRecord(day252=1, day360=1, rate="14,65")]
@@ -381,7 +381,7 @@ class CachedB3ClientTest(unittest.TestCase):
         self.mock_cache.put.assert_called_once_with(
             "2026-06-17",
             expected,
-            ttl_minutes=30,
+            ttl_minutes=360,
             complete=True,
             expected_count=len(expected),
             source="GetList",
@@ -410,7 +410,7 @@ class CachedB3ClientTest(unittest.TestCase):
         self.mock_cache.put.assert_called_once_with(
             "2026-06-17",
             expected,
-            ttl_minutes=30,
+            ttl_minutes=360,
             complete=True,
             expected_count=len(expected),
             source="GetList",
@@ -828,7 +828,7 @@ class CachedB3ClientSourceTest(unittest.TestCase):
         self.mock_cache.put.assert_called_once_with(
             today,
             expected,
-            ttl_minutes=30,
+            ttl_minutes=360,
             complete=True,
             expected_count=len(expected),
             source="GetList",
@@ -904,7 +904,7 @@ class CurrentDateCacheIntegrationTest(unittest.TestCase):
         data = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(data["schema_version"], 2)
         self.assertEqual(data["source"], "GetList")
-        self.assertEqual(data["ttl_minutes"], 30)
+        self.assertEqual(data["ttl_minutes"], 360)
         self.assertIs(data["complete"], True)
 
     def test_expired_today_cache_is_refetched(self):

@@ -124,6 +124,48 @@ class RetryEmptyTest(unittest.TestCase):
             )
         self.assertEqual(len(attempts), 1)
 
+    def test_transient_timeout_is_retried_and_succeeds(self):
+        results = iter([TimeoutError("timed out"), [1]])
+        sleeps = []
+
+        def operation():
+            value = next(results)
+            if isinstance(value, BaseException):
+                raise value
+            return value
+
+        value = retry_empty(
+            operation,
+            date="2026-10-19",
+            source="GetList",
+            result_is_empty=lambda result: not result,
+            sleep=sleeps.append,
+            random_fn=lambda: 0.5,
+        )
+        self.assertEqual(value, [1])
+        self.assertEqual(sleeps, [0.25])
+
+    def test_persistent_timeout_uses_three_attempts(self):
+        attempts = []
+        sleeps = []
+
+        def operation():
+            attempts.append(1)
+            raise TimeoutError("timed out")
+
+        with self.assertRaises(CommunicationError) as context:
+            retry_empty(
+                operation,
+                date="2026-10-19",
+                source="GetList",
+                result_is_empty=lambda result: not result,
+                sleep=sleeps.append,
+                random_fn=lambda: 0.5,
+            )
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(sleeps, [0.25, 0.5])
+        self.assertIsInstance(context.exception.__cause__, TimeoutError)
+
 
 class EncodePayloadTest(unittest.TestCase):
     def test_encode_payload_uses_compact_json(self):
@@ -143,7 +185,7 @@ class FetchReferenceRatesPageTest(unittest.TestCase):
             return FakeResponse({"results": [], "totalCount": 0})
 
         fetch_reference_rates_page("2026-06-10", opener=opener)
-        self.assertEqual(calls[0][1], 30)
+        self.assertEqual(calls[0][1], 60)
 
     def test_page_returns_total_count(self):
         data = {
@@ -316,7 +358,7 @@ class FetchReferenceRatesTest(unittest.TestCase):
             fetch_reference_rates(
                 "2026-06-10", opener=lambda u, **k: FakeResponse({})
             )
-        self.assertEqual(mock_page.call_args.kwargs["timeout"], 30)
+        self.assertEqual(mock_page.call_args.kwargs["timeout"], 60)
 
     def test_pagination_uses_computed_total_pages(self):
         pages = {
@@ -397,6 +439,21 @@ class FetchReferenceRatesTest(unittest.TestCase):
             )
         self.assertEqual(len(calls), 6)
 
+    def test_timeout_after_retries_raises_communication_error(self):
+        calls = []
+
+        def opener(url, **k):
+            calls.append(url)
+            raise TimeoutError("timed out")
+
+        with self.assertRaises(CommunicationError):
+            fetch_reference_rates(
+                "2026-06-10",
+                opener=opener,
+                sleep=lambda _: None,
+            )
+        self.assertEqual(len(calls), 3)
+
 
 class FetchRatesDownloadTest(unittest.TestCase):
     def test_builds_exact_payload(self):
@@ -410,7 +467,7 @@ class FetchRatesDownloadTest(unittest.TestCase):
         with mock.patch("urllib.request.urlopen", opener):
             records = fetch_rates_download("2026-06-10")
         self.assertEqual(len(records), 1)
-        self.assertEqual(captured["timeout"], 30)
+        self.assertEqual(captured["timeout"], 60)
         encoded = captured["url"].rsplit("/", 1)[-1]
         payload = json.loads(base64.b64decode(encoded).decode("utf-8"))
         self.assertEqual(
@@ -435,6 +492,19 @@ class FetchRatesDownloadTest(unittest.TestCase):
             with self.assertRaises(CommunicationError):
                 fetch_rates_download("2026-06-10", sleep=lambda _: None)
         self.assertEqual(len(calls), 6)
+
+    def test_timeout_after_retries_raises_communication_error(self):
+        calls = []
+
+        def opener(url, timeout):
+            calls.append(url)
+            raise TimeoutError("timed out")
+
+        with self.assertRaises(CommunicationError):
+            fetch_rates_download(
+                "2026-06-10", opener=opener, sleep=lambda _: None
+            )
+        self.assertEqual(len(calls), 3)
 
     def test_whitespace_only_response_raises_communication_error(self):
         with mock.patch(
@@ -575,6 +645,25 @@ class FetchRatesForDateTest(unittest.TestCase):
         self.assertEqual(records, fallback)
         self.assertEqual(source, "GetList")
         mock_ref.assert_called_once()
+
+    def test_past_download_timeout_falls_back_to_getlist(self):
+        calls = []
+
+        def opener(url, timeout):
+            calls.append(url)
+            if "GetDownloadFile" in url:
+                raise TimeoutError("timed out")
+            return FakeResponse(_page(_records(1), 1, 1))
+
+        records, source = fetch_rates_for_date(
+            "2026-06-10",
+            today="2026-06-17",
+            opener=opener,
+            sleep=lambda _: None,
+        )
+        self.assertEqual(len(records), 1)
+        self.assertEqual(source, "GetList")
+        self.assertEqual(len(calls), 4)
 
     def test_past_data_error_does_not_fall_back(self):
         with mock.patch(

@@ -8,11 +8,14 @@ import time
 import urllib.request
 from collections.abc import Callable
 
-from b3_selic_pre.domain.constants import B3_BASE_URL
+from b3_selic_pre.domain.constants import (
+    B3_BASE_URL,
+    DEFAULT_B3_TIMEOUT_SECONDS,
+)
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.infrastructure.b3_retry import retry_empty
 
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = DEFAULT_B3_TIMEOUT_SECONDS
 
 
 def parse_csv(text: str) -> list[RateRecord]:

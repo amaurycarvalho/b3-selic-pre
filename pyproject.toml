@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "b3-selic-pre"
-version = "1.0.0"
+version = "1.0.1"
 requires-python = ">=3.10"
 dependencies = [
-    "matplotlib>=3.0.0",
-    "Pillow>=10.0.0",
-    "pyxclip>=0.2.0",
-    "numpy>=1.20.0",
-    "tkcalendar>=1.6.0",
+    "matplotlib>=3.11.2",
+    "Pillow>=13.0.0",
+    "pyxclip>=0.2.3",
+    "numpy>=2.5.4",
+    "tkcalendar>=1.6.1",
 ]
 
 [project.scripts]
@@ -19,27 +19,27 @@ b3-selic-pre = "b3_selic_pre.presentation.cli:main"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.0.0",
-    "ruff==0.17.0",
-    "flake8>=6.0.0",
-    "flake8-bugbear>=23.0.0",
-    "flake8-annotations>=3.0.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff==0.17.2",
+    "flake8>=7.4.1",
+    "flake8-bugbear>=26.9.30",
+    "flake8-annotations>=3.3.0",
     "flake8-docstrings>=1.7.0",
 ]
 quality = [
-    "ruff==0.17.0",
-    "flake8>=6.0.0",
-    "flake8-bugbear>=23.0.0",
-    "flake8-annotations>=3.0.0",
+    "ruff==0.17.2",
+    "flake8>=7.4.1",
+    "flake8-bugbear>=26.9.30",
+    "flake8-annotations>=3.3.0",
     "flake8-docstrings>=1.7.0",
-    "radon>=6.0.0",
-    "xenon>=0.9.0",
-    "lizard>=1.17.0",
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "mutmut>=3.6.0",
-    "semgrep>=1.0.0",
+    "radon>=6.0.1",
+    "xenon>=0.9.3",
+    "lizard>=1.24.3",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "mutmut>=3.8.0",
+    "semgrep>=1.182.1",
 ]
 
 [tool.setuptools.packages.find]

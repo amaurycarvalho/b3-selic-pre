@@ -152,13 +152,20 @@ sem interromper as demais.
 
 ## Retry e timeouts
 
-- Timeout padrão por requisição: **30 s**.
+- Timeout padrão por requisição: **60 s**.
 - Resposta HTTP `200` com corpo vazio é tratada como falha transitória.
-- Política de retry: até **6 tentativas**, somente para resultados vazios.
+- Orçamentos independentes:
+  - até **6 tentativas** quando o resultado permanece vazio;
+  - até **3 tentativas** quando ocorre falha transiente de rede/transporte.
+- Falhas transientes repetidas: `urllib.error.URLError`,
+  `http.client.HTTPException`, `TimeoutError`, `ConnectionError`,
+  `ssl.SSLError` e `socket.gaierror`.
 - Backoff exponencial com jitter: tetos de `0.5`, `1.0`, `2.0`, `4.0` e `4.0` s,
   multiplicados por um fator aleatório em cada espera.
-- Esgotadas as tentativas, é lançado `CommunicationError` identificando a data e a
+- Esgotados os orçamentos, é lançado `CommunicationError` identificando a data e a
   fonte.
+- Para datas passadas, uma falha transiente do `GetDownloadFile` após os retries
+  também aciona o fallback para `GetList`.
 - JSON inválido, CSV inválido ou esquema inesperado **não** são repetidos.
 
 ## Classificação de erros
@@ -181,10 +188,12 @@ seguem o fluxo de erro da aplicação, sem retry.
 As respostas da B3 são cacheadas em disco (ver `disk-cache`), não sendo uma fonte
 externa adicional:
 
-- data corrente respeita TTL configurável (padrão: 30 min);
+- data corrente respeita TTL configurável (padrão: 6 h / 360 min);
 - datas passadas não expiram;
 - apenas resultados não vazios e completos são gravados;
-- entradas vazias, incompletas ou legadas são tratadas como miss e re-buscadas.
+- entradas vazias, incompletas ou legadas são tratadas como miss e re-buscadas;
+- entradas antigas com `ttl_minutes: 30` mantêm o TTL gravado e expiram uma
+  última vez antes de serem regravadas com 360 min.
 
 Os rótulos exibidos na GUI são `API B3` (`GetList`), `Arquivo oficial B3`
 (`GetDownloadFile`) e `Histórico B3` (busca de evolução).
@@ -213,7 +222,7 @@ Arquivos relevantes:
 | `domain/constants.py` | Base URL, `id`, idioma e defaults de paginação |
 | `infrastructure/b3_list.py` | `GetList`, payload, paginação e completude |
 | `infrastructure/b3_download.py` | `GetDownloadFile` e parsing do CSV |
-| `infrastructure/b3_retry.py` | Retry de respostas vazias e backoff |
+| `infrastructure/b3_retry.py` | Retry de respostas vazias, falhas transientes e backoff |
 | `infrastructure/b3_client.py` | Seleção de fonte, timeouts e busca histórica |
 | `infrastructure/cached_client.py` | Cache em disco e rótulos de origem |
 | `infrastructure/disk_cache.py` | Persistência e invalidação de entradas |

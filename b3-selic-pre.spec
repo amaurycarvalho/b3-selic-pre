@@ -81,8 +81,8 @@ if sys.platform == 'darwin':
         icon=icon_file,
         bundle_identifier='com.github.amaurycarvalho.b3-selic-pre',
         info_plist={
-            'CFBundleShortVersionString': '1.0.0',
-            'CFBundleVersion': '1.0.0',
+            'CFBundleShortVersionString': '1.0.1',
+            'CFBundleVersion': '1.0.1',
             'NSHighResolutionCapable': True,
         },
     )

@@ -43,4 +43,4 @@
 
 - [x] 6.1 Executar `pytest` e garantir que todos os testes existentes continuam passando
 - [x] 6.2 Verificar imports e sintaxe do código modificado
-- [ ] 6.3 Verificar manualmente: abrir GUI, buscar data, fechar, reabrir — dados devem vir do cache
+- [x] 6.3 Verificar manualmente: abrir GUI, buscar data, fechar, reabrir — dados devem vir do cache

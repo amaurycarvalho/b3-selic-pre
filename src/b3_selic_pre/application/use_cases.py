@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from b3_selic_pre.application.formatting import (
     format_cli_rows,
@@ -35,13 +35,13 @@ class RateStatistics:
 
 def default_reference_date() -> str:
     """Retorna a data de referência atual no formato YYYY-MM-DD."""
-    return datetime.now(timezone.utc).date().isoformat()
+    return datetime.now(UTC).date().isoformat()
 
 
 def validate_reference_date(reference_date: str) -> str:
     """Valida e normaliza uma data de referência para o formato YYYY-MM-DD."""
     try:
-        parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+        parsed = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=UTC).date()
     except ValueError as exc:
         raise ValueError("Use uma data no formato YYYY-MM-DD.") from exc
     return parsed.isoformat()
@@ -56,10 +56,10 @@ def validate_query_date(
     normalized = validate_reference_date(reference_date)
     current = validate_reference_date(today or default_reference_date())
     parsed = datetime.strptime(normalized, "%Y-%m-%d").replace(
-        tzinfo=timezone.utc
+        tzinfo=UTC
     ).date()
     current_date = datetime.strptime(current, "%Y-%m-%d").replace(
-        tzinfo=timezone.utc
+        tzinfo=UTC
     ).date()
     if parsed > current_date:
         raise FutureQueryDateError("Data futura. Informe uma data até hoje.")
@@ -76,7 +76,7 @@ def nearest_business_day(date_str: str) -> str:
     """Retorna a data útil mais próxima (retrocede fins de semana)."""
     normalized = validate_reference_date(date_str)
     parsed = datetime.strptime(normalized, "%Y-%m-%d").replace(
-        tzinfo=timezone.utc
+        tzinfo=UTC
     ).date()
     while parsed.weekday() >= 5:
         parsed -= timedelta(days=1)
@@ -85,7 +85,7 @@ def nearest_business_day(date_str: str) -> str:
 
 def days_ago(base_date: str, days: int) -> str:
     """Retorna a data ``days`` dias antes de ``base_date`` no formato ISO."""
-    parsed = datetime.strptime(base_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+    parsed = datetime.strptime(base_date, "%Y-%m-%d").replace(tzinfo=UTC).date()
     return (parsed - timedelta(days=days)).isoformat()
 
 

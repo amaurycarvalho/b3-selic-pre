@@ -5,7 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.use_cases import evolution_dates
@@ -57,7 +57,7 @@ def fetch_rates_for_date(
 ) -> tuple[list[RateRecord], str]:
     """Fetch rates using GetList for today and GetDownloadFile for past dates."""
     if today is None:
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
     if date_str == today:
         records = fetch_reference_rates(
             date_str,
@@ -99,7 +99,7 @@ def fetch_historical_rates(
 ) -> dict[str, list[RateRecord]]:
     """Fetch historical reference rates for the configured evolution days."""
     if today is None:
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
     dates = evolution_dates(base_date)
 
     def fetch_one(date_str: str) -> tuple[str, list[RateRecord]]:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from b3_selic_pre.application.use_cases import nearest_business_day
@@ -108,7 +108,7 @@ class ChartMixin:
             self._redraw_chart()
             return
         today = nearest_business_day(
-            datetime.now(timezone.utc).date().isoformat()
+            datetime.now(UTC).date().isoformat()
         )
         if self.date_var.get().strip() != today:
             self.date_var.set(today)

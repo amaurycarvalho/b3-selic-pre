@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from b3_selic_pre.domain.models import RateRecord
@@ -78,7 +78,7 @@ class DiskCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         data = {
             "schema_version": SCHEMA_VERSION,
-            "cached_at": datetime.now(timezone.utc).isoformat(),
+            "cached_at": datetime.now(UTC).isoformat(),
             "ttl_minutes": ttl_minutes,
             "complete": True,
             "expected_count": expected,
@@ -122,7 +122,7 @@ class DiskCache:
             cached_dt = datetime.fromisoformat(cached_at)
         except (ValueError, TypeError):
             return False
-        age = datetime.now(timezone.utc) - cached_dt
+        age = datetime.now(UTC) - cached_dt
         return age < timedelta(minutes=ttl_minutes)
 
     def _is_expired(self: DiskCache, data: dict, ttl_minutes: int | None) -> bool:
@@ -141,7 +141,7 @@ class DiskCache:
 
     def housekeeping(self: DiskCache, max_age_days: int = 365) -> None:
         """Delete cached files older than ``max_age_days``."""
-        cutoff = datetime.now(timezone.utc).date() - timedelta(days=max_age_days)
+        cutoff = datetime.now(UTC).date() - timedelta(days=max_age_days)
         for path in self.cache_dir.glob("*.json"):
             try:
                 file_date = date.fromisoformat(path.stem)

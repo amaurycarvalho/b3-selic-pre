@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from b3_selic_pre.application.use_cases import (
@@ -129,7 +129,7 @@ class FetchMixin:
             self._fetch_historical_rates(self._last_reference_date)
             return
         self._set_ui_locked(False)
-        now = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now = datetime.now(UTC).strftime("%H:%M:%S")
         if records:
             self.set_status(
                 f"{len(records)} registro(s) carregado(s)  |  {self._data_source}  |  {now}",
@@ -153,7 +153,7 @@ class FetchMixin:
             self._last_reference_date,
             bool(historical and any(historical.values())),
         )
-        now = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now = datetime.now(UTC).strftime("%H:%M:%S")
         message, msg_type = historical_status(
             historical, self._data_source, now
         )

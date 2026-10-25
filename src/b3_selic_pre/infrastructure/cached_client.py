@@ -5,7 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import functools
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.use_cases import evolution_dates
@@ -64,7 +64,7 @@ class CachedB3Client:
                     source_callback(f"Cache ({date_str})")
                 return cached
         records = b3_client.fetch_reference_rates(date_str, **kwargs)
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
         ttl = self._ttl_minutes if date_str == today else None
         if records:
             self._cache.put(
@@ -118,7 +118,7 @@ class CachedB3Client:
         **kwargs: object,
     ) -> list[RateRecord]:
         """Return rates for ``date_str`` using the correct source and cache."""
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
         ttl = self._ttl_minutes if date_str == today else None
         if not force:
             cached = self._cache.get(date_str, ttl_minutes=ttl)
@@ -154,7 +154,7 @@ class CachedB3Client:
         **kwargs: object,
     ) -> dict[str, list[RateRecord]]:
         """Return historical rates for the evolution window ending at ``base_date``."""
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
         dates = evolution_dates(base_date)
         results: dict[str, list[RateRecord]] = {}
         cached_count = 0

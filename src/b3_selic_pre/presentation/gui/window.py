@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 Event = Any
@@ -40,5 +40,5 @@ class WindowMixin:
 
     def _go_today(self: App) -> None:
         """Define a data atual no campo de data e dispara a busca."""
-        self.date_var.set(datetime.now(timezone.utc).date().isoformat())
+        self.date_var.set(datetime.now(UTC).date().isoformat())
         self.fetch_rates()

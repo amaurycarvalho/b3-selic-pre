@@ -29,7 +29,7 @@ TRANSIENT_ERRORS = (
 _T = TypeVar("_T")
 
 
-def retry_empty(
+def retry_empty(  # noqa: UP047
     operation: Callable[[], _T],
     *,
     date: str,

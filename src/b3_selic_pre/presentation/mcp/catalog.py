@@ -67,6 +67,31 @@ _MES = {
     "type": "string",
     "description": "Mês único AAAA-MM.",
 }
+_ATIVO = {
+    "type": "string",
+    "enum": ["usd", "ouro", "ambos"],
+    "description": "Ativo de mercado (padrão: ambos).",
+}
+_RESOLUCAO = {
+    "type": "string",
+    "enum": ["auto", "dia", "semana", "mes"],
+    "description": "Resolução temporal (padrão: auto).",
+}
+_FORMATO = {
+    "type": "string",
+    "enum": ["csv", "json"],
+    "description": "Formato de exportação (padrão: csv).",
+}
+_HORIZONTE = {
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 24,
+    "description": "Horizonte do cenário em meses (padrão: 12).",
+}
+_PREVER = {
+    "type": "boolean",
+    "description": "Inclui também o artefato de cenário.",
+}
 
 
 def _schema(
@@ -216,6 +241,66 @@ TOOL_DEFINITIONS: list[dict[str, object]] = [
                 "agregar": _AGREGAR_ESTOQUE,
                 "cursor": _CURSOR,
                 "limite": _LIMITE,
+            }
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "mercado_serie",
+        "title": "Série de mercado",
+        "description": (
+            "Consulta o histórico de dólar (BRL/USD) e ouro (R$/g) apenas "
+            "no cache local, com filtros de ativo, janela e resolução, "
+            "proveniência por item e paginação."
+        ),
+        "inputSchema": _schema(
+            {
+                "ativo": _ATIVO,
+                "inicio": _INICIO,
+                "fim": _FIM,
+                "resolucao": _RESOLUCAO,
+                "cursor": _CURSOR,
+                "limite": _LIMITE,
+            }
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "mercado_previsao",
+        "title": "Cenário de mercado",
+        "description": (
+            "Devolve o cenário de 12 meses já pré-calculado para dólar e "
+            "ouro, com bandas de 80% e 95%, método e rótulo de cenário."
+        ),
+        "inputSchema": _schema(
+            {"ativo": _ATIVO, "horizonte": _HORIZONTE}
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "mercado_indicadores",
+        "title": "Indicadores de política cambial",
+        "description": (
+            "Devolve os sinais de política disponíveis: prêmio a termo, "
+            "prêmio DOL, gap Focus, volatilidade 30/90 dias, regime e limiar."
+        ),
+        "inputSchema": _schema(),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "mercado_exportar",
+        "title": "Exportar mercado",
+        "description": (
+            "Devolve o conteúdo CSV ou JSON de histórico e cenário de "
+            "mercado, sem gravar arquivos e lendo apenas o cache local."
+        ),
+        "inputSchema": _schema(
+            {
+                "ativo": _ATIVO,
+                "inicio": _INICIO,
+                "fim": _FIM,
+                "formato": _FORMATO,
+                "prever": _PREVER,
             }
         ),
         "annotations": dict(_READ_ONLY),

@@ -157,6 +157,10 @@ Todas as tools são somente leitura (`readOnlyHint: true`,
 | `tesouro_vendas` | `titulo?`, `inicio?`, `fim?`, `agregar?`, `cursor?`, `limite?` | vendas do Tesouro no cache local, com filtros, agregação e paginação |
 | `tesouro_resgates` | `tipo?`, `titulo?`, `inicio?`, `fim?`, `agregar?`, `cursor?`, `limite?` | recompras, cupons e vencimentos no cache local |
 | `tesouro_estoque` | `titulo?`, `inicio?`, `fim?`, `mes?`, `agregar?`, `cursor?`, `limite?` | estoque mensal no cache local |
+| `mercado_serie` | `ativo?`, `inicio?`, `fim?`, `resolucao?`, `cursor?`, `limite?` | histórico de dólar e ouro com proveniência e paginação |
+| `mercado_previsao` | `ativo?`, `horizonte?` | cenário pré-calculado com bandas de 80% e 95% |
+| `mercado_indicadores` | nenhum | prêmio a termo, prêmio DOL, gap Focus, volatilidade e regime |
+| `mercado_exportar` | `ativo?`, `inicio?`, `fim?`, `formato?`, `prever?` | CSV/JSON de histórico e cenário, sem gravar arquivos |
 
 ### `data_referencia`
 
@@ -361,6 +365,36 @@ A resposta contém `dataset: "estoque"`, `origem: "cache"`, `data_extracao`,
 `total_registros`, `periodo`, `registros` ou `agregados` e `nextCursor` quando
 houver continuação. Cache ausente devolve `cache_vazio`.
 
+### `mercado_serie`
+
+Consulta apenas o cache local de mercado. `ativo` aceita `usd`, `ouro` ou
+`ambos`; `resolucao` aceita `auto`, `dia`, `semana` ou `mes`. Sem `inicio` e
+`fim`, usa a janela de 12 meses do cache. Cada item contém `data`, `ativo`,
+`valor`, `unidade`, `origem`, `metodo`, `extraido_em`, `defasado` e
+`defasagem_horas`. A resposta inclui `nextCursor` quando houver continuação e
+devolve `sem_dados` quando não há série para a janela.
+
+### `mercado_previsao`
+
+Lê somente o artefato pré-calculado; não recalcula a projeção durante a chamada.
+Devolve `previsao` por ativo com `cenario`, `metodo`, itens mensais e bandas de
+80% e 95%, além do aviso de que não é recomendação. `horizonte` limita os
+meses retornados (padrão: 12). Sem artefato, devolve `sem_dados`.
+
+### `mercado_indicadores`
+
+Devolve os sinais disponíveis: `premio_termo`, `premio_dol`, `gap_focus`,
+`vol30`, `vol90`, `regime`, `limiar_regime` e `data_referencia`. Sinais sem
+insumo são omitidos; sem nenhum insumo, devolve `sem_dados`.
+
+### `mercado_exportar`
+
+Devolve `nome`, `content_type`, `conteudo` e `datas_indisponiveis`, sem gravar
+arquivos. `formato=csv` usa `;` e nomes `mercado-historico.csv`; com
+`prever=true`, inclui também `mercado-previsao.csv`. `formato=json` devolve
+`mercado.json` com séries, cenário e indicadores. Prepare o cache antes com
+`b3-selic-pre mercado --atualizar`; as tools nunca acessam a rede.
+
 ## Erros de domínio
 
 Erros recuperáveis são devolvidos como resultado estruturado, sem `isError`:
@@ -404,6 +438,9 @@ $XDG_CACHE_HOME/b3-selic-pre/tesouro/vencimentos.csv
 $XDG_CACHE_HOME/b3-selic-pre/tesouro/vencimentos.metadata.json
 $XDG_CACHE_HOME/b3-selic-pre/tesouro/estoque.csv
 $XDG_CACHE_HOME/b3-selic-pre/tesouro/estoque.metadata.json
+$XDG_CACHE_HOME/b3-selic-pre/market/raw/<fonte>/AAAA-MM-DD.json
+$XDG_CACHE_HOME/b3-selic-pre/market/precomputed/<hash>/artifact.json
+$XDG_CACHE_HOME/b3-selic-pre/market/manifest.json
 $XDG_CONFIG_HOME/b3-selic-pre/settings.json          # data_referencia
 ```
 

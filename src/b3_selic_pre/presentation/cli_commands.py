@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import date
 from typing import Protocol
 
 from b3_selic_pre.application.cli_services import build_export_artifacts
+from b3_selic_pre.application.market.export import (
+    forecast_artifact_from_payload,
+    history_artifact_from_payload,
+    json_artifact_from_payload,
+)
+from b3_selic_pre.application.market.payloads import filter_payload_window
 from b3_selic_pre.application.use_cases import build_rates_table
 from b3_selic_pre.domain.models import RateRecord
 from b3_selic_pre.presentation.cli_data import (
@@ -208,3 +215,112 @@ def tesouro_estoque(args: argparse.Namespace, client: object) -> int:
     )
 
     return _handler(args, client)
+
+
+def _market_date(value: str | None, name: str) -> tuple[str | None, int]:
+    if value is None:
+        return None, 0
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        print(
+            f"{name} inválida: use o formato AAAA-MM-DD.",
+            file=sys.stderr,
+        )
+        return None, 2
+    if parsed.isoformat() != value:
+        print(
+            f"{name} inválida: use o formato AAAA-MM-DD.",
+            file=sys.stderr,
+        )
+        return None, 2
+    return value, 0
+
+
+def _filter_market_payload(
+    payload: dict[str, object],
+    ativo: str,
+    inicio: str | None,
+    fim: str | None,
+) -> dict[str, object] | None:
+    return filter_payload_window(payload, ativo, inicio, fim)
+
+
+def _market_artifacts(
+    payload: dict[str, object], args: argparse.Namespace
+) -> list[object]:
+    if args.formato == "json":
+        return [json_artifact_from_payload(payload)]
+    artifacts = [history_artifact_from_payload(payload)]
+    if args.prever:
+        artifacts.append(forecast_artifact_from_payload(payload))
+    return artifacts
+
+
+def _market_window(
+    args: argparse.Namespace,
+) -> tuple[str | None, str | None, int]:
+    inicio, code = _market_date(args.inicio, "--inicio")
+    if code:
+        return None, None, code
+    fim, code = _market_date(args.fim, "--fim")
+    if code:
+        return None, None, code
+    if inicio is not None and fim is not None and inicio > fim:
+        print("--inicio não pode ser posterior a --fim.", file=sys.stderr)
+        return None, None, 2
+    return inicio, fim, 0
+
+
+def _market_load(
+    args: argparse.Namespace, controller: object
+) -> tuple[dict[str, object] | None, int]:
+    try:
+        payload = (
+            controller.refresh()  # type: ignore[attr-defined]
+            if args.atualizar or args.no_cache
+            else controller.load_cache_only()  # type: ignore[attr-defined]
+        )
+    except Exception as exc:
+        print(f"Falha ao consultar o mercado: {exc}", file=sys.stderr)
+        return None, 1
+    return payload, 0
+
+
+def _market_filtered(
+    payload: dict[str, object], args: argparse.Namespace,
+    inicio: str | None, fim: str | None,
+) -> dict[str, object] | None:
+    filtered = _filter_market_payload(payload, args.ativo, inicio, fim)
+    if filtered is None:
+        print(
+            "Não há dados de mercado em cache para a janela solicitada. "
+            "Use --atualizar para buscar as fontes.",
+            file=sys.stderr,
+        )
+    return filtered
+
+
+def _market_write(
+    filtered: dict[str, object], args: argparse.Namespace
+) -> int:
+    try:
+        return write_artifacts(_market_artifacts(filtered, args), args.saida)
+    except OSError as exc:
+        print(f"Falha ao gravar a saída: {exc}", file=sys.stderr)
+        return 1
+
+
+def mercado(args: argparse.Namespace, controller: object) -> int:
+    """Consulta ou exporta séries de dólar e ouro."""
+    inicio, fim, code = _market_window(args)
+    if code:
+        return code
+    controller.options.resolucao = args.resolucao  # type: ignore[attr-defined]
+    payload, code = _market_load(args, controller)
+    if payload is None:
+        return code
+    filtered = _market_filtered(payload, args, inicio, fim)
+    if filtered is None:
+        return 1
+    return _market_write(filtered, args)

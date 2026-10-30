@@ -33,6 +33,8 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 ./b3-selic-pre-linux tesouro --json --saida exports/
 ./b3-selic-pre-linux tesouro-resgates --tipo cupom --agregar
 ./b3-selic-pre-linux tesouro-estoque --mes 2026-08 --json
+./b3-selic-pre-linux mercado --formato json
+./b3-selic-pre-linux mercado --prever --saida exports/
 ./b3-selic-pre-linux criar-atalho                  # criar atalho no desktop (Linux)
 ./b3-selic-pre-linux --help                       # exibir ajuda
 ./b3-selic-pre-linux --version                    # exibir versão
@@ -50,6 +52,7 @@ A CLI usa subcomandos de verbo. Os principais são:
 | `tesouro` | Consulta vendas do Tesouro Direto (`--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `tesouro-resgates` | Consulta recompras, cupons e vencimentos (`--tipo`, `--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `tesouro-estoque` | Consulta o estoque mensal (`--titulo`, `--inicio`, `--fim`, `--mes`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
+| `mercado` | Consulta ou exporta dólar e ouro (`--ativo`, `--inicio`, `--fim`, `--resolucao`, `--prever`, `--formato`, `--saida`, `--no-cache`, `--atualizar`). |
 | `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
 | `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
@@ -63,6 +66,12 @@ datasets do Tesouro Direto com filtros, agregação, saída CSV/JSON e exportaç
 via `--saida`. `tesouro` e `tesouro-resgates` usam por padrão os últimos 30 dias;
 `tesouro-estoque` usa o último mês disponível. Cada recurso mantém CSV e
 metadata próprios em `$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
+
+O subcomando `mercado` lê apenas o cache por padrão (use `--atualizar` ou
+`--no-cache` para consultar as fontes) e cobre os 12 meses anteriores à maior
+data disponível. O ouro é derivado de `XAU/USD x USD/BRL / 31,1034768` e cada
+ponto informa origem, método e horário de extração. O cache de mercado fica em
+`$XDG_CACHE_HOME/b3-selic-pre/market/`.
 
 Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
 exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
@@ -82,7 +91,8 @@ estatísticas usando o cache local.
 Durante o atendimento o servidor não acessa a B3/CVM e não grava estado. Ele
 expõe as tools `data_referencia`, `consultar_curva`, `exportar_curva_curta`,
 `exportar_curva_longa`, `analise`, `evolucao`, `estatisticas`, `listar_datas`,
-`tesouro_vendas`, `tesouro_resgates` e `tesouro_estoque`. As tools de Tesouro
+`tesouro_vendas`, `tesouro_resgates`, `tesouro_estoque`, `mercado_serie`,
+`mercado_previsao`, `mercado_indicadores` e `mercado_exportar`. As tools de Tesouro
 leem apenas o cache local; prepare-o antes com o subcomando de dados
 correspondente. Detalhes de protocolo, tools e execução em Docker estão em
 [Servidor MCP](docs/misc/mcp.md).
@@ -95,6 +105,10 @@ A janela principal organiza o conteúdo em abas por classe de ativo:
 - **Tesouro Direto**: sub-abas `Visão geral`, `Estoque` e `Apetite do mercado`,
   com gráficos de percentual atual e evolução, toolbar, hover sobre os pontos e
   texto orientativo redimensionável.
+- **Câmbio e Reservas**: sub-aba `Dólar e Ouro`, com histórico de 12 meses,
+  cenário de 12 meses, sinais de política cambial, alternância base 100 e
+  overlay de Fibonacci. A sub-aba carrega apenas o cache na primeira exibição e
+  tem `Atualizar` próprio.
 - **Sobre**: o mesmo conteúdo do diálogo `Sobre`, com repositório, logs e aviso
   de nova versão.
 

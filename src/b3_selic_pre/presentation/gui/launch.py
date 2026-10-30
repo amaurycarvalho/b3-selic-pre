@@ -15,6 +15,7 @@ from b3_selic_pre.infrastructure.desktop import (
 )
 from b3_selic_pre.infrastructure.links import open_directory, open_url
 from b3_selic_pre.infrastructure.logging_setup import configure_logging, log_dir
+from b3_selic_pre.infrastructure.market import build_market_services
 from b3_selic_pre.infrastructure.release_check import fetch_latest_version
 from b3_selic_pre.infrastructure.tesouro_btd import TesouroBtdClient
 from b3_selic_pre.infrastructure.tesouro_cached_client import (
@@ -75,6 +76,7 @@ def launch_gui(
         tesouro_series_cache=series_cache,
         tesouro_precompute=TesouroPrecompute(series_cache),
         tesouro_btd=TesouroBtdClient(),
+        market_services=build_market_services(),
     )
     app = SelicPreApp(root, dependencies)
 
@@ -82,6 +84,8 @@ def launch_gui(
         app._save_window_state()
         if getattr(app, "tesouro_tab", None) is not None:
             app.tesouro_tab.close()
+        if getattr(app, "cambio_tab", None) is not None:
+            app.cambio_tab.close()
         root.quit()
         root.destroy()
 

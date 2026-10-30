@@ -147,7 +147,7 @@ class TestProtocol:
 
 
 class TestToolsCatalog:
-    def test_catalog_has_exactly_eleven_read_only_tools(self):
+    def test_catalog_has_exactly_the_read_only_tools(self):
         with tempfile.TemporaryDirectory() as tmp:
             _, messages = _run(
                 [_line("tools/list", META, 1)], DiskCache(tmp), _Settings()
@@ -165,6 +165,10 @@ class TestToolsCatalog:
             "tesouro_vendas",
             "tesouro_resgates",
             "tesouro_estoque",
+            "mercado_serie",
+            "mercado_previsao",
+            "mercado_indicadores",
+            "mercado_exportar",
         }
         for tool in tools:
             assert tool["annotations"]["readOnlyHint"] is True

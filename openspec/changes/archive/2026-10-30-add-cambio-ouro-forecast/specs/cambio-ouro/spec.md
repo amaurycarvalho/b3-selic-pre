@@ -237,6 +237,26 @@ A sub-aba SHALL oferecer alternância entre valores absolutos e base 100. O over
 - **WHEN** algum ponto usa `cache_defasado`
 - **THEN** o gráfico SHALL exibir um aviso de defasagem
 
+### Requirement: Legenda e hover dos painéis
+
+A legenda SHALL ficar centralizada abaixo dos painéis. O gráfico SHALL oferecer hover com data, ativo, valor, unidade e faixa mín-máx do histórico; nos pontos de cenário, o hover SHALL incluir o valor central e as bandas de 80% e 95%.
+
+#### Scenario: Legenda abaixo dos painéis
+
+- **WHEN** o gráfico é exibido com dados
+- **THEN** a legenda SHALL ficar centralizada abaixo dos painéis
+- **THEN** a legenda NÃO SHALL sobrepor a área dos gráficos
+
+#### Scenario: Hover nos dados históricos
+
+- **WHEN** o ponteiro fica próximo de um ponto histórico
+- **THEN** o tooltip SHALL exibir data, ativo, valor, unidade e faixa mín-máx
+
+#### Scenario: Hover no cenário
+
+- **WHEN** o ponteiro fica próximo de um ponto do cenário
+- **THEN** o tooltip SHALL exibir o valor central e as bandas de 80% e 95%
+
 ### Requirement: Atualização e estado da sub-aba
 
 A sub-aba `Dólar e Ouro` SHALL carregar apenas o cache na primeira exibição e NÃO SHALL acessar a rede ao ser construída.

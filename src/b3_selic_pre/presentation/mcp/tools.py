@@ -15,6 +15,10 @@ from b3_selic_pre.presentation.mcp.tool_handlers import (
     evolucao,
     exportar,
     listar_datas,
+    mercado_exportar,
+    mercado_indicadores,
+    mercado_previsao,
+    mercado_serie,
     tesouro_estoque,
     tesouro_resgates,
     tesouro_vendas,
@@ -35,6 +39,10 @@ _HANDLERS: dict[str, Handler] = {
     "tesouro_vendas": tesouro_vendas,
     "tesouro_resgates": tesouro_resgates,
     "tesouro_estoque": tesouro_estoque,
+    "mercado_serie": mercado_serie,
+    "mercado_previsao": mercado_previsao,
+    "mercado_indicadores": mercado_indicadores,
+    "mercado_exportar": mercado_exportar,
 }
 
 

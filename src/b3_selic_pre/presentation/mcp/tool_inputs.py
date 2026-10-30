@@ -136,3 +136,4 @@ def load_historical(
 def config(ctx: ToolContext) -> object:
     """Build the analysis configuration from fresh settings."""
     return config_from_settings(ctx.settings_factory())
+

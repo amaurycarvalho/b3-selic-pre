@@ -4,14 +4,14 @@
 
 ### Requirement: Abas de nível superior
 
-A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro` e `Sobre`, nesta ordem.
+A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre`, nesta ordem.
 
 `SELIC Pré` SHALL ser a aba padrão. A antiga janela separada de Tesouro Direto NÃO SHALL existir.
 
 #### Scenario: Abas são exibidas
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro` e `Sobre` SHALL estar visíveis
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre` SHALL estar visíveis
 - **THEN** `SELIC Pré` SHALL estar selecionada
 
 #### Scenario: Sem janela separada
@@ -24,9 +24,9 @@ A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas
 
 O shell SHALL manter um registro determinístico de abas, com identificador único e rótulo.
 
-A aba `Câmbio e Ouro` SHALL ser registrada sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
+A aba `Câmbio e Reservas` SHALL ser registrada sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
 
-O sub-notebook de `Câmbio e Ouro` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
+O sub-notebook de `Câmbio e Reservas` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
 
 #### Scenario: Aba registrada aparece
 
@@ -55,12 +55,12 @@ O sub-notebook de `Câmbio e Ouro` SHALL manter um registro determinístico de s
 
 #### Scenario: Câmbio registrada
 
-- **WHEN** a change de Câmbio e Ouro é aplicada
-- **THEN** a aba `Câmbio e Ouro` SHALL estar registrada entre `Tesouro Direto` e `Sobre`
+- **WHEN** a change de Câmbio e Reservas é aplicada
+- **THEN** a aba `Câmbio e Reservas` SHALL estar registrada entre `Tesouro Direto` e `Sobre`
 
 ### Requirement: Aba Sobre
 
-A janela principal SHALL exibir uma aba `Sobre` à direita de `Câmbio e Ouro`.
+A janela principal SHALL exibir uma aba `Sobre` à direita de `Câmbio e Reservas`.
 
 A aba SHALL replicar o conteúdo e as funcionalidades do diálogo `Sobre` da aba
 `SELIC Pré`: identidade, versão, data de lançamento, licença, descrição, link do
@@ -76,8 +76,8 @@ servidor.
 #### Scenario: Aba Sobre visível
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro` e `Sobre` SHALL estar disponíveis
-- **THEN** `Sobre` SHALL estar à direita de `Câmbio e Ouro`
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre` SHALL estar disponíveis
+- **THEN** `Sobre` SHALL estar à direita de `Câmbio e Reservas`
 
 #### Scenario: Funcionalidades preservadas
 
@@ -95,22 +95,22 @@ servidor.
 
 ## ADDED Requirements
 
-### Requirement: Aba Câmbio e Ouro
+### Requirement: Aba Câmbio e Reservas
 
-A aba `Câmbio e Ouro` SHALL ser construída apenas na primeira vez que ficar visível e SHALL ler apenas o cache local nessa construção.
+A aba `Câmbio e Reservas` SHALL ser construída apenas na primeira vez que ficar visível e SHALL ler apenas o cache local nessa construção.
 
 A aba SHALL organizar o conteúdo em sub-abas lazy. A sub-aba `Dólar e Ouro` SHALL ser registrada nesta entrega. A futura sub-aba `Reservas Internacionais` SHALL entrar no mesmo sub-notebook sem reestruturar o shell.
 
 #### Scenario: Primeira exibição
 
-- **WHEN** o usuário seleciona `Câmbio e Ouro` pela primeira vez
+- **WHEN** o usuário seleciona `Câmbio e Reservas` pela primeira vez
 - **THEN** o conteúdo da sub-aba visível SHALL ser construído
 - **THEN** nenhuma requisição de rede SHALL ser iniciada
 
 #### Scenario: Aba oculta no startup
 
 - **WHEN** a aplicação inicia
-- **THEN** a aba `Câmbio e Ouro` NÃO SHALL ser construída
+- **THEN** a aba `Câmbio e Reservas` NÃO SHALL ser construída
 
 ### Requirement: Sub-aba Dólar e Ouro
 
@@ -134,3 +134,21 @@ O estado da sub-aba SHALL ser preservado ao alternar entre sub-abas, outras abas
 - **WHEN** o usuário clica em `Atualizar` na sub-aba `Dólar e Ouro`
 - **THEN** as fontes de mercado daquela sub-aba SHALL ser consultadas
 - **THEN** o pré-cálculo correspondente SHALL ser disparado após a atualização
+
+### Requirement: Controles da sub-aba Dólar e Ouro
+
+A sub-aba SHALL seguir o padrão de usabilidade do Tesouro Direto: tooltips nos controles, toolbar do gráfico, statusbar, texto orientativo e botão `Atualizar` com ícone ao lado direito do combobox. Falhas de atualização SHALL ser visíveis na statusbar.
+
+#### Scenario: Controles consistentes com o Tesouro Direto
+
+- **WHEN** a sub-aba é exibida
+- **THEN** os controles SHALL ter tooltips
+- **THEN** o gráfico SHALL ter toolbar
+- **THEN** a sub-aba SHALL ter statusbar e texto orientativo
+- **THEN** o botão `Atualizar` SHALL exibir ícone e ficar à direita do combobox
+
+#### Scenario: Falha de atualização visível
+
+- **WHEN** o `Atualizar` falha
+- **THEN** a statusbar SHALL exibir a falha
+- **THEN** o último artefato válido SHALL permanecer visível

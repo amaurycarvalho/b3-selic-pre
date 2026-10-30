@@ -14,6 +14,7 @@ b3-selic-pre exportar [opções]
 b3-selic-pre tesouro [opções]
 b3-selic-pre tesouro-resgates [opções]
 b3-selic-pre tesouro-estoque [opções]
+b3-selic-pre mercado [opções]
 b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
@@ -32,6 +33,7 @@ Executar sem argumentos é equivalente a `gui`.
 | `tesouro`      | Consulta as vendas do Tesouro Direto, com filtros, agregação e `--saida`.         |
 | `tesouro-resgates` | Consulta recompras, cupons e vencimentos, com filtros, agregação e `--saida`. |
 | `tesouro-estoque` | Consulta o estoque mensal, com filtros por mês, agregação e `--saida`.         |
+| `mercado`      | Consulta ou exporta séries de dólar e ouro, com cenário e indicadores.           |
 | `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
@@ -371,3 +373,33 @@ não é gravado.
 | `0`    | Sucesso, incluindo `--help`, `--version` e EOF do servidor MCP. |
 | `1`    | Falha de comunicação, preparação do MCP ou ausência de dados.   |
 | `2`    | Erro de uso, sintaxe inválida ou validação de data/parâmetros.  |
+
+## `mercado`
+
+```bash
+b3-selic-pre mercado
+b3-selic-pre mercado --ativo ouro --inicio 2026-01-01 --fim 2026-12-31
+b3-selic-pre mercado --resolucao mes --formato json
+b3-selic-pre mercado --prever --saida exports/
+b3-selic-pre mercado --atualizar --formato json
+```
+
+Sem `--atualizar` e sem `--no-cache`, o comando lê apenas o cache local e não
+acessa a rede. A janela padrão cobre os 12 meses anteriores à maior data
+disponível. A resolução `auto` usa pontos diários nos últimos 14 dias, semanais
+até 3 meses e mensais acima disso, sempre preservando mínimos e máximos.
+
+O histórico CSV usa `;`, datas ISO e as colunas
+`DATA;ATIVO;VALOR;UNIDADE;ORIGEM;METODO`. O cenário CSV usa
+`DATA;ATIVO;CENARIO;INFERIOR_80;SUPERIOR_80;INFERIOR_95;SUPERIOR_95;METODO`.
+O JSON contém `janela`, `series`, `previsao`, `indicadores`, `origem`,
+`gerado_em` e o aviso de que o cenário não é recomendação.
+
+`--prever` com CSV gera dois artefatos: `mercado-historico.csv` e
+`mercado-previsao.csv`. Nesse caso `--saida` deve ser um diretório. Com
+`--formato json` há um único `mercado.json`. Sem `--saida`, um único artefato é
+impresso no stdout.
+
+Códigos de retorno: `0` em sucesso, `1` quando não há dados para a janela ou a
+escrita falha, e `2` para datas inválidas, `--inicio` posterior a `--fim` ou
+múltiplos artefatos sem diretório de destino.

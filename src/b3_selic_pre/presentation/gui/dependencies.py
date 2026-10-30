@@ -60,4 +60,5 @@ class GuiDependencies:
     tesouro_series_cache: Any = None
     tesouro_precompute: Callable[[str, Any], None] | None = None
     tesouro_btd: Any = None
+    market_services: Any = None
     now: Callable[[], str] = _now_iso

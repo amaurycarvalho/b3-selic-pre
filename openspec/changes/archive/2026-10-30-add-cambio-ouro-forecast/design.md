@@ -56,7 +56,7 @@ Resultado do spike das fontes (fonte da verdade para este desenho):
 
 ### 1. Aba de nível superior com sub-notebook, não sub-aba do Tesouro
 
-Nova aba `Câmbio e Ouro` entre `Tesouro Direto` e `Sobre`, construída com `TabSpec` lazy e com `on_show` lendo apenas cache. Dentro dela, um sub-notebook lazy registra a sub-aba `Dólar e Ouro`, que concentra os dois painéis de preço e o botão `Atualizar` próprio.
+Nova aba `Câmbio e Reservas` entre `Tesouro Direto` e `Sobre`, construída com `TabSpec` lazy e com `on_show` lendo apenas cache. Dentro dela, um sub-notebook lazy registra a sub-aba `Dólar e Ouro`, que concentra os dois painéis de preço e o botão `Atualizar` próprio.
 
 A aba nasce como sub-notebook mesmo com uma única sub-aba para que a futura sub-aba `Reservas Internacionais` entre sem reestruturar a aba nem o shell. Cada sub-aba tem seu próprio `Atualizar`, no padrão do Tesouro Direto: o `Atualizar` de `Dólar e Ouro` não dispara a atualização de reservas, e vice-versa.
 
@@ -168,7 +168,7 @@ precomputado    por hash
 
 O `Atualizar` da sub-aba `Dólar e Ouro` busca as fontes, grava o `raw` e chama o pré-cálculo. Se o hash composto não mudou, o pré-cálculo retorna sem recalcular.
 
-O `Atualizar` da SELIC não dispara o pré-cálculo de mercado: são domínios e redes diferentes, e acoplar atrasaria a carga principal. O `Atualizar` de uma sub-aba de `Câmbio e Ouro` também não dispara o pré-cálculo das outras sub-abas.
+O `Atualizar` da SELIC não dispara o pré-cálculo de mercado: são domínios e redes diferentes, e acoplar atrasaria a carga principal. O `Atualizar` de uma sub-aba de `Câmbio e Reservas` também não dispara o pré-cálculo das outras sub-abas.
 
 Falha no pré-cálculo preserva o artefato anterior e é registrada em log; a sub-aba continua exibindo o último artefato válido com aviso de defasagem.
 
@@ -210,6 +210,17 @@ Falha no pré-cálculo preserva o artefato anterior e é registrada em log; a su
 ### 13. Configuração
 
 Parâmetros de projeção, limiar de regime, TTLs e retenção ficam em `application/market/config.py`, construídos a partir de mapping, sem importar `Settings`. A presentation monta a configuração e a injeta, seguindo o padrão de `CurvaJurosConfig`.
+
+### 14. Refinamentos pós-implementação
+
+Depois da primeira implementação, as seguintes decisões foram incorporadas e passam a fazer parte do contrato desta change:
+
+- A aba de nível superior passa a se chamar `Câmbio e Reservas`, nome que cobre dólar, ouro e a futura sub-aba de reservas.
+- A sub-aba `Dólar e Ouro` segue o padrão de usabilidade do Tesouro Direto: tooltips nos controles, toolbar vertical e cópia no gráfico, statusbar com progresso, textbox orientativo em painel lateral e `Atualizar` com ícone imediatamente à direita do combobox de ativo.
+- A atualização é executada em thread de trabalho e entrega o resultado ao thread principal por fila, evitando chamadas Tkinter fora da thread principal. Falhas de atualização são exibidas na statusbar e fontes com erro são listadas no status.
+- Os endpoints do BCB foram corrigidos: SGS em `/dados/serie/bcdata.sgs.{codigo}/dados` (código 1 para USD/BRL) e Focus com OData `$filter` não codificado, `$orderby=Data desc`, `$top=100` e leitura de `DataReferencia`. Sem essa correção, o `Atualizar` não capturava dólar nem expectativas Focus.
+- A legenda é única, centralizada abaixo dos painéis e acima da faixa de indicadores. As faixas de legenda e indicadores foram reduzidas para ampliar proporcionalmente a área vertical dos gráficos.
+- O gráfico oferece hover com data, ativo, valor, unidade e faixa mín-máx do histórico; nos pontos de cenário, inclui o valor central e as bandas de 80% e 95%.
 
 ## Risks / Trade-offs
 

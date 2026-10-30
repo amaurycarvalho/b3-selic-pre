@@ -45,6 +45,12 @@ from b3_selic_pre.domain.models import (
 )
 from b3_selic_pre.presentation.mcp import tool_inputs as inputs
 from b3_selic_pre.presentation.mcp.context import ToolContext
+from b3_selic_pre.presentation.mcp.market_handlers import (
+    mercado_exportar,
+    mercado_indicadores,
+    mercado_previsao,
+    mercado_serie,
+)
 from b3_selic_pre.presentation.mcp.protocol import InvalidParams
 
 
@@ -448,3 +454,21 @@ def tesouro_estoque(
     if next_cursor is not None:
         payload["nextCursor"] = next_cursor
     return payload
+
+
+__all__ = [
+    "analise",
+    "consultar_curva",
+    "data_referencia",
+    "estatisticas",
+    "evolucao",
+    "exportar",
+    "listar_datas",
+    "mercado_exportar",
+    "mercado_indicadores",
+    "mercado_previsao",
+    "mercado_serie",
+    "tesouro_estoque",
+    "tesouro_resgates",
+    "tesouro_vendas",
+]

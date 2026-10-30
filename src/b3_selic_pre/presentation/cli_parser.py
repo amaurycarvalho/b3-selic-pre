@@ -13,12 +13,16 @@ SUBCOMMANDS = (
     "tesouro",
     "tesouro-resgates",
     "tesouro-estoque",
+    "mercado",
     "mcp",
     "gui",
     "criar-atalho",
 )
 CURVAS = ("curta", "longa", "ambas")
 TIPOS_RESGATE = ("recompra", "cupom", "vencimento")
+ATIVOS = ("usd", "ouro", "ambos")
+RESOLUCOES = ("auto", "dia", "semana", "mes")
+FORMATOS = ("csv", "json")
 
 
 def _add_data_options(parser: argparse.ArgumentParser) -> None:
@@ -232,6 +236,46 @@ def build_parser() -> argparse.ArgumentParser:
         "--saida",
         default=None,
         help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+
+    mercado = subparsers.add_parser(
+        "mercado", help="Consulta ou exporta séries de dólar e ouro."
+    )
+    mercado.add_argument(
+        "--ativo", choices=ATIVOS, default="ambos",
+        help="Ativo consultado (padrão: ambos).",
+    )
+    mercado.add_argument(
+        "--inicio", default=None,
+        help="Data inicial no formato AAAA-MM-DD.",
+    )
+    mercado.add_argument(
+        "--fim", default=None,
+        help="Data final no formato AAAA-MM-DD.",
+    )
+    mercado.add_argument(
+        "--resolucao", choices=RESOLUCOES, default="auto",
+        help="Resolução temporal (padrão: auto).",
+    )
+    mercado.add_argument(
+        "--prever", action="store_true",
+        help="Inclui o cenário de 12 meses.",
+    )
+    mercado.add_argument(
+        "--formato", choices=FORMATOS, default="csv",
+        help="Formato de saída (padrão: csv).",
+    )
+    mercado.add_argument(
+        "--saida", default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+    mercado.add_argument(
+        "--no-cache", action="store_true",
+        help="Consulta as fontes mesmo que o cache esteja válido.",
+    )
+    mercado.add_argument(
+        "--atualizar", action="store_true",
+        help="Atualiza as fontes antes de emitir a saída.",
     )
 
     mcp = subparsers.add_parser(

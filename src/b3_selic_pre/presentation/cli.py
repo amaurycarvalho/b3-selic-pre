@@ -121,6 +121,7 @@ def _log_text(active_log: Path | None) -> str | None:
 
 
 def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
+    from b3_selic_pre.infrastructure.market import build_market_services
     from b3_selic_pre.presentation.mcp.command import run_mcp_command
 
     return run_mcp_command(
@@ -131,6 +132,7 @@ def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
         lock_factory=lambda: ActionLock(on_wait=_wait_message),
         tesouro_cache=TesouroCache(),
         tesouro_cache_factory=lambda resource: TesouroCache(resource=resource),
+        market_services=build_market_services(),
     )
 
 
@@ -147,9 +149,18 @@ def _dispatch_tesouro(
         return 1
 
 
-def _dispatch(
+def _dispatch_mercado(args: argparse.Namespace) -> int:
+    from b3_selic_pre.infrastructure.market import build_market_services
+    from b3_selic_pre.presentation.market_tab import MarketTabController
+
+    return cli_commands.mercado(
+        args, MarketTabController(build_market_services())
+    )
+
+
+def _dispatch_curve(
     args: argparse.Namespace, settings: Settings, active_log: Path | None
-) -> int:
+) -> int | None:
     if args.comando == "consultar":
         return cli_commands.consultar(args, CachedB3Client())
     if args.comando == "atualizar":
@@ -166,9 +177,17 @@ def _dispatch(
         return cli_commands.exportar(
             args, settings, CachedB3Client(), log_content
         )
+    return None
+
+
+def _dispatch_other(
+    args: argparse.Namespace, settings: Settings, active_log: Path | None
+) -> int | None:
     if args.comando in _TESOURO_HANDLERS:
         handler = getattr(cli_commands, _TESOURO_HANDLERS[args.comando])
         return _dispatch_tesouro(args, handler)
+    if args.comando == "mercado":
+        return _dispatch_mercado(args)
     if args.comando == "mcp":
         return _run_mcp(args, settings)
     if args.comando == "criar-atalho":
@@ -178,6 +197,16 @@ def _dispatch(
     if args.comando == "gui":
         launch_gui(settings=settings, active_log=active_log, configure=False)
         return 0
+    return None
+
+
+def _dispatch(
+    args: argparse.Namespace, settings: Settings, active_log: Path | None
+) -> int:
+    for dispatcher in (_dispatch_curve, _dispatch_other):
+        code = dispatcher(args, settings, active_log)
+        if code is not None:
+            return code
     print("Informe um subcomando. Use --help para ver as opções.", file=sys.stderr)
     return 2
 

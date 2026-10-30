@@ -11,6 +11,7 @@ from typing import Any
 from b3_selic_pre import __version__
 from b3_selic_pre.presentation.gui.about_tab import AboutTab
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
+from b3_selic_pre.presentation.gui.market_tab import CambioOuroTab
 from b3_selic_pre.presentation.gui.selic_pre_tab import SelicPreTab
 from b3_selic_pre.presentation.gui.startup import SETTLE_MS, StartupShield
 from b3_selic_pre.presentation.gui.tesouro_tab import TesouroDiretoTab
@@ -24,6 +25,7 @@ TabFactory = Callable[[Widget], Any]
 
 SELIC_TAB_ID = "selic-pre"
 TESOURO_TAB_ID = "tesouro-direto"
+CAMBIO_TAB_ID = "cambio-ouro"
 SOBRE_TAB_ID = "sobre"
 
 
@@ -50,6 +52,7 @@ class AppShell(WindowMixin):
         self._frames: dict[str, Widget] = {}
         self.selic_pre_tab: SelicPreTab | None = None
         self.tesouro_tab: TesouroDiretoTab | None = None
+        self.cambio_tab: CambioOuroTab | None = None
         self.about_tab: AboutTab | None = None
         self.registry = LazyTabRegistry()
         self._load_window_state(root)
@@ -95,10 +98,13 @@ class AppShell(WindowMixin):
             root.after(10, self._center_window)
 
     def _register_default_tabs(self: AppShell) -> None:
-        """Register SELIC Pré first and Tesouro Direto second."""
+        """Register the four top-level tabs in deterministic order."""
         self.register_tab(SELIC_TAB_ID, "SELIC Pré", self._build_selic_pre)
         self.register_tab(
             TESOURO_TAB_ID, "Tesouro Direto", self._build_tesouro
+        )
+        self.register_tab(
+            CAMBIO_TAB_ID, "Câmbio e Reservas", self._build_cambio
         )
         self.register_tab(SOBRE_TAB_ID, "Sobre", self._build_sobre)
 
@@ -141,6 +147,16 @@ class AppShell(WindowMixin):
             icons=self.icons,
         )
         self.tesouro_tab = tab
+        return tab
+
+    def _build_cambio(self: AppShell, frame: Widget) -> CambioOuroTab:
+        tab = CambioOuroTab(
+            frame,
+            root=self.root,
+            dependencies=self.deps,
+            icons=self.icons,
+        )
+        self.cambio_tab = tab
         return tab
 
     def _build_sobre(self: AppShell, frame: Widget) -> AboutTab:

@@ -15,8 +15,8 @@ Transparente, acessados via `urllib.request` em
 | --- | --- | --- | --- |
 | B3 `GetList` | `https://sistemaswebb3-derivativos.b3.com.br/` | Data corrente e fallback de datas passadas | Nenhuma |
 | B3 `GetDownloadFile` | `https://sistemaswebb3-derivativos.b3.com.br/` | Fonte primária para datas passadas (CSV) | Nenhuma |
-| Tesouro CKAN | `https://www.tesourotransparente.gov.br/ckan` | Descoberta do dataset e da URL do CSV | Nenhuma |
-| Tesouro CSV | URL retornada pelo CKAN | Vendas do Tesouro Direto | Nenhuma |
+| Tesouro CKAN | `https://www.tesourotransparente.gov.br/ckan` | Descoberta dos datasets e das URLs dos CSVs | Nenhuma |
+| Tesouro CSV | URL retornada pelo CKAN | Vendas, resgates e estoque do Tesouro Direto | Nenhuma |
 
 Páginas do GitHub (releases, repositório) e a página pública de taxas da B3
 citadas no `README.md` são apenas referências para o usuário; não são acessadas
@@ -191,24 +191,38 @@ seguem o fluxo de erro da aplicação, sem retry.
 ### Descoberta
 
 ```text
-GET https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id=vendas-do-tesouro-direto
+GET https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id=<dataset>
 ```
 
-A resposta JSON deve ter `success: true`, um objeto `result` e exatamente um
-recurso com `format` CSV. O sistema não interpreta HTML nem consome o PDF de
-metadados. Resposta inválida, `success` falso ou ausência de um único CSV gera
-`TesouroDataError`.
+A resposta JSON deve ter `success: true` e um objeto `result`. O sistema não
+interpreta HTML nem consome PDFs de metadados. Resposta inválida, `success`
+falso, recurso ausente ou recurso ambíguo gera `TesouroDataError`.
 
-### Dataset e recurso
+### Datasets e recursos
+
+| Grupo | Dataset | Recurso lógico | Nome no CKAN | CSV de cache | Colunas |
+| --- | --- | --- | --- | --- | --- |
+| vendas | `vendas-do-tesouro-direto` | `vendas` | Vendas do Tesouro Direto | `vendastesourodireto.csv` | 6, com `PU` |
+| resgates | `resgates-do-tesouro-direto` | `recompra` | Recompras do Tesouro Direto | `recompras.csv` | 5, sem `PU` |
+| resgates | `resgates-do-tesouro-direto` | `cupom` | Pagamento de Cupom de Juros do Tesouro Direto | `cupom.csv` | 6, com `PU` |
+| resgates | `resgates-do-tesouro-direto` | `vencimento` | Vencimentos do Tesouro Direto | `vencimentos.csv` | 6, com `PU` |
+| estoque | `estoque-do-tesouro-direto` | `estoque` | Estoque do Tesouro Direto | `estoque.csv` | 6, com `Mes Estoque` e `Valor Estoque` |
+
+O dataset de vendas exige exatamente um recurso CSV. O dataset de estoque exige
+um recurso CSV. O dataset de resgates é selecionado por nome/filename; quando há
+dois recursos de cupom, vence o de maior `last_modified` (o mais novo é
+superconjunto do antigo).
 
 | Item | Valor |
 | --- | --- |
-| Dataset | `vendas-do-tesouro-direto` |
-| CSV | `vendastesourodireto.csv` |
 | Separador | `;` |
 | Datas | `DD/MM/YYYY` |
+| Mês de estoque | `MM/YYYY` |
 | Decimal | vírgula |
-| Cabeçalho | `Tipo Titulo;Vencimento do Titulo;Data de Liquidacao da Venda;PU;Quantidade;Valor` |
+| Cabeçalho de vendas | `Tipo Titulo;Vencimento do Titulo;Data de Liquidacao da Venda;PU;Quantidade;Valor` |
+| Cabeçalho de recompras | `Tipo Titulo;Vencimento do Titulo;Data Resgate;Quantidade;Valor` |
+| Cabeçalho de cupom/vencimentos | `Tipo Titulo;Vencimento do Titulo;Data Resgate;PU;Quantidade;Valor` |
+| Cabeçalho de estoque | `Tipo Titulo;Vencimento do Titulo;Mes Estoque;PU;Quantidade;Valor Estoque` |
 
 ### Download e cabeçalhos
 
@@ -245,13 +259,23 @@ retries, vira `CommunicationError`.
 ```text
 $XDG_CACHE_HOME/b3-selic-pre/tesouro/
 ├── vendastesourodireto.csv
-└── metadata.json
+├── metadata.json
+├── recompras.csv
+├── recompras.metadata.json
+├── cupom.csv
+├── cupom.metadata.json
+├── vencimentos.csv
+├── vencimentos.metadata.json
+├── estoque.csv
+└── estoque.metadata.json
 ```
 
-O CSV é cumulativo e não tem poda. O TTL é condicional: 1 hora quando o dado
-mais recente alcança o dia corrente ou o último dia útil, e 6 horas quando é
-histórico. Cache ausente, vazio, corrompido, incompleto ou com `schema_version`
-antigo é tratado como miss. A escrita do CSV e do metadata é atômica.
+Cada recurso tem CSV e metadata independentes, sem poda. O TTL é aplicado por
+recurso: recompras usam 1 hora quando o dado mais recente alcança o dia corrente
+ou o último dia útil e 6 horas quando é histórico; cupom, vencimentos e estoque
+usam 24 horas. Cache ausente, vazio, corrompido, incompleto ou com
+`schema_version` antigo é tratado como miss. A escrita do CSV e do metadata é
+atômica. Falha em um recurso preserva a versão anterior e não impede os demais.
 
 ## Cache local
 
@@ -296,6 +320,7 @@ Arquivos relevantes:
 | `infrastructure/b3_client.py` | Seleção de fonte, timeouts e busca histórica |
 | `infrastructure/cached_client.py` | Cache em disco e rótulos de origem |
 | `infrastructure/disk_cache.py` | Persistência e invalidação de entradas |
-| `infrastructure/tesouro_client.py` | CKAN, download condicional, retry e validação de corpo |
-| `infrastructure/tesouro_cache.py` | CSV cumulativo, metadata, TTL condicional e escrita atômica |
-| `infrastructure/tesouro_cached_client.py` | Cliente de vendas com `force` e caminho de cache |
+| `infrastructure/tesouro_client.py` | Download condicional, retry e validação de corpo |
+| `infrastructure/tesouro_discovery.py` | Descoberta CKAN e seleção de recursos |
+| `infrastructure/tesouro_cache.py` | CSV e metadata por recurso, TTL e escrita atômica |
+| `infrastructure/tesouro_cached_client.py` | Cliente de vendas, resgates e estoque com `force` |

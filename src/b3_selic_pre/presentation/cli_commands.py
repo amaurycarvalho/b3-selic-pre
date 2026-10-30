@@ -190,3 +190,21 @@ def tesouro(args: argparse.Namespace, client: object) -> int:
     from b3_selic_pre.presentation.cli_tesouro import tesouro as _tesouro
 
     return _tesouro(args, client)
+
+
+def tesouro_resgates(args: argparse.Namespace, client: object) -> int:
+    """Delega a consulta de resgates ao handler headless do Tesouro."""
+    from b3_selic_pre.presentation.cli_tesouro_datasets import (
+        tesouro_resgates as _handler,
+    )
+
+    return _handler(args, client)
+
+
+def tesouro_estoque(args: argparse.Namespace, client: object) -> int:
+    """Delega a consulta de estoque ao handler headless do Tesouro."""
+    from b3_selic_pre.presentation.cli_tesouro_datasets import (
+        tesouro_estoque as _handler,
+    )
+
+    return _handler(args, client)

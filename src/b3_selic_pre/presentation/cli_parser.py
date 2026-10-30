@@ -11,11 +11,14 @@ SUBCOMMANDS = (
     "atualizar",
     "exportar",
     "tesouro",
+    "tesouro-resgates",
+    "tesouro-estoque",
     "mcp",
     "gui",
     "criar-atalho",
 )
 CURVAS = ("curta", "longa", "ambas")
+TIPOS_RESGATE = ("recompra", "cupom", "vencimento")
 
 
 def _add_data_options(parser: argparse.ArgumentParser) -> None:
@@ -135,6 +138,97 @@ def build_parser() -> argparse.ArgumentParser:
         help="Força uma verificação condicional no Tesouro Transparente.",
     )
     tesouro.add_argument(
+        "--saida",
+        default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+
+    resgates = subparsers.add_parser(
+        "tesouro-resgates",
+        help="Consulta recompras, cupons e vencimentos do Tesouro Direto.",
+    )
+    resgates.add_argument(
+        "--tipo",
+        choices=TIPOS_RESGATE,
+        default=None,
+        help="Tipo de resgate (padrão: todos).",
+    )
+    resgates.add_argument(
+        "--titulo",
+        default=None,
+        help="Filtro parcial por título, sem caixa/acentos.",
+    )
+    resgates.add_argument(
+        "--inicio",
+        default=None,
+        help="Data inicial de resgate no formato AAAA-MM-DD.",
+    )
+    resgates.add_argument(
+        "--fim",
+        default=None,
+        help="Data final de resgate no formato AAAA-MM-DD.",
+    )
+    resgates.add_argument(
+        "--agregar",
+        action="store_true",
+        help="Agrupa por tipo de resgate e título.",
+    )
+    resgates.add_argument(
+        "--json",
+        action="store_true",
+        help="Emite um payload JSON estruturado.",
+    )
+    resgates.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Força uma verificação condicional no Tesouro Transparente.",
+    )
+    resgates.add_argument(
+        "--saida",
+        default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+
+    estoque = subparsers.add_parser(
+        "tesouro-estoque",
+        help="Consulta o estoque mensal do Tesouro Direto.",
+    )
+    estoque.add_argument(
+        "--titulo",
+        default=None,
+        help="Filtro parcial por título, sem caixa/acentos.",
+    )
+    estoque.add_argument(
+        "--inicio",
+        default=None,
+        help="Mês inicial no formato AAAA-MM.",
+    )
+    estoque.add_argument(
+        "--fim",
+        default=None,
+        help="Mês final no formato AAAA-MM.",
+    )
+    estoque.add_argument(
+        "--mes",
+        default=None,
+        help="Seleciona um único mês no formato AAAA-MM.",
+    )
+    estoque.add_argument(
+        "--agregar",
+        action="store_true",
+        help="Agrupa por título dentro de um único mês.",
+    )
+    estoque.add_argument(
+        "--json",
+        action="store_true",
+        help="Emite um payload JSON estruturado.",
+    )
+    estoque.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Força uma verificação condicional no Tesouro Transparente.",
+    )
+    estoque.add_argument(
         "--saida",
         default=None,
         help="Arquivo ou diretório de destino; omitido imprime no stdout.",

@@ -12,6 +12,8 @@ b3-selic-pre consultar [opções]
 b3-selic-pre atualizar [opções]
 b3-selic-pre exportar [opções]
 b3-selic-pre tesouro [opções]
+b3-selic-pre tesouro-resgates [opções]
+b3-selic-pre tesouro-estoque [opções]
 b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
@@ -28,6 +30,8 @@ Executar sem argumentos é equivalente a `gui`.
 | `atualizar`    | Carrega a curva e a janela de evolução, gera e imprime a análise determinística. |
 | `exportar`     | Exporta evolução da curva, análise e/ou log da aplicação.                        |
 | `tesouro`      | Consulta as vendas do Tesouro Direto, com filtros, agregação e `--saida`.         |
+| `tesouro-resgates` | Consulta recompras, cupons e vencimentos, com filtros, agregação e `--saida`. |
+| `tesouro-estoque` | Consulta o estoque mensal, com filtros por mês, agregação e `--saida`.         |
 | `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
@@ -37,19 +41,21 @@ Executar sem argumentos é equivalente a `gui`.
 | Parâmetro                     | Comandos                             | Descrição                                        |
 | ----------------------------- | ------------------------------------ | ------------------------------------------------ |
 | `--data AAAA-MM-DD`           | `consultar`, `atualizar`, `exportar`, `mcp` | Data de referência. Padrão: data local corrente. |
-| `--no-cache`                  | `consultar`, `atualizar`, `exportar`, `tesouro` | Ignora o cache em disco e força uma verificação. |
+| `--no-cache`                  | `consultar`, `atualizar`, `exportar`, `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Ignora o cache em disco e força uma verificação. |
 | `--curva curta\|longa\|ambas` | `consultar`, `exportar`              | Representação da curva.                          |
-| `--titulo T`                  | `tesouro`                            | Filtro parcial por título, sem caixa/acentos.    |
-| `--inicio AAAA-MM-DD`         | `tesouro`                            | Data inicial de liquidação, inclusiva.           |
-| `--fim AAAA-MM-DD`            | `tesouro`                            | Data final de liquidação, inclusiva.             |
-| `--agregar`                   | `tesouro`                            | Agrupa as vendas por título.                     |
-| `--json`                      | `tesouro`                            | Emite payload JSON em vez de CSV.                |
+| `--titulo T`                  | `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Filtro parcial por título, sem caixa/acentos. |
+| `--inicio`                    | `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Início inclusivo (data ou mês, conforme o comando). |
+| `--fim`                       | `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Fim inclusivo (data ou mês, conforme o comando). |
+| `--tipo T`                    | `tesouro-resgates`                   | `recompra`, `cupom` ou `vencimento`.             |
+| `--mes AAAA-MM`               | `tesouro-estoque`                    | Seleciona um único mês.                          |
+| `--agregar`                   | `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Agrupa os registros conforme o dataset. |
+| `--json`                      | `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Emite payload JSON em vez de CSV. |
 | `--silencioso`                | `atualizar`                          | Carrega os dados sem imprimir a análise.         |
 | `--analise`                   | `exportar`                           | Inclui o texto determinístico da análise.        |
 | `--analise-curva curta\|longa` | `exportar`                          | Representação usada na análise (padrão: curta); exige `--analise`. |
 | `--atualizar`                 | `mcp`                                | Carrega os dados de hoje antes de iniciar o servidor. |
 | `--log`                       | `exportar`                           | Inclui uma cópia do log ativo.                   |
-| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`, `tesouro`                | Destino da exportação.                           |
+| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`, `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Destino da exportação. |
 | `--help`                      | todos                                | Exibe a ajuda.                                   |
 | `--version`                   | todos                                | Exibe a versão e encerra.                        |
 
@@ -169,6 +175,70 @@ Com `--saida`:
 - com `--agregar`, usa `tesouro-vendas-agregado.csv`/`.json`;
 - arquivo: grava exatamente no caminho informado;
 - falha de escrita retorna código `1`.
+
+## `tesouro-resgates`
+
+Consulta recompras, cupons e vencimentos publicados no Tesouro Transparente.
+Cada recurso tem CSV e metadata próprios no cache local e é atualizado com
+verificação condicional (`ETag`/`Last-Modified`). `304` reutiliza o cache.
+
+```bash
+b3-selic-pre tesouro-resgates
+b3-selic-pre tesouro-resgates --tipo cupom
+b3-selic-pre tesouro-resgates --titulo IPCA --inicio 2026-09-01
+b3-selic-pre tesouro-resgates --agregar --json
+b3-selic-pre tesouro-resgates --agregar --saida exports/
+```
+
+Regras:
+
+- `--tipo` aceita `recompra`, `cupom` ou `vencimento`; omitido, consulta todos;
+- `--titulo` é parcial e ignora caixa e acentos;
+- `--inicio`/`--fim` são inclusivos em `AAAA-MM-DD`;
+- sem datas, o período é de 30 dias até a maior `data_resgate` disponível;
+- `--inicio` maior que `--fim` retorna código `2` sem iniciar download;
+- recompras não têm `PU`; na agregação, `PU_MEDIO` fica vazio.
+
+Saídas:
+
+| Formato | Cabeçalho |
+| --- | --- |
+| CSV | `TIPO_RESGATE;TIPO_TITULO;VENCIMENTO;DATA_RESGATE;PU;QUANTIDADE;VALOR` |
+| CSV agregado | `TIPO_RESGATE;TIPO_TITULO;QUANTIDADE;VALOR;PU_MEDIO` |
+| JSON | `dataset: "resgates"`, período, metadados e `registros` ou `agregados` |
+
+Com `--saida`, usa `tesouro-resgates.csv`/`.json` em diretórios e o sufixo
+`-agregado` quando `--agregar` é informado. Falha de escrita retorna código `1`.
+
+## `tesouro-estoque`
+
+Consulta o estoque mensal do Tesouro Direto, que é um snapshot por título.
+
+```bash
+b3-selic-pre tesouro-estoque
+b3-selic-pre tesouro-estoque --mes 2026-08
+b3-selic-pre tesouro-estoque --inicio 2025-01 --fim 2025-12
+b3-selic-pre tesouro-estoque --mes 2026-08 --agregar --json
+```
+
+Regras:
+
+- sem filtros, usa o último mês disponível;
+- `--inicio`/`--fim` usam `AAAA-MM` e são inclusivos;
+- `--mes` seleciona um único mês;
+- `--agregar` exige um único mês e agrupa por título; somar `valor_estoque`
+  entre meses é proibido e retorna código `2`.
+
+Saídas:
+
+| Formato | Cabeçalho |
+| --- | --- |
+| CSV | `TIPO_TITULO;VENCIMENTO;MES;PU;QUANTIDADE;VALOR_ESTOQUE` |
+| CSV agregado | `TIPO_TITULO;QUANTIDADE;VALOR_ESTOQUE;PU_MEDIO` |
+| JSON | `dataset: "estoque"`, período, metadados e `registros` ou `agregados` |
+
+Com `--saida`, usa `tesouro-estoque.csv`/`.json` em diretórios e o sufixo
+`-agregado` quando `--agregar` é informado. Falha de escrita retorna código `1`.
 
 ## `exportar`
 

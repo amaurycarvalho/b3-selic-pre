@@ -22,10 +22,14 @@ class McpServer:
         cache: object,
         settings_factory: object,
         tesouro_cache: object | None = None,
+        tesouro_cache_factory: object | None = None,
     ) -> None:
         """Crie o servidor com o cache somente leitura injetado."""
         self._dispatcher = Dispatcher(
-            cache, settings_factory, tesouro_cache=tesouro_cache
+            cache,
+            settings_factory,
+            tesouro_cache=tesouro_cache,
+            tesouro_cache_factory=tesouro_cache_factory,
         )
         self._out: TextIO | None = None
         self._write_lock = threading.Lock()
@@ -189,10 +193,12 @@ def serve(
     cache: object,
     settings_factory: object,
     tesouro_cache: object | None = None,
+    tesouro_cache_factory: object | None = None,
 ) -> int:
     """Run an MCP server with the given read-only caches."""
     return McpServer(
         cache=cache,
         settings_factory=settings_factory,
         tesouro_cache=tesouro_cache,
+        tesouro_cache_factory=tesouro_cache_factory,
     ).run()

@@ -1,4 +1,4 @@
-"""Cache cumulativo em disco para o CSV de vendas do Tesouro Direto."""
+"""Cache em disco por recurso do Tesouro Direto."""
 
 from __future__ import annotations
 
@@ -6,6 +6,11 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
+from b3_selic_pre.application.tesouro import (
+    TesouroResourceSpec,
+    resource_spec,
+)
+from b3_selic_pre.application.tesouro._resources import TTL_DAILY
 from b3_selic_pre.infrastructure.cache_payload import (
     write_atomic,
     write_atomic_bytes,
@@ -17,6 +22,7 @@ CSV_NAME = "vendastesourodireto.csv"
 METADATA_NAME = "metadata.json"
 CURRENT_TTL = timedelta(hours=1)
 HISTORICAL_TTL = timedelta(hours=6)
+DAILY_TTL = timedelta(hours=24)
 _REQUIRED_METADATA = (
     "schema_version",
     "dataset_name",
@@ -27,8 +33,6 @@ _REQUIRED_METADATA = (
     "checked_at",
     "size_bytes",
     "row_count",
-    "first_data_date",
-    "last_data_date",
 )
 
 
@@ -62,8 +66,14 @@ def is_current(metadata: dict[str, object], today: date | None = None) -> bool:
     return latest >= _last_business_day(today)
 
 
-def ttl_for(metadata: dict[str, object], today: date | None = None) -> timedelta:
-    """Return the conditional TTL for cached metadata."""
+def ttl_for(
+    metadata: dict[str, object],
+    today: date | None = None,
+    resource: str = "vendas",
+) -> timedelta:
+    """Return the TTL for a cached resource metadata."""
+    if resource_spec(resource).ttl_policy == TTL_DAILY:
+        return DAILY_TTL
     return CURRENT_TTL if is_current(metadata, today) else HISTORICAL_TTL
 
 
@@ -85,21 +95,26 @@ def _valid_metadata(data: object) -> bool:
 
 
 class TesouroCache:
-    """Stores the cumulative sales CSV and its metadata atomically."""
+    """Stores one resource CSV and its metadata atomically."""
 
-    def __init__(self: TesouroCache, cache_dir: str | Path | None = None) -> None:
-        """Initialize the cache directory."""
+    def __init__(
+        self: TesouroCache,
+        cache_dir: str | Path | None = None,
+        resource: str = "vendas",
+    ) -> None:
+        """Initialize the cache directory for a logical resource."""
         self.cache_dir = Path(cache_dir) if cache_dir else tesouro_cache_dir()
+        self.spec: TesouroResourceSpec = resource_spec(resource)
 
     @property
     def csv_path(self: TesouroCache) -> Path:
-        """Return the cumulative CSV path."""
-        return self.cache_dir / CSV_NAME
+        """Return the resource CSV path."""
+        return self.cache_dir / self.spec.csv_filename
 
     @property
     def metadata_path(self: TesouroCache) -> Path:
-        """Return the metadata JSON path."""
-        return self.cache_dir / METADATA_NAME
+        """Return the resource metadata JSON path."""
+        return self.cache_dir / self.spec.metadata_filename
 
     def read(self: TesouroCache, read_only: bool = True) -> tuple[bytes, dict[str, object]] | None:
         """Read a valid cached CSV and metadata without modifying anything."""
@@ -139,7 +154,9 @@ class TesouroCache:
         now = now or datetime.now(UTC)
         if checked.tzinfo is None:
             checked = checked.replace(tzinfo=UTC)
-        return now - checked < ttl_for(metadata, now.date())
+        return now - checked < ttl_for(
+            metadata, now.date(), self.spec.key
+        )
 
     def save(self: TesouroCache, data: bytes, metadata: dict[str, object]) -> None:
         """Write the CSV bytes and metadata atomically."""

@@ -34,3 +34,4 @@ class ToolContext:
     cache: CacheReader
     settings_factory: Callable[[], object]
     tesouro_cache: object | None = None
+    tesouro_cache_factory: Callable[[str], object] | None = None

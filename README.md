@@ -31,6 +31,8 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 ./b3-selic-pre-linux exportar --curva ambas --analise --saida exports/
 ./b3-selic-pre-linux tesouro --titulo Selic --agregar
 ./b3-selic-pre-linux tesouro --json --saida exports/
+./b3-selic-pre-linux tesouro-resgates --tipo cupom --agregar
+./b3-selic-pre-linux tesouro-estoque --mes 2026-08 --json
 ./b3-selic-pre-linux criar-atalho                  # criar atalho no desktop (Linux)
 ./b3-selic-pre-linux --help                       # exibir ajuda
 ./b3-selic-pre-linux --version                    # exibir versão
@@ -46,6 +48,8 @@ A CLI usa subcomandos de verbo. Os principais são:
 | `atualizar` | Carrega a evolução da curva e imprime a análise determinística. |
 | `exportar` | Exporta curvas, análise e/ou log da aplicação. |
 | `tesouro` | Consulta vendas do Tesouro Direto (`--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
+| `tesouro-resgates` | Consulta recompras, cupons e vencimentos (`--tipo`, `--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
+| `tesouro-estoque` | Consulta o estoque mensal (`--titulo`, `--inicio`, `--fim`, `--mes`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
 | `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
@@ -54,11 +58,11 @@ Parâmetros comuns: `--data AAAA-MM-DD` (padrão: hoje), `--no-cache` e
 `--curva curta|longa|ambas`. A sintaxe antiga (`--today`, `--yearly`, `--gui`,
 `--create-shortcut` e data posicional) foi removida.
 
-O subcomando `tesouro` consulta as vendas do Tesouro Direto com filtros por
-título e período, agregação por título, saída CSV/JSON e exportação via
-`--saida`. Por padrão, usa os últimos 30 dias até a maior data de liquidação
-disponível e mantém um cache cumulativo do CSV em
-`$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
+Os subcomandos `tesouro`, `tesouro-resgates` e `tesouro-estoque` consultam os
+datasets do Tesouro Direto com filtros, agregação, saída CSV/JSON e exportação
+via `--saida`. `tesouro` e `tesouro-resgates` usam por padrão os últimos 30 dias;
+`tesouro-estoque` usa o último mês disponível. Cada recurso mantém CSV e
+metadata próprios em `$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
 
 Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
 exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
@@ -77,10 +81,11 @@ estatísticas usando o cache local.
 
 Durante o atendimento o servidor não acessa a B3/CVM e não grava estado. Ele
 expõe as tools `data_referencia`, `consultar_curva`, `exportar_curva_curta`,
-`exportar_curva_longa`, `analise`, `evolucao`, `estatisticas`, `listar_datas` e
-`tesouro_vendas`. A tool de Tesouro lê apenas o cache local; prepare-o antes com
-`b3-selic-pre tesouro`. Detalhes de protocolo, tools e execução em Docker estão
-em [Servidor MCP](docs/misc/mcp.md).
+`exportar_curva_longa`, `analise`, `evolucao`, `estatisticas`, `listar_datas`,
+`tesouro_vendas`, `tesouro_resgates` e `tesouro_estoque`. As tools de Tesouro
+leem apenas o cache local; prepare-o antes com o subcomando de dados
+correspondente. Detalhes de protocolo, tools e execução em Docker estão em
+[Servidor MCP](docs/misc/mcp.md).
 
 ### Interface Gráfica
 

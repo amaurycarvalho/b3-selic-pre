@@ -1,4 +1,4 @@
-"""Descoberta CKAN e download do CSV de vendas do Tesouro Direto."""
+"""Cliente CKAN e download dos CSVs do Tesouro Direto."""
 
 from __future__ import annotations
 
@@ -6,22 +6,25 @@ import json
 import re
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
 from collections.abc import Callable
-from dataclasses import dataclass
 
 from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.application.tesouro import TesouroDataError
-from b3_selic_pre.domain.constants import (
-    DEFAULT_B3_TIMEOUT_SECONDS,
-    TESOURO_CKAN_BASE_URL,
-    TESOURO_DATASET_NAME,
-)
+from b3_selic_pre.domain.constants import DEFAULT_B3_TIMEOUT_SECONDS
 from b3_selic_pre.infrastructure.b3_retry import (
     TRANSIENT_ERRORS,
     retry_transient,
 )
+from b3_selic_pre.infrastructure.tesouro_discovery import (
+    TesouroDiscoveryMixin,
+)
+from b3_selic_pre.infrastructure.tesouro_types import (
+    TesouroDownload,
+    TesouroResource,
+)
+
+__all__ = ["TesouroDownload", "TesouroResource", "TesouroSourceClient"]
 
 CHUNK_SIZE = 64 * 1024
 _CONTENT_RANGE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+)")
@@ -29,27 +32,6 @@ _CONTENT_RANGE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+)")
 
 class _TransientTesouroError(Exception):
     """Falha transitória que deve ser repetida."""
-
-
-@dataclass(frozen=True)
-class TesouroResource:
-    """CKAN dataset/resource metadata needed by the downloader."""
-
-    dataset_name: str
-    dataset_id: str
-    resource_id: str
-    resource_url: str
-    last_modified: str | None
-
-
-@dataclass(frozen=True)
-class TesouroDownload:
-    """Result of a conditional CSV download."""
-
-    status: int
-    data: bytes | None
-    etag: str | None
-    last_modified: str | None
 
 
 def _header(headers: object, name: str) -> str | None:
@@ -62,8 +44,8 @@ def _header(headers: object, name: str) -> str | None:
     return str(value) if value is not None else None
 
 
-class TesouroSourceClient:
-    """Talks to the CKAN API and downloads the resource CSV."""
+class TesouroSourceClient(TesouroDiscoveryMixin):
+    """Talks to the CKAN API and downloads resource CSVs."""
 
     def __init__(
         self: TesouroSourceClient,
@@ -76,19 +58,9 @@ class TesouroSourceClient:
         self._timeout = timeout
         self._sleep = sleep
 
-    def discover(self: TesouroSourceClient) -> TesouroResource:
-        """Discover the dataset and its single CSV resource."""
-        url = (
-            f"{TESOURO_CKAN_BASE_URL}/api/3/action/package_show"
-            f"?id={urllib.parse.quote(TESOURO_DATASET_NAME)}"
-        )
-        payload = self._fetch_json(url)
-        result = payload.get("result")
-        if not isinstance(result, dict):
-            raise TesouroDataError("Resposta CKAN sem o objeto 'result'.")
-        return self._resource_from_result(result)
-
-    def _fetch_json(self: TesouroSourceClient, url: str) -> dict[str, object]:
+    def _fetch_json(
+        self: TesouroSourceClient, url: str
+    ) -> dict[str, object]:
         def operation() -> dict[str, object]:
             status, _headers, body = self._request(
                 urllib.request.Request(url)
@@ -112,41 +84,6 @@ class TesouroSourceClient:
             source="CKAN do Tesouro",
             retry_on=(_TransientTesouroError, *TRANSIENT_ERRORS),
             sleep=self._sleep,
-        )
-
-    @staticmethod
-    def _csv_resource(result: dict[str, object]) -> dict[str, object]:
-        resources = result.get("resources")
-        if not isinstance(resources, list):
-            raise TesouroDataError("Dataset do Tesouro sem lista de recursos.")
-        csv_resources = [
-            resource
-            for resource in resources
-            if isinstance(resource, dict)
-            and str(resource.get("format", "")).upper() == "CSV"
-        ]
-        if len(csv_resources) != 1:
-            raise TesouroDataError(
-                "Dataset do Tesouro deve ter exatamente um recurso CSV."
-            )
-        return csv_resources[0]
-
-    @staticmethod
-    def _resource_url(resource: dict[str, object]) -> str:
-        url = resource.get("url")
-        if not isinstance(url, str) or not url:
-            raise TesouroDataError("Recurso CSV do Tesouro sem URL.")
-        return url
-
-    @staticmethod
-    def _resource_from_result(result: dict[str, object]) -> TesouroResource:
-        resource = TesouroSourceClient._csv_resource(result)
-        return TesouroResource(
-            dataset_name=str(result.get("name") or TESOURO_DATASET_NAME),
-            dataset_id=str(result.get("id") or ""),
-            resource_id=str(resource.get("id") or ""),
-            resource_url=TesouroSourceClient._resource_url(resource),
-            last_modified=resource.get("last_modified"),
         )
 
     def download(

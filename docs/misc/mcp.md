@@ -155,6 +155,8 @@ Todas as tools são somente leitura (`readOnlyHint: true`,
 | `estatisticas` | `data?` | menor/máxima, taxa curta/longa, inclinação e juro real |
 | `listar_datas` | `cursor?`, `limite?` | datas em cache, da mais recente para a mais antiga |
 | `tesouro_vendas` | `titulo?`, `inicio?`, `fim?`, `agregar?`, `cursor?`, `limite?` | vendas do Tesouro no cache local, com filtros, agregação e paginação |
+| `tesouro_resgates` | `tipo?`, `titulo?`, `inicio?`, `fim?`, `agregar?`, `cursor?`, `limite?` | recompras, cupons e vencimentos no cache local |
+| `tesouro_estoque` | `titulo?`, `inicio?`, `fim?`, `mes?`, `agregar?`, `cursor?`, `limite?` | estoque mensal no cache local |
 
 ### `data_referencia`
 
@@ -328,6 +330,37 @@ rede, não baixa arquivos e não grava estado. Prepare o cache antes com
 Quando há mais itens que `limite`, a resposta inclui `nextCursor`. Sem cache de
 vendas, devolve `cache_vazio` com a dica de executar `b3-selic-pre tesouro`.
 
+### `tesouro_resgates`
+
+Consulta somente o cache local de recompras, cupons e vencimentos do Tesouro
+Direto. A tool não acessa a rede, não baixa arquivos e não grava estado. Prepare
+o cache antes com `b3-selic-pre tesouro-resgates`.
+
+`tipo` aceita `recompra`, `cupom` ou `vencimento`; omitido, consulta todos.
+`titulo` é parcial e ignora caixa/acentos; `inicio` e `fim` são inclusivos em
+`AAAA-MM-DD`. Sem datas, o período é de 30 dias até a maior `data_resgate`.
+`agregar=true` devolve `agregados` por tipo e título; para recompras,
+`pu_medio` fica vazio.
+
+A resposta contém `dataset: "resgates"`, `origem: "cache"`, `data_extracao`,
+`total_registros`, `periodo`, `registros` ou `agregados` e `nextCursor` quando
+houver continuação. Sem cache de nenhum recurso de resgates, devolve
+`cache_vazio` com a dica de executar o subcomando correspondente.
+
+### `tesouro_estoque`
+
+Consulta somente o cache local do estoque mensal. Prepare o cache antes com
+`b3-selic-pre tesouro-estoque`.
+
+`titulo` é parcial e ignora caixa/acentos; `inicio`/`fim` usam `AAAA-MM` e são
+inclusivos; `mes` seleciona um único mês; sem filtros, retorna o último mês
+disponível. `agregar=true` exige um único mês e agrupa por título; a soma de
+`valor_estoque` entre meses é proibida.
+
+A resposta contém `dataset: "estoque"`, `origem: "cache"`, `data_extracao`,
+`total_registros`, `periodo`, `registros` ou `agregados` e `nextCursor` quando
+houver continuação. Cache ausente devolve `cache_vazio`.
+
 ## Erros de domínio
 
 Erros recuperáveis são devolvidos como resultado estruturado, sem `isError`:
@@ -349,8 +382,8 @@ Motivos usados:
 | `data_antiga` | Data fora da janela de 30 dias |
 | `sem_dados` | Data válida, mas sem registros no cache |
 | `cache_vazio` | Nenhuma data de referência válida nem cache |
-| `periodo_invalido` | `inicio` maior que `fim` na `tesouro_vendas` |
-| `dados_invalidos` | CSV de vendas em cache inválido |
+| `periodo_invalido` | `inicio` maior que `fim` ou agregação de estoque com mais de um mês |
+| `dados_invalidos` | CSV do Tesouro em cache inválido |
 
 Falhas internas não tratadas são devolvidas com `isError: true`, com mensagem
 genérica; o traceback vai para `stderr` e o servidor continua atendendo.
@@ -362,7 +395,15 @@ Caminhos padrão:
 ```text
 $XDG_CACHE_HOME/b3-selic-pre/rates/AAAA-MM-DD.json   # curvas
 $XDG_CACHE_HOME/b3-selic-pre/tesouro/vendastesourodireto.csv
-$XDG_CACHE_HOME/b3-selic-pre/tesouro/metadata.json    # vendas do Tesouro
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/metadata.json           # vendas
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/recompras.csv
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/recompras.metadata.json
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/cupom.csv
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/cupom.metadata.json
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/vencimentos.csv
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/vencimentos.metadata.json
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/estoque.csv
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/estoque.metadata.json
 $XDG_CONFIG_HOME/b3-selic-pre/settings.json          # data_referencia
 ```
 

@@ -23,3 +23,28 @@ class VendaTesouroDireto:
     pu: Decimal
     quantidade: Decimal
     valor: Decimal
+
+
+@dataclass(frozen=True)
+class ResgateTesouroDireto:
+    """One Tesouro Direto redemption (recompra, cupom or vencimento)."""
+
+    tipo_resgate: str
+    tipo_titulo: str
+    vencimento: str
+    data_resgate: str
+    pu: Decimal | None
+    quantidade: Decimal
+    valor: Decimal
+
+
+@dataclass(frozen=True)
+class EstoqueTesouroDireto:
+    """One monthly Tesouro Direto stock snapshot line."""
+
+    tipo_titulo: str
+    vencimento: str
+    mes: str
+    pu: Decimal
+    quantidade: Decimal
+    valor_estoque: Decimal

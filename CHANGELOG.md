@@ -18,7 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adicionar a tool MCP somente leitura `tesouro_vendas`, com filtros, agregação, paginação e erro `cache_vazio`.
 - Atualizar a documentação da CLI, do MCP, das fontes de dados, o README, o PRD e o RFC-001.
 
-### [add-tesouro-direto-resgates-estoque](openspec/changes/add-tesouro-direto-resgates-estoque/) Adicionar a consulta de resgates (recompras, cupom e vencimentos) e do estoque mensal do Tesouro Direto à CLI e à GUI
+### [add-tesouro-direto-resgates-estoque](openspec/changes/add-tesouro-direto-resgates-estoque/) Adicionar a consulta de resgates (recompras, cupom e vencimentos) e do estoque mensal do Tesouro Direto à CLI e ao servidor MCP
+
+#### Added
+
+- Adicionar os subcomandos `tesouro-resgates` e `tesouro-estoque`, com filtros por tipo, título e período, agregação, saída CSV/JSON e exportação via `--saida`.
+- Adicionar os modelos `ResgateTesouroDireto` e `EstoqueTesouroDireto`.
+- Adicionar parsing por recurso: recompras sem `PU`, cupom/vencimentos com `PU` e estoque mensal com `Mes Estoque` e `Valor Estoque`.
+- Adicionar filtros, agregação e ordenação de resgates e estoque, incluindo `PU` ponderado e proibição de somar estoque entre meses.
+- Generalizar a descoberta CKAN e o cache para múltiplos recursos, com CSV e metadata independentes.
+- Selecionar o cupom mais novo por `last_modified` e isolar falhas por recurso.
+- Aplicar TTL de 1 h/6 h para recompras corrente/histórico e 24 h para cupom, vencimentos e estoque.
+- Adicionar as tools MCP somente leitura `tesouro_resgates` e `tesouro_estoque`, com filtros, agregação, paginação e `cache_vazio`.
+- Atualizar a documentação da CLI, do MCP, das fontes de dados e o README.
 
 ## [1.0.1] - 2026-10-24
 

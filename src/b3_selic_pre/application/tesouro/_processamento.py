@@ -43,18 +43,25 @@ class VendaAgregada:
     pu_medio: Decimal
 
 
+def filtrar_por_titulo_generico(
+    records: list[object], titulo: str | None
+) -> list[object]:
+    """Filter any record with ``tipo_titulo`` by a partial title."""
+    if not titulo:
+        return list(records)
+    needle = normalizar_texto(titulo)
+    return [
+        record
+        for record in records
+        if needle in normalizar_texto(record.tipo_titulo)
+    ]
+
+
 def filtrar_por_titulo(
     sales: list[VendaTesouroDireto], titulo: str | None
 ) -> list[VendaTesouroDireto]:
     """Filter by a partial case/accent-insensitive title."""
-    if not titulo:
-        return list(sales)
-    needle = normalizar_texto(titulo)
-    return [
-        sale
-        for sale in sales
-        if needle in normalizar_texto(sale.tipo_titulo)
-    ]
+    return filtrar_por_titulo_generico(sales, titulo)
 
 
 def filtrar_por_periodo(

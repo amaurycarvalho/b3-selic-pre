@@ -37,6 +37,11 @@ from b3_selic_pre.presentation.logging_utils import (
 from b3_selic_pre.presentation.settings import Settings
 
 _SHORTCUT_MESSAGE = "Atalho criado em ~/Desktop/ e ~/.local/share/applications/"
+_TESOURO_HANDLERS = {
+    "tesouro": "tesouro",
+    "tesouro-resgates": "tesouro_resgates",
+    "tesouro-estoque": "tesouro_estoque",
+}
 
 
 def launch_gui(*args: object, **kwargs: object) -> None:
@@ -125,15 +130,18 @@ def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
         client_factory=CachedB3Client,
         lock_factory=lambda: ActionLock(on_wait=_wait_message),
         tesouro_cache=TesouroCache(),
+        tesouro_cache_factory=lambda resource: TesouroCache(resource=resource),
     )
 
 
-def _dispatch_tesouro(args: argparse.Namespace) -> int:
+def _dispatch_tesouro(
+    args: argparse.Namespace, handler: object
+) -> int:
     try:
         with ActionLock(
             path=default_tesouro_lock_path(), on_wait=_wait_message
         ):
-            return cli_commands.tesouro(args, TesouroDiretoClient())
+            return handler(args, TesouroDiretoClient())
     except TimeoutError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -158,8 +166,9 @@ def _dispatch(
         return cli_commands.exportar(
             args, settings, CachedB3Client(), log_content
         )
-    if args.comando == "tesouro":
-        return _dispatch_tesouro(args)
+    if args.comando in _TESOURO_HANDLERS:
+        handler = getattr(cli_commands, _TESOURO_HANDLERS[args.comando])
+        return _dispatch_tesouro(args, handler)
     if args.comando == "mcp":
         return _run_mcp(args, settings)
     if args.comando == "criar-atalho":

@@ -23,15 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Python 3.12 and Tk (Ubuntu 24.04, glibc 2.39)
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            python3.12 python3.12-venv python3.12-tk
-
-      - name: Report build glibc
-        run: ldd --version | head -n 1
-
       - name: Install Python dependencies
         run: make PYTHON_CMD=python3.12 install
 

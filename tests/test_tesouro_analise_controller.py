@@ -108,3 +108,68 @@ def test_apetite_exposes_net_flow_detail():
 
     assert view_model.fluxo_liquido is not None
     assert "100.00" in view_model.fluxo_liquido
+
+
+class StubProvider:
+    def __init__(self):
+        self.calls = []
+
+    def fetch(self, key, start, end, bucket):
+        from b3_selic_pre.application.tesouro import (
+            METRICA_FLUXO_LIQUIDO,
+            SeriesPoint,
+        )
+
+        self.calls.append((key, start, end, bucket))
+        if key.key == "SELIC":
+            return [
+                SeriesPoint(
+                    "2026-10-02",
+                    METRICA_FLUXO_LIQUIDO,
+                    Decimal("55"),
+                    Decimal("100"),
+                    key.dimension,
+                    key.key,
+                )
+            ]
+        return []
+
+
+def test_ready_provider_is_used_without_rebuilding():
+    provider = StubProvider()
+
+    def factory(**kwargs):
+        raise AssertionError("factory não deveria ser chamada")
+
+    controller = TesouroAnaliseController(
+        kind=KIND_APETITE,
+        loader=lambda cache_only, force: AnaliseData(
+            provider=provider,
+            titles=("Tesouro Selic 2029",),
+            latest_data_date="2026-10-02",
+            fluxo_latest_data_date="2026-10-02",
+        ),
+        provider_factory=factory,
+    )
+    controller.load(cache_only=True)
+
+    view_model = controller.view_model()
+
+    assert view_model.provider is provider
+    assert view_model.titles == ("Tesouro Selic 2029",)
+    assert "55.00" in (view_model.fluxo_liquido or "")
+
+
+def test_window_change_does_not_call_the_loader_again():
+    calls = []
+
+    def loader(cache_only, force):
+        calls.append((cache_only, force))
+        return _data()
+
+    controller = TesouroAnaliseController(kind=KIND_APETITE, loader=loader)
+    controller.load(cache_only=True)
+    controller.set_window("3m")
+    controller.view_model().current_chart()
+
+    assert calls == [(True, False)]

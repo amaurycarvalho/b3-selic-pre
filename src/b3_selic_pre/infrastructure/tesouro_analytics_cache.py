@@ -16,7 +16,7 @@ from b3_selic_pre.infrastructure.tesouro_analytics_housekeeping import (
 )
 from b3_selic_pre.infrastructure.tesouro_cache import tesouro_cache_dir
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MANIFEST_NAME = "manifest.json"
 _LOCK_NAME = "analytics.lock"
 

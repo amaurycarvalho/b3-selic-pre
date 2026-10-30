@@ -102,6 +102,16 @@ from b3_selic_pre.application.tesouro._series_aggregation import (
     SeriesShare,
     agregar_series,
 )
+from b3_selic_pre.application.tesouro._series_batch import (
+    SeriesSourceSnapshot,
+    build_demanda_snapshot,
+    build_estoque_snapshot,
+    build_fluxo_snapshot,
+    build_series_snapshots,
+)
+from b3_selic_pre.application.tesouro._series_cached import (
+    CachedTesouroSeriesProvider,
+)
 from b3_selic_pre.application.tesouro._series_contract import (
     BUCKET_DIARIO,
     BUCKET_MENSAL,
@@ -185,6 +195,7 @@ __all__ = [
     "SELIC",
     "SELIC_RESERVA",
     "SUBFAMILIAS",
+    "CachedTesouroSeriesProvider",
     "EstoqueAgregado",
     "FamiliaIndexador",
     "FluxoLiquidoItem",
@@ -195,6 +206,7 @@ __all__ = [
     "SeriesPoint",
     "SeriesProvider",
     "SeriesShare",
+    "SeriesSourceSnapshot",
     "TesouroDataError",
     "TesouroResourceSpec",
     "TesouroSeriesProvider",
@@ -207,10 +219,14 @@ __all__ = [
     "bucket_para_janela",
     "bucket_para_metrica",
     "build_agregados_payload",
+    "build_demanda_snapshot",
     "build_estoque_agregados_payload",
     "build_estoque_payload",
+    "build_estoque_snapshot",
+    "build_fluxo_snapshot",
     "build_resgates_agregados_payload",
     "build_resgates_payload",
+    "build_series_snapshots",
     "build_vendas_payload",
     "chave_series",
     "classificar_familia",

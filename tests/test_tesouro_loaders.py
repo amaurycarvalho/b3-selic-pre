@@ -111,3 +111,113 @@ def test_cache_available_is_scoped_by_sub_tab():
 
 def test_cache_available_without_client_is_false():
     assert cache_available(None, KIND_ESTOQUE) is False
+
+
+from b3_selic_pre.application.tesouro import (
+    DIMENSAO_FAMILIA,
+    METRICA_DEMANDA_PCT,
+    SELIC,
+    SeriesPoint,
+)
+from b3_selic_pre.infrastructure.tesouro_series_cache import StoredSeries
+
+
+def _stored(name, latest):
+    return StoredSeries(
+        name=name,
+        points=(
+            SeriesPoint(
+                latest,
+                METRICA_DEMANDA_PCT,
+                Decimal("100"),
+                Decimal("100"),
+                DIMENSAO_FAMILIA,
+                SELIC,
+            ),
+        ),
+        latest_data_date=latest,
+        source="Cache",
+        extracted_at="2026-10-20T00:00:00",
+        titles=("Tesouro Selic 2029",),
+        source_hashes={},
+    )
+
+
+class FakeSeriesCache:
+    def __init__(self, payloads=None):
+        self.payloads = payloads or {}
+
+    def expected_hashes(self, name):
+        return {"source": "hash"} if name in self.payloads else None
+
+    def read(self, name, expected_hashes=None):
+        return self.payloads.get(name)
+
+    def has(self, name):
+        return name in self.payloads
+
+
+def test_loader_reads_snapshots_without_touching_raw_cache():
+    client = FakeClient()
+    cache = FakeSeriesCache(
+        {
+            "demanda": _stored("demanda", "2026-10-02"),
+            "fluxo": _stored("fluxo", "2026-10-02"),
+        }
+    )
+
+    data = make_loader(client, KIND_APETITE, series_cache=cache)(True, False)
+
+    assert data is not None
+    assert data.provider is not None
+    assert data.latest_data_date == "2026-10-02"
+    assert client.calls == []
+
+
+def test_loader_falls_back_to_raw_cache_and_precomputes():
+    client = FakeClient()
+    cache = FakeSeriesCache()
+    calls = []
+
+    data = make_loader(
+        client,
+        KIND_ESTOQUE,
+        series_cache=cache,
+        precompute=lambda kind, payload: calls.append((kind, payload)),
+    )(True, False)
+
+    assert data is not None
+    assert client.calls == ["estoque"]
+    assert calls and calls[0][0] == KIND_ESTOQUE
+
+
+def test_loader_without_any_cache_returns_none():
+    client = FakeClient()
+    client.read_cached_estoque = lambda: None
+    calls = []
+
+    data = make_loader(
+        client,
+        KIND_ESTOQUE,
+        series_cache=FakeSeriesCache(),
+        precompute=lambda kind, payload: calls.append(kind),
+    )(True, False)
+
+    assert data is None
+    assert calls == []
+
+
+def test_series_available_checks_every_needed_snapshot():
+    from b3_selic_pre.presentation.tesouro_series_loader import series_available
+
+    complete = FakeSeriesCache(
+        {
+            "estoque": _stored("estoque", "2026-10"),
+            "demanda": _stored("demanda", "2026-10-02"),
+        }
+    )
+    partial = FakeSeriesCache({"estoque": _stored("estoque", "2026-10")})
+
+    assert series_available(complete, KIND_VISAO_GERAL) is True
+    assert series_available(partial, KIND_VISAO_GERAL) is False
+    assert series_available(None, KIND_ESTOQUE) is False

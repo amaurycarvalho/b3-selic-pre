@@ -157,7 +157,7 @@ def render_evolution(fig: Figure, chart: EvolutionChart) -> None:
     ax.grid(True, axis="y", alpha=0.3)
     if chart.vertical_grid:
         ax.grid(True, axis="x", alpha=0.3)
-    ax.legend(fontsize=7, loc="upper right", ncol=len(families) or 1)
+    ax.legend(fontsize=7, loc="upper left", ncol=len(families) or 1)
     _rotate_labels(ax)
     register_hover(ax, hover)
     fig.tight_layout()
@@ -191,7 +191,7 @@ def render_gap(fig: Figure, chart: GapChart) -> None:
     ax.set_ylabel("p.p.")
     ax.set_title(chart.title)
     ax.grid(True, axis="y", alpha=0.3)
-    ax.legend(fontsize=7, loc="upper right")
+    ax.legend(fontsize=7, loc="upper left")
     _rotate_labels(ax)
     register_hover(ax, hover)
     fig.tight_layout()

@@ -19,6 +19,9 @@ from b3_selic_pre.infrastructure.release_check import fetch_latest_version
 from b3_selic_pre.infrastructure.tesouro_cached_client import (
     TesouroDiretoClient,
 )
+from b3_selic_pre.infrastructure.tesouro_series_cache import (
+    TesouroSeriesCache,
+)
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.shell import AppShell as SelicPreApp
 from b3_selic_pre.presentation.logging_utils import (
@@ -26,6 +29,7 @@ from b3_selic_pre.presentation.logging_utils import (
     install_tk_exception_hook,
 )
 from b3_selic_pre.presentation.settings import Settings
+from b3_selic_pre.presentation.tesouro_precompute import TesouroPrecompute
 
 
 def launch_gui(
@@ -54,6 +58,7 @@ def launch_gui(
             logger.info("Iniciando b3-selic-pre %s (GUI)", __version__)
     root = tk.Tk()
     install_tk_exception_hook(root, logger)
+    series_cache = TesouroSeriesCache()
     dependencies = GuiDependencies(
         client=CachedB3Client(),
         shortcut_exists=shortcut_exists,
@@ -66,6 +71,8 @@ def launch_gui(
         latest_version=fetch_latest_version,
         tesouro_client=TesouroDiretoClient(),
         tesouro_provider_factory=TesouroSeriesProvider,
+        tesouro_series_cache=series_cache,
+        tesouro_precompute=TesouroPrecompute(series_cache),
     )
     app = SelicPreApp(root, dependencies)
 

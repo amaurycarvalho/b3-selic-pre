@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
-from b3_selic_pre.presentation.tesouro_analise_controller import AnaliseData
+from b3_selic_pre.presentation.tesouro_analise_data import AnaliseData
 from b3_selic_pre.presentation.tesouro_chart_data import (
     KIND_APETITE,
     KIND_ESTOQUE,
+)
+from b3_selic_pre.presentation.tesouro_series_loader import (
+    SeriesCache,
+    series_data,
 )
 
 Client = Any
@@ -138,14 +143,25 @@ def cache_available(client: Client, kind: str) -> bool:
     )
 
 
-def make_loader(client: Client, kind: str) -> Loader:
+def make_loader(
+    client: Client,
+    kind: str,
+    series_cache: SeriesCache | None = None,
+    precompute: Callable[[str, AnaliseData], None] | None = None,
+) -> Loader:
     """Create a cache/refresh loader for a sub-tab kind."""
 
     def loader(cache_only: bool, force: bool) -> AnaliseData | None:
         if client is None:
             raise RuntimeError("Cliente do Tesouro não configurado.")
         if cache_only:
-            return _cache_data(client, kind)
+            data = series_data(series_cache, kind)
+            if data is not None:
+                return data
+            data = _cache_data(client, kind)
+            if data is not None and precompute is not None:
+                precompute(kind, data)
+            return data
         return _refresh_data(client, kind, force)
 
     return loader

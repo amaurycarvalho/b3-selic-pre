@@ -29,6 +29,7 @@ from b3_selic_pre.presentation.tesouro_loaders import (
     cache_available,
     make_loader,
 )
+from b3_selic_pre.presentation.tesouro_series_loader import series_available
 
 Widget = Any
 
@@ -60,9 +61,16 @@ class TesouroSubTab(SubTabUI):
         self._cache_loaded = False
         factory = dependencies.tesouro_provider_factory
         self._client = dependencies.tesouro_client
+        self._series_cache = dependencies.tesouro_series_cache
+        self._precompute = dependencies.tesouro_precompute
         self.controller = TesouroAnaliseController(
             kind=kind,
-            loader=make_loader(self._client, kind),
+            loader=make_loader(
+                self._client,
+                kind,
+                series_cache=self._series_cache,
+                precompute=self._precompute,
+            ),
             **({"provider_factory": factory} if factory is not None else {}),
         )
         self.build_controls()
@@ -77,7 +85,7 @@ class TesouroSubTab(SubTabUI):
             self._cache_loaded = True
             self.controller.cache_available = cache_available(
                 self._client, self.kind
-            )
+            ) or series_available(self._series_cache, self.kind)
             self._start_load(cache_only=True)
             self._draw()
             return
@@ -118,14 +126,26 @@ class TesouroSubTab(SubTabUI):
     def _load_worker(
         self: TesouroSubTab, cache_only: bool, force: bool
     ) -> None:
+        data = None
         try:
-            self.controller.load(cache_only=cache_only, force=force)
+            data = self.controller.load(
+                cache_only=cache_only, force=force
+            )
         except Exception:
             pass
         try:
             self.root.after(0, self._finish_load)
         except Exception:
             return
+        if (
+            not cache_only
+            and data is not None
+            and self._precompute is not None
+        ):
+            try:
+                self._precompute(self.kind, data)
+            except Exception:
+                return
 
     def _finish_load(self: TesouroSubTab) -> None:
         if self._closed or not self._root_alive():

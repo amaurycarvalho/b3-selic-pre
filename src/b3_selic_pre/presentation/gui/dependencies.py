@@ -57,4 +57,6 @@ class GuiDependencies:
     latest_version: Callable[[], str | None] = _no_latest_version
     tesouro_client: Any = None
     tesouro_provider_factory: Callable[..., Any] | None = None
+    tesouro_series_cache: Any = None
+    tesouro_precompute: Callable[[str, Any], None] | None = None
     now: Callable[[], str] = _now_iso

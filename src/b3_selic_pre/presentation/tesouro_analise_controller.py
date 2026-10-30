@@ -11,34 +11,19 @@ from b3_selic_pre.application.tesouro import (
     TesouroSeriesProvider,
     fluxo_liquido_por_familia,
 )
-from b3_selic_pre.domain.models import (
-    EstoqueTesouroDireto,
-    ResgateTesouroDireto,
-    VendaTesouroDireto,
-)
+from b3_selic_pre.presentation.tesouro_analise_data import AnaliseData
 from b3_selic_pre.presentation.tesouro_analise_view_model import (
     KIND_APETITE,
     KIND_ESTOQUE,
     TesouroAnaliseViewModel,
 )
+from b3_selic_pre.presentation.tesouro_fluxo import fluxo_liquido_total
 
 DEFAULT_WINDOWS = {
     KIND_APETITE: "14d",
     KIND_ESTOQUE: "12m",
     "visao-geral": "12m",
 }
-
-
-@dataclass(frozen=True)
-class AnaliseData:
-    """Dados brutos necessários para montar uma sub-aba."""
-
-    vendas: tuple[VendaTesouroDireto, ...] = ()
-    resgates: tuple[ResgateTesouroDireto, ...] = ()
-    estoque: tuple[EstoqueTesouroDireto, ...] = ()
-    latest_data_date: str | None = None
-    source: str = "Cache"
-    extracted_at: str | None = None
 
 
 AnaliseLoader = Callable[[bool, bool], AnaliseData | None]
@@ -83,7 +68,7 @@ class TesouroAnaliseController:
         *,
         cache_only: bool = False,
         force: bool = False,
-    ) -> None:
+    ) -> AnaliseData | None:
         """Load data through the injected loader, isolating failures."""
         self.loading = True
         try:
@@ -95,17 +80,18 @@ class TesouroAnaliseController:
         finally:
             self.loading = False
         if data is None:
-            return
+            return None
         self.error = None
         self.cache_available = True
         self._data = data
         self.source = data.source
         self.extracted_at = data.extracted_at
-        self._provider = self.provider_factory(
+        self._provider = data.provider or self.provider_factory(
             vendas=list(data.vendas),
             resgates=list(data.resgates),
             estoque=list(data.estoque),
         )
+        return data
 
     def _latest(self: TesouroAnaliseController) -> str | None:
         data = self._data
@@ -134,6 +120,8 @@ class TesouroAnaliseController:
         data = self._data
         if data is None:
             return ()
+        if data.titles:
+            return data.titles
         titles: set[str] = set()
         if self.kind in (KIND_ESTOQUE, "visao-geral"):
             titles.update(item.tipo_titulo for item in data.estoque)
@@ -144,15 +132,20 @@ class TesouroAnaliseController:
     def _fluxo(self: TesouroAnaliseController) -> str | None:
         if self.kind != KIND_APETITE or self._data is None:
             return None
-        items = fluxo_liquido_por_familia(
-            list(self._data.vendas),
-            list(self._data.resgates),
-            self.window,
-        )
-        total = sum(
-            (item.fluxo_liquido for item in items), Decimal(0)
-        )
-        return f"{total:.2f}"
+        if self._data.vendas or self._data.resgates:
+            items = fluxo_liquido_por_familia(
+                list(self._data.vendas),
+                list(self._data.resgates),
+                self.window,
+            )
+            total = sum(
+                (item.fluxo_liquido for item in items), Decimal(0)
+            )
+            return f"{total:.2f}"
+        if self._provider is None:
+            return None
+        latest = self._data.fluxo_latest_data_date or self._latest()
+        return fluxo_liquido_total(self._provider, latest, self.window)
 
     def view_model(self: TesouroAnaliseController) -> TesouroAnaliseViewModel:
         """Build the headless view-model for the current state."""

@@ -284,6 +284,29 @@ e GUI são serializados por um lock dedicado em
 `$XDG_CACHE_HOME/b3-selic-pre/tesouro/locks/analytics.lock`; leituras são
 somente leitura e nunca removem, renomeiam ou alteram arquivos.
 
+As sub-abas do Tesouro Direto consomem snapshots de séries normalizadas:
+
+```text
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/analytics/
+├── manifest.json
+└── series/
+    ├── estoque.json    # mensal, por familia e produto
+    ├── demanda.json    # diaria, por familia e produto
+    └── fluxo.json      # diaria, por familia e produto
+```
+
+Cada snapshot guarda os pontos, a maior data da fonte, os títulos e o `sha256`
+dos CSVs que o originaram: `estoque.csv` para `estoque`; `vendastesourodireto.csv`
+para `demanda`; e `vendastesourodireto.csv` mais `recompras.csv` para `fluxo`.
+O pré-cálculo roda automaticamente após um refresh bem-sucedido, fora da thread
+da UI, e só regrava a fonte cujo hash mudou; `304` ou conteúdo idêntico não
+reprocessa nada. As janelas 14d/3m/12m/3a são obtidas filtrando e agregando os
+pontos já gravados, sem novo parse do CSV bruto. Se o snapshot faltar mas houver
+cache bruto, a série é montada uma vez em background e persistida; sem nenhum
+dos dois, a sub-aba orienta clicar em `Atualizar`. Os snapshots têm
+`schema_version` próprio; versões antigas ou conteúdo corrompido são tratados
+como miss, sem remoção automática.
+
 ### Semântica de valor e quantidade
 
 A análise percentual do Tesouro Direto usa **valor** como base principal:

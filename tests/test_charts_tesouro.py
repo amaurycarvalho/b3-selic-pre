@@ -127,3 +127,68 @@ def test_evolution_vertical_grid_sets_one_tick_per_period():
     axis = figure.gca()
     assert len(axis.get_xticks()) == 2
     assert len(axis._hover_points) == 4
+
+
+from matplotlib.legend import Legend
+
+_UPPER_LEFT = Legend.codes["upper left"]
+_UPPER_RIGHT = Legend.codes["upper right"]
+
+
+def test_evolution_legend_is_upper_left():
+    figure = Figure()
+    chart = EvolutionChart(
+        title="Evolução",
+        periods=("2026-09", "2026-10"),
+        series={"SELIC": (60.0, 70.0), "IPCA": (40.0, 30.0)},
+    )
+
+    render_evolution(figure, chart)
+
+    legend = figure.gca().get_legend()
+    assert legend is not None
+    assert legend._loc == _UPPER_LEFT
+
+
+def test_gap_legend_is_upper_left():
+    figure = Figure()
+    chart = GapChart(
+        title="Gap",
+        periods=("2026-09", "2026-10"),
+        series={"SELIC": (-10.0, 0.0), "IPCA": (10.0, 5.0)},
+    )
+
+    render_gap(figure, chart)
+
+    legend = figure.gca().get_legend()
+    assert legend is not None
+    assert legend._loc == _UPPER_LEFT
+
+
+def test_current_charts_keep_legend_upper_right():
+    share = Figure()
+    render_current_share(
+        share,
+        ShareChart(
+            title="Estoque",
+            families=("SELIC", "IPCA"),
+            totals={"SELIC": 70.0, "IPCA": 30.0},
+            segments={
+                "SELIC": {"Tesouro Selic 2029": 70.0},
+                "IPCA": {"Tesouro IPCA+ 2035": 30.0},
+            },
+        ),
+    )
+    comparison = Figure()
+    render_current_comparison(
+        comparison,
+        ComparisonChart(
+            title="Comparação",
+            families=("SELIC", "IPCA"),
+            estoque=(70.0, 30.0),
+            apetite=(60.0, 40.0),
+        ),
+    )
+
+    assert share.gca().get_legend()._loc == _UPPER_RIGHT
+    assert comparison.gca().get_legend()._loc == _UPPER_RIGHT

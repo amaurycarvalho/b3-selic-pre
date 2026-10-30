@@ -52,10 +52,14 @@ def _print_curva(records: list[RateRecord], curva: str) -> None:
     )
 
 
-def consultar(args: argparse.Namespace, client: RatesClient) -> int:
+def consultar(
+    args: argparse.Namespace,
+    client: RatesClient,
+    calendar: object | None = None,
+) -> int:
     """Consulta a curva de uma data e imprime a representação escolhida."""
     try:
-        data = resolve_data(args.data)
+        data = resolve_data(args.data, calendar)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -112,10 +116,15 @@ def _print_update(
         print(f"\nDatas indisponíveis: {', '.join(missing)}")
 
 
-def atualizar(args: argparse.Namespace, settings: Settings, client: RatesClient) -> int:
+def atualizar(
+    args: argparse.Namespace,
+    settings: Settings,
+    client: RatesClient,
+    calendar: object | None = None,
+) -> int:
     """Carrega curva e evolução e imprime a análise determinística."""
     try:
-        data = resolve_data(args.data)
+        data = resolve_data(args.data, calendar)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -153,6 +162,7 @@ def exportar(
     settings: Settings,
     client: RatesClient,
     log_content: str | None,
+    calendar: object | None = None,
 ) -> int:
     """Seleciona e grava os artefatos solicitados pelo usuário."""
     if _no_content(args):
@@ -169,7 +179,7 @@ def exportar(
         )
         return 2
     try:
-        data = resolve_data(args.data)
+        data = resolve_data(args.data, calendar)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2

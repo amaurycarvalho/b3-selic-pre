@@ -107,9 +107,12 @@ class ChartMixin:
         if self.historical_data and view_model.has_historical:
             self._redraw_chart()
             return
-        today = nearest_business_day(
-            datetime.now(UTC).date().isoformat()
-        )
+        today = datetime.now(UTC).date().isoformat()
+        resolution = self._calendar_resolution(today)
+        if resolution is not None:
+            today = resolution.data_resolvida
+        else:
+            today = nearest_business_day(today)
         if self.date_var.get().strip() != today:
             self.date_var.set(today)
         self._fetch_historical_rates(today)

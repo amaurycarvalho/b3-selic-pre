@@ -172,6 +172,9 @@ class TestToolsCatalog:
             "reservas_serie",
             "reservas_indicadores",
             "reservas_exportar",
+            "feriados_listar",
+            "feriados_consultar",
+            "feriados_exportar",
         }
         for tool in tools:
             assert tool["annotations"]["readOnlyHint"] is True

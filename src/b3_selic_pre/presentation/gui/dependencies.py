@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from b3_selic_pre.application.use_cases import default_reference_date
 from b3_selic_pre.presentation.settings import Settings
+
+
+def _default_initial_date() -> str:
+    return default_reference_date()
 
 
 def _default_shortcut_exists() -> bool:
@@ -62,4 +67,7 @@ class GuiDependencies:
     tesouro_btd: Any = None
     market_services: Any = None
     reserves_services: Any = None
+    calendar_service: Any = None
+    holiday_cache: Any = None
+    initial_date: Callable[[], str] = _default_initial_date
     now: Callable[[], str] = _now_iso

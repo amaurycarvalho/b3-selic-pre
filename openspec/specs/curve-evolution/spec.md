@@ -12,16 +12,15 @@ The system SHALL provide a function `average_rate_by_year(records)` that compute
 - **THEN** the function returns `{0: 14.5}`
 
 ### Requirement: Multi-date historical rate fetch via GetDownloadFile
-
-O sistema SHALL prover `fetch_rates_download(date_str)`, usando `GetDownloadFile`, e `fetch_historical_rates(base_date)`, que busca 5 datas: a base e 7, 14, 21 e 28 dias antes. A base SHALL usar `GetList` quando for hoje; datas anteriores SHALL usar `GetDownloadFile` como fonte primária e `GetList` apenas após esgotar as retentativas do CSV. Toda data SHALL seguir a retentativa e a validação de completude; data indisponível SHALL ser reportada e não cacheada.
+The system SHALL provide a function `fetch_rates_download(date_str)` that uses the B3 `GetDownloadFile` endpoint (base64-encoded CSV) and a function `fetch_historical_rates(base_date)` that fetches SELIC Pré rates for 5 dates: the base date and 7, 14, 21, 28 days prior. The base date SHALL already be resolved to a business day. Each of the 7, 14, 21 and 28-day targets SHALL be resolved to the previous business day when it falls on a weekend or holiday, and targets that resolve to the same date SHALL be deduplicated. The base date SHALL use `GetList` when it is the current date. Earlier dates SHALL use `GetDownloadFile` as the primary source and `GetList` only as a fallback after the CSV retries are exhausted. Every date SHALL use the empty-response retry policy and the completeness validation defined by the B3 rate source contract. A date that remains unavailable after all retries and fallback SHALL be reported and SHALL NOT be cached.
 
 #### Scenario: GetDownloadFile returns parsed RateRecords
 - **WHEN** `fetch_rates_download("2026-06-09")` is called and the B3 returns valid base64 CSV
 - **THEN** it returns a `list[RateRecord]` with `day252`, `day360` and `rate` parsed from the CSV columns
 
 #### Scenario: Fetch returns rates for all 5 dates
-- **WHEN** `fetch_historical_rates("2026-06-17")` is called and all 5 dates have data
-- **THEN** it returns a dict mapping each of the 5 date strings (today, 7, 14, 21, 28 days ago) to their respective `list[RateRecord]`
+- **WHEN** `fetch_historical_rates("2026-06-17")` is called and all 5 resolved dates have data
+- **THEN** it returns a dict mapping each of the 5 resolved date strings to their respective `list[RateRecord]`
 
 #### Scenario: Fetch uses parallel requests with progress callback
 - **WHEN** the multi-date fetch is in progress
@@ -42,6 +41,15 @@ O sistema SHALL prover `fetch_rates_download(date_str)`, usando `GetDownloadFile
 #### Scenario: Incomplete GetList collection is rejected
 - **WHEN** the `GetList` fallback collects fewer records than `page.totalRecords` after the allowed retries
 - **THEN** the system reports a communication failure for that date instead of using the partial collection
+
+#### Scenario: Holiday target is resolved before any request
+- **WHEN** a 7, 14, 21 or 28-day target falls on a holiday or weekend
+- **THEN** the target is replaced by the previous business day
+- **THEN** no request is made for the non-business date
+
+#### Scenario: Duplicate resolved targets are collapsed
+- **WHEN** two targets resolve to the same business day
+- **THEN** the evolution mapping contains a single entry for that date
 
 ### Requirement: Curve evolution chart rendering
 The system SHALL provide a function `render_curve_evolution(fig, date_rates)` that plots 5 superposed curves of average rate per year, with gradient coloring and quiver arrows at key maturities.

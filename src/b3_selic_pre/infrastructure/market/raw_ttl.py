@@ -41,17 +41,25 @@ def _month_minutes(config: object) -> int:
     ) * 60
 
 
+def _reference_business_day(ref: date, calendar: object | None) -> date:
+    if calendar is None:
+        return ref
+    return calendar.calendar_for(ref.year).previous_business_day(ref)
+
+
 def ttl_minutes(
     config: MarketConfig | object,
     data_date: str,
     reference: str | None = None,
+    calendar: object | None = None,
 ) -> int | None:
     """Return the TTL for a data date, or ``None`` when immutable."""
     day = _parse_date(data_date)
     ref = _parse_date(reference or datetime.now(UTC).date().isoformat())
     if day is None or ref is None:
         return _recent_minutes(config)
-    if (ref - day).days <= _recent_days(config):
+    business_ref = _reference_business_day(ref, calendar)
+    if (business_ref - day).days <= _recent_days(config):
         return _recent_minutes(config)
     if (day.year, day.month) == (ref.year, ref.month):
         return _month_minutes(config)
@@ -68,7 +76,9 @@ def is_fresh(
     payload = cache.read(fonte, data)
     if payload is None:
         return False
-    ttl = ttl_minutes(cache.config, data, reference)
+    ttl = ttl_minutes(
+        cache.config, data, reference, getattr(cache, "calendar", None)
+    )
     if ttl is None:
         return True
     raw = payload.get("cached_at")

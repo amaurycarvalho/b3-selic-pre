@@ -305,10 +305,28 @@ def test_gui_registers_reserves_after_dolar():
 
 
 def test_reserves_orientation_sections_cover_the_sub_tab():
-    from b3_selic_pre.presentation.gui.reserves_orientation import (
-        ORIENTATION_SECTIONS,
-        TEXT_WIDTH,
+    import ast
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "b3_selic_pre"
+        / "presentation"
+        / "gui"
+        / "reserves_orientation.py"
     )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    values = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        if target.id in ("ORIENTATION_SECTIONS", "TEXT_WIDTH"):
+            values[target.id] = ast.literal_eval(node.value)
+    ORIENTATION_SECTIONS = values["ORIENTATION_SECTIONS"]
+    TEXT_WIDTH = values["TEXT_WIDTH"]
 
     titles = [title for title, _ in ORIENTATION_SECTIONS]
     body = " ".join(text for _, text in ORIENTATION_SECTIONS)

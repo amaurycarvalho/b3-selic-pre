@@ -95,12 +95,13 @@ def fetch_historical_rates(
     *,
     today: str | None = None,
     sleep: Callable[[float], object] = time.sleep,
+    calendar: object | None = None,
     **kwargs: object,
 ) -> dict[str, list[RateRecord]]:
     """Fetch historical reference rates for the configured evolution days."""
     if today is None:
         today = datetime.now(UTC).date().isoformat()
-    dates = evolution_dates(base_date)
+    dates = evolution_dates(base_date, calendar)
 
     def fetch_one(date_str: str) -> tuple[str, list[RateRecord]]:
         try:

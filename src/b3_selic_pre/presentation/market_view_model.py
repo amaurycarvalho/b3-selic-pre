@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Any
 
 ATIVO_AMBOS = "ambos"
@@ -39,6 +40,35 @@ class MarketOptions:
 
 def _as_dict(value: object) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def last_business_day(
+    reference: date, calendar: object | None = None
+) -> date:
+    """Return the most recent business day on or before ``reference``."""
+    if calendar is not None:
+        return calendar.calendar_for(reference.year).previous_business_day(
+            reference
+        )
+    current = reference
+    while current.weekday() >= 5:
+        current -= timedelta(days=1)
+    return current
+
+
+def artifact_is_stale(
+    latest: str | None,
+    reference: date,
+    calendar: object | None = None,
+) -> bool:
+    """Return whether the artifact is older than the expected business day."""
+    if not latest:
+        return False
+    try:
+        parsed = date.fromisoformat(latest)
+    except ValueError:
+        return False
+    return last_business_day(reference, calendar) > parsed
 
 
 @dataclass
@@ -182,5 +212,7 @@ __all__ = [
     "EMPTY_MESSAGE",
     "MarketOptions",
     "MarketViewModel",
+    "artifact_is_stale",
     "build_view_model",
+    "last_business_day",
 ]

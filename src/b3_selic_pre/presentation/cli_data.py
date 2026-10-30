@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -12,13 +13,33 @@ from b3_selic_pre.application.use_cases import (
     nearest_business_day,
     validate_query_date,
 )
+from b3_selic_pre.presentation.calendar_text import adjustment_message
 from b3_selic_pre.presentation.settings import Settings
 
+logger = logging.getLogger(__name__)
 
-def resolve_data(value: str | None) -> str:
+
+def ensure_calendar(calendar: object | None, date_str: str) -> None:
+    """Guarantee the calendar year before resolving a date, best effort."""
+    if calendar is None:
+        return
+    try:
+        calendar.ensure_year(int(date_str[:4]))
+    except Exception as exc:
+        logger.warning("Falha ao garantir o calendário de feriados: %s", exc)
+
+
+def resolve_data(value: str | None, calendar: object | None = None) -> str:
     """Resolve, valida e ajusta a data de referência informada."""
     raw = (value or default_reference_date()).strip()
-    return nearest_business_day(validate_query_date(raw))
+    validated = validate_query_date(raw)
+    if calendar is None:
+        return nearest_business_day(validated)
+    ensure_calendar(calendar, validated)
+    resolution = calendar.resolve_business_day(validated)
+    if resolution.ajustada:
+        print(adjustment_message(resolution), file=sys.stderr)
+    return resolution.data_resolvida
 
 
 def config_from_settings(settings: Settings) -> CurvaJurosConfig:

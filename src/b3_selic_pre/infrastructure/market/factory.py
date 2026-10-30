@@ -41,10 +41,11 @@ def build_market_services(
     gold: object | None = None,
     raw: MarketRawCache | None = None,
     precompute: MarketPrecomputeCache | None = None,
+    calendar: object | None = None,
 ) -> MarketServices:
     """Build the market services, allowing fake adapters for tests."""
     market_config = config or MarketConfig()
-    raw_cache = raw or MarketRawCache(cache_dir, market_config)
+    raw_cache = raw or MarketRawCache(cache_dir, market_config, calendar)
     precompute_cache = precompute or MarketPrecomputeCache(
         cache_dir, market_config
     )

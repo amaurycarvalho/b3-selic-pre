@@ -46,14 +46,20 @@ def default_tesouro_lock_path() -> Path:
     return tesouro_cache_dir() / "tesouro.lock"
 
 
-def _last_business_day(today: date) -> date:
+def _last_business_day(today: date, calendar: object | None = None) -> date:
+    if calendar is not None:
+        return calendar.calendar_for(today.year).previous_business_day(today)
     current = today
     while current.weekday() >= 5:
         current -= timedelta(days=1)
     return current
 
 
-def is_current(metadata: dict[str, object], today: date | None = None) -> bool:
+def is_current(
+    metadata: dict[str, object],
+    today: date | None = None,
+    calendar: object | None = None,
+) -> bool:
     """Return whether the cached dataset reaches the current/last business day."""
     raw = metadata.get("last_data_date")
     if not isinstance(raw, str):
@@ -63,18 +69,23 @@ def is_current(metadata: dict[str, object], today: date | None = None) -> bool:
     except ValueError:
         return False
     today = today or datetime.now(UTC).date()
-    return latest >= _last_business_day(today)
+    return latest >= _last_business_day(today, calendar)
 
 
 def ttl_for(
     metadata: dict[str, object],
     today: date | None = None,
     resource: str = "vendas",
+    calendar: object | None = None,
 ) -> timedelta:
     """Return the TTL for a cached resource metadata."""
     if resource_spec(resource).ttl_policy == TTL_DAILY:
         return DAILY_TTL
-    return CURRENT_TTL if is_current(metadata, today) else HISTORICAL_TTL
+    return (
+        CURRENT_TTL
+        if is_current(metadata, today, calendar)
+        else HISTORICAL_TTL
+    )
 
 
 def _valid_metadata(data: object) -> bool:
@@ -101,10 +112,12 @@ class TesouroCache:
         self: TesouroCache,
         cache_dir: str | Path | None = None,
         resource: str = "vendas",
+        calendar: object | None = None,
     ) -> None:
         """Initialize the cache directory for a logical resource."""
         self.cache_dir = Path(cache_dir) if cache_dir else tesouro_cache_dir()
         self.spec: TesouroResourceSpec = resource_spec(resource)
+        self.calendar = calendar
 
     @property
     def csv_path(self: TesouroCache) -> Path:
@@ -164,7 +177,7 @@ class TesouroCache:
         if checked.tzinfo is None:
             checked = checked.replace(tzinfo=UTC)
         return now - checked < ttl_for(
-            metadata, now.date(), self.spec.key
+            metadata, now.date(), self.spec.key, self.calendar
         )
 
     def save(self: TesouroCache, data: bytes, metadata: dict[str, object]) -> None:

@@ -89,8 +89,10 @@ def days_ago(base_date: str, days: int) -> str:
     return (parsed - timedelta(days=days)).isoformat()
 
 
-def evolution_dates(base_date: str) -> list[str]:
+def evolution_dates(base_date: str, calendar: object | None = None) -> list[str]:
     """Retorna as datas da janela de evolução relativas a ``base_date``."""
+    if calendar is not None:
+        return list(calendar.evolution_targets(base_date))
     return [days_ago(base_date, days) for days in EVOLUTION_DAYS]
 
 

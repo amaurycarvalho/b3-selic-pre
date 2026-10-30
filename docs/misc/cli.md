@@ -16,6 +16,7 @@ b3-selic-pre tesouro-resgates [opções]
 b3-selic-pre tesouro-estoque [opções]
 b3-selic-pre mercado [opções]
 b3-selic-pre reservas [opções]
+b3-selic-pre feriados [opções]
 b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
@@ -36,6 +37,7 @@ Executar sem argumentos é equivalente a `gui`.
 | `tesouro-estoque` | Consulta o estoque mensal, com filtros por mês, agregação e `--saida`.         |
 | `mercado`      | Consulta ou exporta séries de dólar e ouro, com cenário e indicadores.           |
 | `reservas`     | Consulta ou exporta as reservas internacionais do BCB, com CSV/JSON e `--saida`. |
+| `feriados`     | Lista, consulta ou exporta o calendário de feriados por ano.                     |
 | `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
@@ -57,9 +59,11 @@ Executar sem argumentos é equivalente a `gui`.
 | `--silencioso`                | `atualizar`                          | Carrega os dados sem imprimir a análise.         |
 | `--analise`                   | `exportar`                           | Inclui o texto determinístico da análise.        |
 | `--analise-curva curta\|longa` | `exportar`                          | Representação usada na análise (padrão: curta); exige `--analise`. |
-| `--atualizar`                 | `mcp`                                | Carrega os dados de hoje antes de iniciar o servidor. |
+| `--atualizar`                 | `mcp`, `feriados`                    | Carrega os dados de hoje ou revalida o calendário antes de responder. |
+| `--ano AAAA`                  | `feriados`                           | Ano do calendário (padrão: ano corrente).        |
+| `--formato csv\|json`         | `feriados`                           | Formato da listagem/exportação (padrão: csv).    |
 | `--log`                       | `exportar`                           | Inclui uma cópia do log ativo.                   |
-| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`, `tesouro`, `tesouro-resgates`, `tesouro-estoque` | Destino da exportação. |
+| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`, `tesouro`, `tesouro-resgates`, `tesouro-estoque`, `feriados` | Destino da exportação. |
 | `--help`                      | todos                                | Exibe a ajuda.                                   |
 | `--version`                   | todos                                | Exibe a versão e encerra.                        |
 
@@ -68,8 +72,10 @@ Executar sem argumentos é equivalente a `gui`.
 - O formato é `AAAA-MM-DD`.
 - Datas futuras são rejeitadas.
 - O histórico disponível cobre os últimos 30 dias.
-- Se a data cair em sábado ou domingo, a CLI usa a sexta-feira anterior.
+- Se a data cair em sábado, domingo ou feriado, a CLI usa o dia útil anterior.
 - A data é resolvida pela camada de aplicação, com as mesmas regras da GUI.
+- O ajuste de data é informado em `stderr`, com a data solicitada, a resolvida
+  e o motivo.
 
 ## `--curva`
 
@@ -405,6 +411,28 @@ impresso no stdout.
 Códigos de retorno: `0` em sucesso, `1` quando não há dados para a janela ou a
 escrita falha, e `2` para datas inválidas, `--inicio` posterior a `--fim` ou
 múltiplos artefatos sem diretório de destino.
+
+## `feriados`
+
+Lista, consulta ou exporta o calendário de feriados alimentado pela ANBIMA.
+
+```bash
+b3-selic-pre feriados
+b3-selic-pre feriados --ano 2026
+b3-selic-pre feriados --ano 2026 --formato json
+b3-selic-pre feriados --data 2026-04-03
+b3-selic-pre feriados --ano 2026 --formato csv --saida feriados.csv
+b3-selic-pre feriados --ano 2026 --atualizar
+```
+
+Sem `--atualizar`, a listagem e a exportação leem apenas o cache local. Quando
+o ano não está em cache, o comando orienta o uso de `--atualizar`. O CSV usa
+`;` e as colunas `DATA;DIA_SEMANA;NOME;ORIGEM`; o JSON contém `ano`, `origem`,
+`extraido_em` e `feriados`. A consulta de uma data informa se ela é dia útil,
+o motivo do ajuste e o nome do feriado.
+
+Códigos de retorno: `0` em sucesso, `1` sem dados para o ano e `2` para
+argumentos inválidos ou `--ano` combinado com `--data`.
 
 ## `reservas`
 

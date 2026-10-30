@@ -49,19 +49,27 @@ def _parse(value: object) -> date | None:
         return None
 
 
-def last_business_day(reference: date) -> date:
+def last_business_day(
+    reference: date, calendar: object | None = None
+) -> date:
     """Return the most recent business day on or before ``reference``."""
+    if calendar is not None:
+        return calendar.calendar_for(reference.year).previous_business_day(
+            reference
+        )
     current = reference
     while current.weekday() >= 5:
         current -= timedelta(days=1)
     return current
 
 
-def _is_stale(latest: str | None, reference: date) -> bool:
+def _is_stale(
+    latest: str | None, reference: date, calendar: object | None = None
+) -> bool:
     parsed = _parse(latest)
     if parsed is None:
         return False
-    expected = last_business_day(reference)
+    expected = last_business_day(reference, calendar)
     return (expected - parsed).days > STALE_GAP_DAYS
 
 
@@ -162,6 +170,7 @@ def build_view_model(
     options: ReservesOptions | None = None,
     source_errors: tuple[str, ...] = (),
     now: datetime | None = None,
+    calendar: object | None = None,
 ) -> ReservesViewModel:
     """Build the GUI view-model from a reserves payload."""
     options = options or ReservesOptions()
@@ -177,7 +186,9 @@ def build_view_model(
     reference = (now or datetime.now()).date()
     latest = payload.get("latest_data_date")
     stale = _is_stale(
-        latest if isinstance(latest, str) else None, reference
+        latest if isinstance(latest, str) else None,
+        reference,
+        calendar,
     )
     return ReservesViewModel(
         payload=payload,

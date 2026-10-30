@@ -7,10 +7,12 @@ from b3_selic_pre.application.use_cases import (
     FutureQueryDateError,
     OldQueryDateError,
     evolution_dates,
+    nearest_business_day,
+    validate_query_date,
     validate_reference_date,
 )
 from b3_selic_pre.domain.models import RateRecord
-from b3_selic_pre.presentation.cli_data import config_from_settings, resolve_data
+from b3_selic_pre.presentation.cli_data import config_from_settings
 from b3_selic_pre.presentation.mcp.context import ToolContext
 from b3_selic_pre.presentation.mcp.protocol import InvalidParams
 
@@ -76,15 +78,17 @@ def reference(ctx: ToolContext) -> tuple[str, str, bool]:
     return date, origem, bool(records)
 
 
-def resolve_date(args: dict[str, object], ctx: ToolContext) -> str:
-    """Resolve and validate the date requested by a tool."""
+def resolve_business_day(
+    args: dict[str, object], ctx: ToolContext
+) -> object:
+    """Resolve the requested date and return the structured resolution."""
     value = args.get("data")
     if value is not None and not isinstance(value, str):
         raise InvalidParams("data deve ser uma string AAAA-MM-DD")
     if value is None:
         value, _, _ = reference(ctx)
     try:
-        return resolve_data(value)
+        validated = validate_query_date(value)
     except FutureQueryDateError as exc:
         raise mcp_services.DomainError(
             "data_futura",
@@ -103,6 +107,36 @@ def resolve_date(args: dict[str, object], ctx: ToolContext) -> str:
             str(exc),
             "Use uma data no formato AAAA-MM-DD.",
         ) from exc
+    service = ctx.calendar_service
+    if service is None:
+        resolved = nearest_business_day(validated)
+        from b3_selic_pre.application.calendar.service import (
+            BusinessDayResolution,
+        )
+
+        return BusinessDayResolution(
+            data_solicitada=validated,
+            data_resolvida=resolved,
+            ajustada=resolved != validated,
+            motivo=None if resolved == validated else "fim_de_semana",
+            feriado=None,
+            calendario_estado="indisponivel",
+        )
+    return service.resolve_business_day(validated)
+
+
+def resolve_date(args: dict[str, object], ctx: ToolContext) -> str:
+    """Resolve and validate the date requested by a tool."""
+    resolution = resolve_business_day(args, ctx)
+    return str(resolution.data_resolvida)
+
+
+def adjustment_fields(resolution: object) -> dict[str, object]:
+    """Return the business-day adjustment fields for MCP payloads."""
+    as_dict = getattr(resolution, "as_dict", None)
+    if callable(as_dict):
+        return dict(as_dict())
+    return {}
 
 
 def load_current(data: str, ctx: ToolContext) -> list[RateRecord]:

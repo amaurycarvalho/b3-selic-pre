@@ -8,6 +8,7 @@ from pathlib import Path
 from b3_selic_pre import __version__
 from b3_selic_pre.application.tesouro import TesouroSeriesProvider
 from b3_selic_pre.infrastructure.cached_client import CachedB3Client
+from b3_selic_pre.infrastructure.calendar import build_calendar_services
 from b3_selic_pre.infrastructure.desktop import (
     _icon_source,
     create_shortcut,
@@ -19,6 +20,7 @@ from b3_selic_pre.infrastructure.market import build_market_services
 from b3_selic_pre.infrastructure.release_check import fetch_latest_version
 from b3_selic_pre.infrastructure.reserves import build_reserves_services
 from b3_selic_pre.infrastructure.tesouro_btd import TesouroBtdClient
+from b3_selic_pre.infrastructure.tesouro_cache import TesouroCache
 from b3_selic_pre.infrastructure.tesouro_cached_client import (
     TesouroDiretoClient,
 )
@@ -33,6 +35,14 @@ from b3_selic_pre.presentation.logging_utils import (
 )
 from b3_selic_pre.presentation.settings import Settings
 from b3_selic_pre.presentation.tesouro_precompute import TesouroPrecompute
+
+
+def _initial_date(service: object) -> str:
+    from datetime import date
+
+    reference = date.today().isoformat()
+    resolution = service.resolve_business_day(reference)
+    return resolution.data_resolvida
 
 
 def launch_gui(
@@ -62,8 +72,9 @@ def launch_gui(
     root = tk.Tk()
     install_tk_exception_hook(root, logger)
     series_cache = TesouroSeriesCache()
+    calendar = build_calendar_services()
     dependencies = GuiDependencies(
-        client=CachedB3Client(),
+        client=CachedB3Client(calendar=calendar.service),
         shortcut_exists=shortcut_exists,
         create_shortcut=create_shortcut,
         icon_source=_icon_source,
@@ -72,13 +83,20 @@ def launch_gui(
         open_directory=open_directory,
         log_directory=lambda: str(log_dir()),
         latest_version=fetch_latest_version,
-        tesouro_client=TesouroDiretoClient(),
+        tesouro_client=TesouroDiretoClient(
+            cache=TesouroCache(calendar=calendar.service)
+        ),
         tesouro_provider_factory=TesouroSeriesProvider,
         tesouro_series_cache=series_cache,
         tesouro_precompute=TesouroPrecompute(series_cache),
         tesouro_btd=TesouroBtdClient(),
-        market_services=build_market_services(),
-        reserves_services=build_reserves_services(),
+        market_services=build_market_services(calendar=calendar.service),
+        reserves_services=build_reserves_services(
+            calendar=calendar.service
+        ),
+        calendar_service=calendar.service,
+        holiday_cache=calendar.cache,
+        initial_date=lambda: _initial_date(calendar.service),
     )
     app = SelicPreApp(root, dependencies)
 
@@ -88,6 +106,8 @@ def launch_gui(
             app.tesouro_tab.close()
         if getattr(app, "cambio_tab", None) is not None:
             app.cambio_tab.close()
+        if getattr(app, "feriados_tab", None) is not None:
+            app.feriados_tab.close()
         root.quit()
         root.destroy()
 

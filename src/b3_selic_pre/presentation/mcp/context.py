@@ -37,3 +37,5 @@ class ToolContext:
     tesouro_cache_factory: Callable[[str], object] | None = None
     market_services: object | None = None
     reserves_services: object | None = None
+    holiday_cache: object | None = None
+    calendar_service: object | None = None

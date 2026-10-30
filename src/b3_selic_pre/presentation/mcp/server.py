@@ -25,6 +25,8 @@ class McpServer:
         tesouro_cache_factory: object | None = None,
         market_services: object | None = None,
         reserves_services: object | None = None,
+        holiday_cache: object | None = None,
+        calendar_service: object | None = None,
     ) -> None:
         """Crie o servidor com o cache somente leitura injetado."""
         self._dispatcher = Dispatcher(
@@ -34,6 +36,8 @@ class McpServer:
             tesouro_cache_factory=tesouro_cache_factory,
             market_services=market_services,
             reserves_services=reserves_services,
+            holiday_cache=holiday_cache,
+            calendar_service=calendar_service,
         )
         self._out: TextIO | None = None
         self._write_lock = threading.Lock()
@@ -199,6 +203,8 @@ def serve(
     tesouro_cache: object | None = None,
     tesouro_cache_factory: object | None = None,
     market_services: object | None = None,
+    holiday_cache: object | None = None,
+    calendar_service: object | None = None,
 ) -> int:
     """Run an MCP server with the given read-only caches."""
     return McpServer(
@@ -207,4 +213,6 @@ def serve(
         tesouro_cache=tesouro_cache,
         tesouro_cache_factory=tesouro_cache_factory,
         market_services=market_services,
+        holiday_cache=holiday_cache,
+        calendar_service=calendar_service,
     ).run()

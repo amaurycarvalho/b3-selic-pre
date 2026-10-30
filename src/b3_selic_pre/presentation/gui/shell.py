@@ -11,6 +11,7 @@ from typing import Any
 from b3_selic_pre import __version__
 from b3_selic_pre.presentation.gui.about_tab import AboutTab
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
+from b3_selic_pre.presentation.gui.feriados_tab import FeriadosTab
 from b3_selic_pre.presentation.gui.market_tab import CambioOuroTab
 from b3_selic_pre.presentation.gui.selic_pre_tab import SelicPreTab
 from b3_selic_pre.presentation.gui.startup import SETTLE_MS, StartupShield
@@ -26,6 +27,7 @@ TabFactory = Callable[[Widget], Any]
 SELIC_TAB_ID = "selic-pre"
 TESOURO_TAB_ID = "tesouro-direto"
 CAMBIO_TAB_ID = "cambio-ouro"
+FERIADOS_TAB_ID = "feriados"
 SOBRE_TAB_ID = "sobre"
 
 
@@ -53,6 +55,7 @@ class AppShell(WindowMixin):
         self.selic_pre_tab: SelicPreTab | None = None
         self.tesouro_tab: TesouroDiretoTab | None = None
         self.cambio_tab: CambioOuroTab | None = None
+        self.feriados_tab: FeriadosTab | None = None
         self.about_tab: AboutTab | None = None
         self.registry = LazyTabRegistry()
         self._load_window_state(root)
@@ -104,7 +107,10 @@ class AppShell(WindowMixin):
             TESOURO_TAB_ID, "Tesouro Direto", self._build_tesouro
         )
         self.register_tab(
-            CAMBIO_TAB_ID, "Câmbio e Reservas", self._build_cambio
+            CAMBIO_TAB_ID, "Câmbio e Ouro", self._build_cambio
+        )
+        self.register_tab(
+            FERIADOS_TAB_ID, "Feriados", self._build_feriados
         )
         self.register_tab(SOBRE_TAB_ID, "Sobre", self._build_sobre)
 
@@ -157,6 +163,16 @@ class AppShell(WindowMixin):
             icons=self.icons,
         )
         self.cambio_tab = tab
+        return tab
+
+    def _build_feriados(self: AppShell, frame: Widget) -> FeriadosTab:
+        tab = FeriadosTab(
+            frame,
+            root=self.root,
+            dependencies=self.deps,
+            icons=self.icons,
+        )
+        self.feriados_tab = tab
         return tab
 
     def _build_sobre(self: AppShell, frame: Widget) -> AboutTab:

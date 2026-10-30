@@ -160,7 +160,11 @@ class ReservesTabController:
         last = self._raw().snapshot_last_date(RESERVES_SOURCE)
         if force or last is None:
             return shift_months(date.fromisoformat(today), -36).isoformat()
-        return incremental_start(last, self.config.sobreposicao_dias)
+        return incremental_start(
+            last,
+            self.config.sobreposicao_dias,
+            getattr(self.services, "calendar", None),
+        )
 
     def _fetch(
         self: ReservesTabController,

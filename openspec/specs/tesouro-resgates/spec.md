@@ -64,8 +64,14 @@ O download SHALL usar `ETag`/`If-None-Match` e `Last-Modified`/`If-Modified-Sinc
 - **WHEN** os resgates são carregados
 - **THEN** cada recurso SHALL ter seu próprio CSV e seu próprio metadata
 - **THEN** o TTL SHALL ser aplicado individualmente
-- **THEN** recompras SHALL usar 1 hora quando contiver o dia corrente ou o último dia útil e 6 horas quando o dado for histórico
+- **THEN** recompras SHALL usar 1 hora quando contiver o dia corrente ou o último dia útil calendário-aware e 6 horas quando o dado for histórico
 - **THEN** cupom e vencimentos SHALL usar 24 horas
+
+#### Scenario: Feriado não conta como dia útil
+
+- **WHEN** a data corrente é feriado e recompras contêm o dia útil anterior
+- **THEN** recompras SHALL usar o TTL de 1 hora
+- **THEN** o feriado NÃO SHALL forçar o TTL de 6 horas
 
 #### Scenario: Corpo parcial ou não-CSV
 

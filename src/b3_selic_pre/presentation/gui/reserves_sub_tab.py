@@ -214,11 +214,20 @@ class ReservesSubTab:
         if self._closed or self._payload is None:
             return
         errors = tuple(self._payload.get("erros_fontes", []))
-        view = build_view_model(self._payload, self.options, errors)
+        calendar = (
+            getattr(self.controller.services, "calendar", None)
+            if self.controller is not None
+            else None
+        )
+        view = build_view_model(
+            self._payload, self.options, errors, calendar=calendar
+        )
         self._apply_status(view.status_text, view.status_kind)
         self.stale_var.set(view.stale_badge or "")
         self.regime_var.set(view.regime_badge or "")
-        chart = build_chart_data(self._payload, self.options)
+        chart = build_chart_data(
+            self._payload, self.options, calendar=calendar
+        )
         self.panel.draw(render_reserves, chart)
 
     def update_loading_state(self: ReservesSubTab, loading: bool) -> None:

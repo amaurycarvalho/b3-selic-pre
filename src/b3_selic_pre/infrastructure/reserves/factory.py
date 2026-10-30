@@ -23,6 +23,7 @@ class ReservesServices:
     source: object
     raw: MarketRawCache
     precompute: MarketPrecomputeCache
+    calendar: object | None = None
 
 
 def build_reserves_services(
@@ -32,10 +33,11 @@ def build_reserves_services(
     source: object | None = None,
     raw: MarketRawCache | None = None,
     precompute: MarketPrecomputeCache | None = None,
+    calendar: object | None = None,
 ) -> ReservesServices:
     """Build reserves services, allowing fake adapters for tests."""
     reserves_config = config or ReservesConfig()
-    raw_cache = raw or MarketRawCache(cache_dir)
+    raw_cache = raw or MarketRawCache(cache_dir, calendar=calendar)
     precompute_cache = precompute or MarketPrecomputeCache(
         cache_dir, namespace=RESERVES_NAMESPACE
     )
@@ -44,6 +46,7 @@ def build_reserves_services(
         source=source if source is not None else BcbReservesClient(),
         raw=raw_cache,
         precompute=precompute_cache,
+        calendar=calendar,
     )
 
 

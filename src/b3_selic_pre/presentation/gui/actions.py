@@ -43,7 +43,7 @@ class ActionsMixin:
             self.copy_toolbar_btn: "Copia o gráfico como imagem",
             self.view_raw_rb: "Exibe todos os vencimentos disponíveis",
             self.view_consolidated_rb: "Agrupa os vencimentos por ano",
-            self.evolution_cb: "Carrega automaticamente os últimos 7 pregões",
+            self.evolution_cb: "Carrega automaticamente os últimos 5 pregões",
             self.cb_3d: "Exibe a evolução temporal em três dimensões",
             self.sidebar_cb: "Exibe painel com análise da curva",
         }

@@ -120,21 +120,31 @@ def _log_text(active_log: Path | None) -> str | None:
         return None
 
 
+def _calendar_services() -> object:
+    from b3_selic_pre.infrastructure.calendar import build_calendar_services
+
+    return build_calendar_services()
+
+
 def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
     from b3_selic_pre.infrastructure.market import build_market_services
     from b3_selic_pre.infrastructure.reserves import build_reserves_services
     from b3_selic_pre.presentation.mcp.command import run_mcp_command
 
+    calendar = _calendar_services()
     return run_mcp_command(
         args,
         settings,
         cache=DiskCache(),
-        client_factory=CachedB3Client,
+        client_factory=lambda: CachedB3Client(calendar=calendar.service),
         lock_factory=lambda: ActionLock(on_wait=_wait_message),
-        tesouro_cache=TesouroCache(),
-        tesouro_cache_factory=lambda resource: TesouroCache(resource=resource),
-        market_services=build_market_services(),
-        reserves_services=build_reserves_services(),
+        tesouro_cache=TesouroCache(calendar=calendar.service),
+        tesouro_cache_factory=lambda resource: TesouroCache(
+            resource=resource, calendar=calendar.service
+        ),
+        market_services=build_market_services(calendar=calendar.service),
+        reserves_services=build_reserves_services(calendar=calendar.service),
+        calendar_services=calendar,
     )
 
 
@@ -155,8 +165,12 @@ def _dispatch_mercado(args: argparse.Namespace) -> int:
     from b3_selic_pre.infrastructure.market import build_market_services
     from b3_selic_pre.presentation.market_tab import MarketTabController
 
+    calendar = _calendar_services()
     return cli_commands.mercado(
-        args, MarketTabController(build_market_services())
+        args,
+        MarketTabController(
+            build_market_services(calendar=calendar.service)
+        ),
     )
 
 
@@ -164,31 +178,44 @@ def _dispatch_reservas(args: argparse.Namespace) -> int:
     from b3_selic_pre.infrastructure.reserves import build_reserves_services
     from b3_selic_pre.presentation.reserves_tab import ReservesTabController
 
+    calendar = _calendar_services()
     return cli_commands.reservas(
-        args, ReservesTabController(build_reserves_services())
+        args,
+        ReservesTabController(
+            build_reserves_services(calendar=calendar.service)
+        ),
     )
+
+
+def _dispatch_feriados(args: argparse.Namespace) -> int:
+    from b3_selic_pre.presentation.cli_feriados import feriados
+
+    calendar = _calendar_services()
+    return feriados(args, calendar.cache, calendar.service)
 
 
 def _dispatch_curve(
     args: argparse.Namespace, settings: Settings, active_log: Path | None
 ) -> int | None:
+    if args.comando not in ("consultar", "atualizar", "exportar"):
+        return None
+    calendar = _calendar_services()
+    client = CachedB3Client(calendar=calendar.service)
     if args.comando == "consultar":
-        return cli_commands.consultar(args, CachedB3Client())
+        return cli_commands.consultar(args, client, calendar.service)
     if args.comando == "atualizar":
         try:
             with ActionLock(on_wait=_wait_message):
                 return cli_commands.atualizar(
-                    args, settings, CachedB3Client()
+                    args, settings, client, calendar.service
                 )
         except TimeoutError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-    if args.comando == "exportar":
-        log_content = _log_text(active_log) if args.log else None
-        return cli_commands.exportar(
-            args, settings, CachedB3Client(), log_content
-        )
-    return None
+    log_content = _log_text(active_log) if args.log else None
+    return cli_commands.exportar(
+        args, settings, client, log_content, calendar.service
+    )
 
 
 def _dispatch_other(
@@ -201,6 +228,8 @@ def _dispatch_other(
         return _dispatch_mercado(args)
     if args.comando == "reservas":
         return _dispatch_reservas(args)
+    if args.comando == "feriados":
+        return _dispatch_feriados(args)
     if args.comando == "mcp":
         return _run_mcp(args, settings)
     if args.comando == "criar-atalho":

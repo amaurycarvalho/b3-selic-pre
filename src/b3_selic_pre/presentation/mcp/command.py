@@ -33,11 +33,18 @@ def run_mcp_command(
     tesouro_cache_factory: object | None = None,
     market_services: object | None = None,
     reserves_services: object | None = None,
+    calendar_services: object | None = None,
 ) -> int:
     """Prepare data when requested and run the MCP stdio server."""
+    calendar = getattr(calendar_services, "service", None)
     if getattr(args, "atualizar", False) or getattr(args, "data", None) is not None:
         try:
-            data = resolve_data(getattr(args, "data", None))
+            raw = getattr(args, "data", None)
+            data = (
+                resolve_data(raw)
+                if calendar is None
+                else resolve_data(raw, calendar)
+            )
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
             return 2
@@ -67,4 +74,6 @@ def run_mcp_command(
         tesouro_cache_factory=tesouro_cache_factory,
         market_services=market_services,
         reserves_services=reserves_services,
+        holiday_cache=getattr(calendar_services, "cache", None),
+        calendar_service=calendar,
     ).run()

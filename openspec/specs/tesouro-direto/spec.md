@@ -85,14 +85,20 @@ O sistema SHALL baixar o CSV com `urllib`, em chunks, com timeout de 60 segundos
 
 O sistema SHALL manter um único CSV cumulativo `vendastesourodireto.csv` e um `metadata.json` no diretório XDG.
 
-O cache SHALL usar TTL condicional (1 hora para o dia corrente/último dia útil; 6 horas para histórico), gravação atômica em bytes e validação antes da substituição. Cache corrompido SHALL ser miss. O cache bruto NÃO SHALL ter housekeeping; a retenção de 3 anos pertence ao cache analítico.
+O cache SHALL usar TTL condicional (1 hora para o dia corrente/último dia útil, considerando fins de semana e feriados; 6 horas para histórico), gravação atômica em bytes e validação antes da substituição. Cache corrompido SHALL ser miss. O cache bruto NÃO SHALL ter housekeeping; a retenção de 3 anos pertence ao cache analítico.
 
 #### Scenario: Dado corrente expira em 1 hora
 
-- **WHEN** o CSV em cache contém o dia corrente ou o último dia útil e `checked_at` tem menos de 1 hora
+- **WHEN** o CSV em cache contém o dia corrente ou o último dia útil calendário-aware e `checked_at` tem menos de 1 hora
 - **THEN** o sistema SHALL reutilizá-lo sem acessar a rede
 - **WHEN** `checked_at` tem 1 hora ou mais
 - **THEN** o sistema SHALL tentar um download condicional
+
+#### Scenario: Feriado não conta como dia útil
+
+- **WHEN** a data corrente é feriado e o CSV contém o dia útil anterior
+- **THEN** o cache SHALL ser considerado corrente e usar TTL de 1 hora
+- **THEN** o sistema NÃO SHALL considerar o cache vencido por causa do feriado
 
 #### Scenario: Dado histórico expira em 6 horas
 

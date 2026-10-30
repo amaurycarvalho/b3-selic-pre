@@ -97,6 +97,11 @@ _JANELA_RESERVAS = {
     "enum": ["12m", "3a"],
     "description": "Janela de reservas (padrão: 12m).",
 }
+_ANO = {
+    "type": "integer",
+    "minimum": 1900,
+    "description": "Ano do calendário de feriados (padrão: ano corrente).",
+}
 
 
 def _schema(
@@ -355,6 +360,38 @@ TOOL_DEFINITIONS: list[dict[str, object]] = [
                 "formato": _FORMATO,
             }
         ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "feriados_listar",
+        "title": "Listar feriados",
+        "description": (
+            "Lista os feriados de um ano apenas no cache local, com data, "
+            "dia da semana, nome e origem, usando paginação por cursor."
+        ),
+        "inputSchema": _schema(
+            {"ano": _ANO, "cursor": _CURSOR, "limite": _LIMITE}
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "feriados_consultar",
+        "title": "Consultar feriado",
+        "description": (
+            "Informa se uma data é dia útil e, quando não for, o motivo e "
+            "o nome do feriado, lendo apenas o cache local."
+        ),
+        "inputSchema": _schema({"data": _DATA}, required=["data"]),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "feriados_exportar",
+        "title": "Exportar feriados",
+        "description": (
+            "Devolve o conteúdo CSV ou JSON dos feriados de um ano, sem "
+            "gravar arquivos e lendo apenas o cache local."
+        ),
+        "inputSchema": _schema({"ano": _ANO, "formato": _FORMATO}),
         "annotations": dict(_READ_ONLY),
     },
     {

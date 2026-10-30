@@ -7,7 +7,6 @@ from typing import Any
 
 from tkcalendar import DateEntry
 
-from b3_selic_pre.application.use_cases import default_reference_date
 from b3_selic_pre.presentation.charts import render_chart
 from b3_selic_pre.presentation.gui.about import AboutMixin
 from b3_selic_pre.presentation.gui.actions import ActionsMixin
@@ -110,7 +109,7 @@ class SelicPreTab(
 
     def _setup_state(self: SelicPreTab, tk: TkModule) -> None:
         """Initialize Tk variables and the initial application state."""
-        self.date_var = tk.StringVar(value=default_reference_date())
+        self.date_var = tk.StringVar(value=self.deps.initial_date())
         self.status_var = tk.StringVar(value="Informe uma data e clique em Buscar.")
         self.view_var = tk.StringVar(value="raw")
         self.evolution_var = tk.BooleanVar(value=False)

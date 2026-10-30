@@ -42,11 +42,13 @@ class CachedB3Client:
         cache_dir: str | None = None,
         ttl_minutes: int = 360,
         max_age_days: int = 365,
+        calendar: object | None = None,
     ) -> None:
         """Initialize the client with the given cache settings."""
         self._cache = DiskCache(cache_dir)
         self._ttl_minutes = ttl_minutes
         self._max_age_days = max_age_days
+        self.calendar = calendar
 
     @_wrap_communication_errors
     def fetch_reference_rates(
@@ -155,7 +157,7 @@ class CachedB3Client:
     ) -> dict[str, list[RateRecord]]:
         """Return historical rates for the evolution window ending at ``base_date``."""
         today = datetime.now(UTC).date().isoformat()
-        dates = evolution_dates(base_date)
+        dates = evolution_dates(base_date, self.calendar)
         results: dict[str, list[RateRecord]] = {}
         cached_count = 0
         progress_callback: Callable[[int, int], None] | None = kwargs.get(

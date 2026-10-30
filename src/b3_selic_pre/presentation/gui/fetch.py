@@ -14,6 +14,7 @@ from b3_selic_pre.application.use_cases import (
     validate_query_date,
 )
 from b3_selic_pre.domain.constants import EVOLUTION_DAYS
+from b3_selic_pre.presentation.calendar_text import adjustment_message
 from b3_selic_pre.presentation.gui_reference import record_reference
 from b3_selic_pre.presentation.logging_utils import log_exception
 from b3_selic_pre.presentation.view_model import historical_status
@@ -28,6 +29,16 @@ logger = logging.getLogger(__name__)
 class FetchMixin:
     """Gerencia a busca de taxas em segundo plano e o tratamento dos resultados."""
 
+    def _calendar_resolution(self: App, value: str) -> Data | None:
+        service = getattr(self.deps, "calendar_service", None)
+        if service is None:
+            return None
+        try:
+            service.ensure_year(int(value[:4]))
+        except Exception as exc:
+            log_exception(logger, exc, "Falha ao garantir o calendário")
+        return service.resolve_business_day(value)
+
     def fetch_rates(self: App) -> None:
         """Busca as taxas para a data informada em segundo plano."""
         try:
@@ -41,12 +52,18 @@ class FetchMixin:
         except ValueError as exc:
             self.set_status(str(exc), msg_type="error")
             return
-        reference_date = nearest_business_day(reference_date)
+        resolution = self._calendar_resolution(reference_date)
+        if resolution is not None:
+            reference_date = resolution.data_resolvida
+        else:
+            reference_date = nearest_business_day(reference_date)
         self.date_var.set(reference_date)
         if self._client is None:
             self.set_status("Cliente de dados não configurado.", msg_type="error")
             return
         self._set_ui_locked(True)
+        if resolution is not None and resolution.ajustada:
+            self.set_status(adjustment_message(resolution), msg_type="warning")
         self._last_reference_date = reference_date
         if self.evolution_var.get():
             self.historical_data = None

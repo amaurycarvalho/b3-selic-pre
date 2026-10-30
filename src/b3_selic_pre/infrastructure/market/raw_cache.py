@@ -49,12 +49,14 @@ class MarketRawCache(SnapshotMixin):
         self: MarketRawCache,
         cache_dir: str | Path | None = None,
         config: MarketConfig | None = None,
+        calendar: object | None = None,
     ) -> None:
         """Initialize the raw cache under ``cache_dir``."""
         self.cache_dir = (
             Path(cache_dir) if cache_dir else market_cache_root()
         )
         self.config = config or MarketConfig()
+        self.calendar = calendar
         self.raw_dir = self.cache_dir / "raw"
 
     def path(self: MarketRawCache, fonte: str, data: str) -> Path:
@@ -213,7 +215,9 @@ class MarketRawCache(SnapshotMixin):
         self: MarketRawCache, data_date: str, reference: str | None = None
     ) -> int | None:
         """Return the TTL for a data date, or ``None`` when immutable."""
-        return ttl_minutes(self.config, data_date, reference)
+        return ttl_minutes(
+            self.config, data_date, reference, self.calendar
+        )
 
     def is_fresh(
         self: MarketRawCache, fonte: str, data: str, reference: str | None = None

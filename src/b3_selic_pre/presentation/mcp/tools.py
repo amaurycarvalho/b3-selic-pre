@@ -6,13 +6,7 @@ from collections.abc import Callable
 
 from b3_selic_pre.presentation.mcp.catalog import TOOL_NAMES
 from b3_selic_pre.presentation.mcp.context import ToolContext
-from b3_selic_pre.presentation.mcp.protocol import InvalidParams
-from b3_selic_pre.presentation.mcp.reserves_handlers import (
-    reservas_exportar,
-    reservas_indicadores,
-    reservas_serie,
-)
-from b3_selic_pre.presentation.mcp.tool_handlers import (
+from b3_selic_pre.presentation.mcp.curve_handlers import (
     analise,
     consultar_curva,
     data_referencia,
@@ -20,6 +14,19 @@ from b3_selic_pre.presentation.mcp.tool_handlers import (
     evolucao,
     exportar,
     listar_datas,
+)
+from b3_selic_pre.presentation.mcp.feriados_handlers import (
+    feriados_consultar,
+    feriados_exportar,
+    feriados_listar,
+)
+from b3_selic_pre.presentation.mcp.protocol import InvalidParams
+from b3_selic_pre.presentation.mcp.reserves_handlers import (
+    reservas_exportar,
+    reservas_indicadores,
+    reservas_serie,
+)
+from b3_selic_pre.presentation.mcp.tool_handlers import (
     mercado_exportar,
     mercado_indicadores,
     mercado_previsao,
@@ -51,6 +58,9 @@ _HANDLERS: dict[str, Handler] = {
     "reservas_serie": reservas_serie,
     "reservas_indicadores": reservas_indicadores,
     "reservas_exportar": reservas_exportar,
+    "feriados_listar": feriados_listar,
+    "feriados_consultar": feriados_consultar,
+    "feriados_exportar": feriados_exportar,
 }
 
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-
 from b3_selic_pre.application import mcp_services
 from b3_selic_pre.application.market.export import (
     forecast_csv_from_payload,
@@ -18,6 +16,10 @@ from b3_selic_pre.presentation.market_tab import MarketTabController
 from b3_selic_pre.presentation.mcp import market_tool_inputs as market_inputs
 from b3_selic_pre.presentation.mcp import tool_inputs as inputs
 from b3_selic_pre.presentation.mcp.context import ToolContext
+from b3_selic_pre.presentation.mcp.market_gaps import (
+    market_items,
+    missing_market_dates,
+)
 
 
 def _market_controller(ctx: ToolContext) -> MarketTabController:
@@ -50,19 +52,6 @@ def _market_assets(ativo: str) -> tuple[str, ...]:
     return ("usd", "ouro") if ativo == "ambos" else (ativo,)
 
 
-def _market_items(payload: dict[str, object]) -> list[dict[str, object]]:
-    series = payload.get("series")
-    items: list[dict[str, object]] = []
-    for data in (series if isinstance(series, dict) else {}).values():
-        if isinstance(data, dict):
-            items.extend(
-                item
-                for item in data.get("itens", []) or []
-                if isinstance(item, dict)
-            )
-    return sorted(items, key=lambda item: (str(item.get("data")), str(item.get("ativo"))))
-
-
 def mercado_serie(
     args: dict[str, object], ctx: ToolContext
 ) -> dict[str, object]:
@@ -85,7 +74,7 @@ def mercado_serie(
             "Execute `b3-selic-pre mercado --atualizar` para atualizar o cache.",
         )
     page, next_cursor = mcp_services.paginate(
-        _market_items(filtered), inputs.cursor(args), inputs.limite(args)
+        market_items(filtered), inputs.cursor(args), inputs.limite(args)
     )
     result: dict[str, object] = {
         "janela": filtered.get("janela"),
@@ -148,23 +137,6 @@ def mercado_indicadores(
     return dict(indicators) if isinstance(indicators, dict) else {}
 
 
-def _missing_market_dates(
-    payload: dict[str, object], inicio: str, fim: str
-) -> list[str]:
-    present = {str(item.get("data")) for item in _market_items(payload)}
-    try:
-        current = date.fromisoformat(inicio)
-        end = date.fromisoformat(fim)
-    except ValueError:
-        return []
-    missing: list[str] = []
-    while current <= end:
-        if current.weekday() < 5 and current.isoformat() not in present:
-            missing.append(current.isoformat())
-        current += timedelta(days=1)
-    return missing
-
-
 def mercado_exportar(
     args: dict[str, object], ctx: ToolContext
 ) -> dict[str, object]:
@@ -188,10 +160,11 @@ def mercado_exportar(
         )
     window = filtered.get("janela")
     window = window if isinstance(window, dict) else {}
-    missing = _missing_market_dates(
+    missing = missing_market_dates(
         filtered,
         inicio or str(window.get("inicio", "")),
         fim or str(window.get("fim", "")),
+        getattr(ctx, "calendar_service", None),
     )
     if market_inputs.market_format(args) == "json":
         return {

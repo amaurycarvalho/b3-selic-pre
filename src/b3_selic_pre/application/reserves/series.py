@@ -32,7 +32,17 @@ def shift_months(value: date, months: int) -> date:
     return date(year, month, min(value.day, last_day))
 
 
-def incremental_start(last_date: str, overlap_days: int = 5) -> str:
+def _is_business_day(current: date, calendar: object | None) -> bool:
+    if calendar is None:
+        return current.weekday() < 5
+    return calendar.calendar_for(current.year).is_business_day(current)
+
+
+def incremental_start(
+    last_date: str,
+    overlap_days: int = 5,
+    calendar: object | None = None,
+) -> str:
     """Return the start date, receding ``overlap_days`` business days."""
     try:
         current = date.fromisoformat(last_date)
@@ -41,7 +51,7 @@ def incremental_start(last_date: str, overlap_days: int = 5) -> str:
     remaining = max(0, overlap_days)
     while remaining > 0:
         current -= timedelta(days=1)
-        if current.weekday() < 5:
+        if _is_business_day(current, calendar):
             remaining -= 1
     return current.isoformat()
 

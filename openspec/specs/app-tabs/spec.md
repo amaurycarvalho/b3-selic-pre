@@ -8,14 +8,14 @@ Organizar a janela principal em abas por classe de ativo, com carregamento lazy 
 
 ### Requirement: Abas de nível superior
 
-A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre`, nesta ordem.
+A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre`, nesta ordem.
 
 `SELIC Pré` SHALL ser a aba padrão. A antiga janela separada de Tesouro Direto NÃO SHALL existir.
 
 #### Scenario: Abas são exibidas
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre` SHALL estar visíveis
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre` SHALL estar visíveis
 - **THEN** `SELIC Pré` SHALL estar selecionada
 
 #### Scenario: Sem janela separada
@@ -56,12 +56,18 @@ A aba padrão SHALL ser construída no startup. Abas ocultas NÃO SHALL ser cons
 
 - **WHEN** a aplicação inicia
 - **THEN** `SELIC Pré` SHALL ser construída
-- **THEN** `Tesouro Direto` e suas sub-abas NÃO SHALL ser construídas
+- **THEN** `Tesouro Direto`, `Câmbio e Ouro` e `Feriados` NÃO SHALL ser construídas
 
 #### Scenario: Primeira exibição constrói
 
 - **WHEN** o usuário seleciona `Tesouro Direto` pela primeira vez
 - **THEN** o conteúdo SHALL ser construído
+
+#### Scenario: Primeira exibição de Feriados constrói
+
+- **WHEN** o usuário seleciona `Feriados` pela primeira vez
+- **THEN** a aba SHALL ser construída lendo apenas o cache do calendário
+- **THEN** nenhuma requisição de rede SHALL ser iniciada
 
 #### Scenario: Segunda exibição reutiliza
 
@@ -78,9 +84,9 @@ A aba padrão SHALL ser construída no startup. Abas ocultas NÃO SHALL ser cons
 
 O shell SHALL manter um registro determinístico de abas, com identificador único e rótulo.
 
-A aba `Câmbio e Reservas` SHALL ser registrada sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
+As abas `Câmbio e Ouro` e `Feriados` SHALL ser registradas sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
 
-O sub-notebook de `Câmbio e Reservas` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
+O sub-notebook de `Câmbio e Ouro` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
 
 #### Scenario: Aba registrada aparece
 
@@ -109,12 +115,17 @@ O sub-notebook de `Câmbio e Reservas` SHALL manter um registro determinístico 
 
 #### Scenario: Câmbio registrada
 
-- **WHEN** a change de Câmbio e Reservas é aplicada
-- **THEN** a aba `Câmbio e Reservas` SHALL estar registrada entre `Tesouro Direto` e `Sobre`
+- **WHEN** a change de Câmbio e Ouro é aplicada
+- **THEN** a aba `Câmbio e Ouro` SHALL estar registrada entre `Tesouro Direto` e `Feriados`
+
+#### Scenario: Feriados registrada
+
+- **WHEN** a change de Calendário de Feriados é aplicada
+- **THEN** a aba `Feriados` SHALL estar registrada entre `Câmbio e Ouro` e `Sobre`
 
 ### Requirement: Aba Sobre
 
-A janela principal SHALL exibir uma aba `Sobre` à direita de `Câmbio e Reservas`.
+A janela principal SHALL exibir uma aba `Sobre` à direita de `Feriados`.
 
 A aba SHALL replicar o conteúdo e as funcionalidades do diálogo `Sobre` da aba
 `SELIC Pré`: identidade, versão, data de lançamento, licença, descrição, link do
@@ -124,14 +135,14 @@ repositório, diretório de logs e aviso de nova versão. O botão `Sobre` da ab
 A aba SHALL exibir o conteúdo em um frame e um textbox somente leitura abaixo
 dos botões com seções em negrito e `:` ao final. O texto SHALL resumir a
 aplicação, a sintaxe dos comandos e parâmetros da CLI e o servidor MCP, incluindo
-o que é MCP, as tools disponibilizadas e a sintaxe para iniciar/atualizar o
-servidor.
+o que é MCP, as ferramentas disponibilizadas e a sintaxe para iniciar/atualizar
+o servidor.
 
 #### Scenario: Aba Sobre visível
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reservas` e `Sobre` SHALL estar disponíveis
-- **THEN** `Sobre` SHALL estar à direita de `Câmbio e Reservas`
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre` SHALL estar disponíveis
+- **THEN** `Sobre` SHALL estar à direita de `Feriados`
 
 #### Scenario: Funcionalidades preservadas
 

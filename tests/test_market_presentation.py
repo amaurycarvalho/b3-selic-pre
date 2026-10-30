@@ -421,7 +421,8 @@ def test_shell_registers_cambio_between_tesouro_and_sobre():
     assert labels == [
         "SELIC Pré",
         "Tesouro Direto",
-        "Câmbio e Reservas",
+        "Câmbio e Ouro",
+        "Feriados",
         "Sobre",
     ]
 

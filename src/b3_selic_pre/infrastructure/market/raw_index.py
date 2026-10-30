@@ -37,6 +37,14 @@ def last_date(cache: MarketRawCache, fonte: str | None = None) -> str | None:
     return max(dates) if dates else None
 
 
+def _business_day(
+    current: date, calendar: object | None
+) -> bool:
+    if calendar is None:
+        return current.weekday() < 5
+    return calendar.calendar_for(current.year).is_business_day(current)
+
+
 def missing_dates(
     cache: MarketRawCache, fonte: str, inicio: str, fim: str
 ) -> list[str]:
@@ -45,10 +53,11 @@ def missing_dates(
     end = _parse_date(fim)
     if start is None or end is None or start > end:
         return []
+    calendar = getattr(cache, "calendar", None)
     missing: list[str] = []
     current = start
     while current <= end:
-        if current.weekday() < 5 and not cache.path(
+        if _business_day(current, calendar) and not cache.path(
             fonte, current.isoformat()
         ).exists():
             missing.append(current.isoformat())

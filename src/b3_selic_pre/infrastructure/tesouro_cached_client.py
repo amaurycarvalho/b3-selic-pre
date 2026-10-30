@@ -25,6 +25,12 @@ from b3_selic_pre.infrastructure.tesouro_cache import SCHEMA_VERSION, TesouroCac
 from b3_selic_pre.infrastructure.tesouro_cache_presence import (
     TesouroCachePresenceMixin,
 )
+from b3_selic_pre.infrastructure.tesouro_cached_helpers import (
+    cached_value,
+    fallback,
+    from_cache,
+)
+from b3_selic_pre.infrastructure.tesouro_calendar_hook import ensure_calendar
 from b3_selic_pre.infrastructure.tesouro_client import (
     TesouroDownload,
     TesouroResource,
@@ -56,7 +62,11 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
         return self._cache.cache_dir
 
     def _resource_cache(self: TesouroDiretoClient, key: str) -> TesouroCache:
-        return TesouroCache(self._cache.cache_dir, resource=key)
+        return TesouroCache(
+            self._cache.cache_dir,
+            resource=key,
+            calendar=getattr(self._cache, "calendar", None),
+        )
 
     def read_cached_vendas(
         self: TesouroDiretoClient,
@@ -101,14 +111,15 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
         source_callback: Callable[[str], None] | None = None,
     ) -> tuple[list[VendaTesouroDireto], dict[str, object], str]:
         """Return sales, metadata and origin, using the cache when valid."""
+        ensure_calendar(self._cache)
         cached = self._cache.read()
         if cached is not None and not force and self._cache.is_fresh(cached[1]):
-            return self._from_cache(cached, source_callback)
+            return from_cache(cached, source_callback)
         resource = self._source.discover()
         download = self._source.download(
             resource,
-            etag=self._cached_value(cached, "etag"),
-            last_modified=self._cached_value(cached, "last_modified"),
+            etag=cached_value(cached, "etag"),
+            last_modified=cached_value(cached, "last_modified"),
         )
         if download.status == 304:
             if cached is None:
@@ -116,7 +127,7 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
                     "Tesouro respondeu 304 sem cache local disponível."
                 )
             metadata = self._cache.update_checked_at(cached[1], _now())
-            return self._from_cache((cached[0], metadata), source_callback)
+            return from_cache((cached[0], metadata), source_callback)
         if download.data is None:
             raise CommunicationError("Download do Tesouro sem conteúdo.")
         sales = parse_vendas(download.data)
@@ -132,6 +143,7 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
         source_callback: Callable[[str], None] | None = None,
     ) -> tuple[list[ResgateTesouroDireto], dict[str, object], str]:
         """Return all redemption resources, isolating per-resource failures."""
+        ensure_calendar(self._cache)
         resources = self._source.discover_resgates()
         records: list[ResgateTesouroDireto] = []
         metadata: dict[str, dict[str, object]] = {}
@@ -152,10 +164,10 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
                 downloaded = downloaded or origin != "cache"
             except (CommunicationError, TesouroDataError) as exc:
                 errors.append(exc)
-                fallback = self._fallback(cache, key, exc)
-                if fallback is not None:
-                    records.extend(fallback[0])
-                    metadata[key] = fallback[1]
+                previous = fallback(cache, key, exc)
+                if previous is not None:
+                    records.extend(previous[0])
+                    metadata[key] = previous[1]
         if not metadata:
             raise errors[0] if errors else CommunicationError(
                 "Nenhum recurso de resgate disponível."
@@ -174,6 +186,7 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
         source_callback: Callable[[str], None] | None = None,
     ) -> tuple[list[EstoqueTesouroDireto], dict[str, object], str]:
         """Return the monthly stock resource, preserving a valid cache."""
+        ensure_calendar(self._cache)
         cache = self._resource_cache("estoque")
         resource = self._source.discover_estoque()
         records, metadata, origem = self._fetch_one(
@@ -202,8 +215,8 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
             return parser(cached[0]), cached[1], "cache"
         download = self._source.download(
             resource,
-            etag=self._cached_value(cached, "etag"),
-            last_modified=self._cached_value(cached, "last_modified"),
+            etag=cached_value(cached, "etag"),
+            last_modified=cached_value(cached, "last_modified"),
         )
         if download.status == 304:
             if cached is None:
@@ -220,41 +233,6 @@ class TesouroDiretoClient(TesouroCachePresenceMixin):
         )
         cache.save(download.data, metadata)
         return records, metadata, "Tesouro Transparente"
-
-    @staticmethod
-    def _fallback(
-        cache: TesouroCache, key: str, exc: Exception
-    ) -> tuple[list[object], dict[str, object]] | None:
-        cached = cache.read()
-        if cached is None:
-            return None
-        try:
-            records = parse_resgates(cached[0], key)
-        except TesouroDataError:
-            return None
-        logger.warning(
-            "Recurso %s do Tesouro falhou; reutilizando cache: %s", key, exc
-        )
-        return records, cached[1]
-
-    @staticmethod
-    def _cached_value(
-        cached: tuple[bytes, dict[str, object]] | None, key: str
-    ) -> str | None:
-        if cached is None:
-            return None
-        value = cached[1].get(key)
-        return value if isinstance(value, str) and value else None
-
-    def _from_cache(
-        self: TesouroDiretoClient,
-        cached: tuple[bytes, dict[str, object]],
-        source_callback: Callable[[str], None] | None,
-    ) -> tuple[list[VendaTesouroDireto], dict[str, object], str]:
-        sales = parse_vendas(cached[0])
-        if source_callback:
-            source_callback("Cache")
-        return sales, cached[1], "cache"
 
     @staticmethod
     def _resource_metadata(

@@ -84,14 +84,18 @@ def _extreme(
     return selected[1], selected[0]
 
 
-def _is_stale(latest: str | None, reference: date) -> bool:
+def _is_stale(
+    latest: str | None, reference: date, calendar: object | None = None
+) -> bool:
     if not latest:
         return False
     try:
         parsed = date.fromisoformat(latest)
     except ValueError:
         return False
-    return (last_business_day(reference) - parsed).days > STALE_GAP_DAYS
+    return (
+        last_business_day(reference, calendar) - parsed
+    ).days > STALE_GAP_DAYS
 
 
 @dataclass(frozen=True)
@@ -128,6 +132,7 @@ def build_chart_data(
     payload: dict[str, Any],
     options: ReservesOptions | None = None,
     now: datetime | None = None,
+    calendar: object | None = None,
 ) -> ReservesChartData:
     """Build the reserves chart data for the selected window."""
     options = options or ReservesOptions()
@@ -165,7 +170,7 @@ def build_chart_data(
         regime_label=REGIME_LABELS.get(regime_name or "", ""),
         thresholds_text=_thresholds_text(payload.get("limiares")),
         latest_data_date=latest,
-        defasado=_is_stale(latest, reference),
+        defasado=_is_stale(latest, reference, calendar),
         janela=options.janela,
     )
 

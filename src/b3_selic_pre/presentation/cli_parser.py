@@ -15,6 +15,7 @@ SUBCOMMANDS = (
     "tesouro-estoque",
     "mercado",
     "reservas",
+    "feriados",
     "mcp",
     "gui",
     "criar-atalho",
@@ -315,6 +316,38 @@ def build_parser() -> argparse.ArgumentParser:
     reservas.add_argument(
         "--atualizar", action="store_true",
         help="Atualiza a série antes de emitir a saída.",
+    )
+
+    feriados = subparsers.add_parser(
+        "feriados",
+        help="Lista, consulta ou exporta o calendário de feriados.",
+    )
+    feriados.add_argument(
+        "--ano",
+        type=int,
+        default=None,
+        help="Ano do calendário (padrão: ano corrente).",
+    )
+    feriados.add_argument(
+        "--data",
+        default=None,
+        help="Consulta uma data no formato AAAA-MM-DD.",
+    )
+    feriados.add_argument(
+        "--formato",
+        choices=FORMATOS,
+        default="csv",
+        help="Formato da listagem/exportação (padrão: csv).",
+    )
+    feriados.add_argument(
+        "--saida",
+        default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+    feriados.add_argument(
+        "--atualizar",
+        action="store_true",
+        help="Atualiza o calendário na ANBIMA antes de responder.",
     )
 
     mcp = subparsers.add_parser(

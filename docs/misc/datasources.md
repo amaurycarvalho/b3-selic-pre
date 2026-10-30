@@ -271,11 +271,37 @@ $XDG_CACHE_HOME/b3-selic-pre/tesouro/
 ```
 
 Cada recurso tem CSV e metadata independentes, sem poda. O TTL é aplicado por
-recurso: recompras usam 1 hora quando o dado mais recente alcança o dia corrente
-ou o último dia útil e 6 horas quando é histórico; cupom, vencimentos e estoque
-usam 24 horas. Cache ausente, vazio, corrompido, incompleto ou com
+recurso: vendas e recompras usam 1 hora quando o dado mais recente alcança o dia
+corrente ou o último dia útil e 6 horas quando é histórico; cupom, vencimentos e
+estoque usam 24 horas. Cache ausente, vazio, corrompido, incompleto ou com
 `schema_version` antigo é tratado como miss. A escrita do CSV e do metadata é
 atômica. Falha em um recurso preserva a versão anterior e não impede os demais.
+
+O cache analítico derivado fica em
+`$XDG_CACHE_HOME/b3-selic-pre/tesouro/analytics/`, com `manifest.json` gravado
+por último e retenção de três anos ancorada na maior data da fonte. Refresh CLI
+e GUI são serializados por um lock dedicado em
+`$XDG_CACHE_HOME/b3-selic-pre/tesouro/locks/analytics.lock`; leituras são
+somente leitura e nunca removem, renomeiam ou alteram arquivos.
+
+### Semântica de valor e quantidade
+
+A análise percentual do Tesouro Direto usa **valor** como base principal:
+
+- composição do estoque: `Valor Estoque` do título/família dividido pelo total
+  do mês consolidado;
+- apetite do mercado: `Valor` das vendas do título/família dividido pelo total
+  da janela (14 dias, 3 meses, 12 meses ou 3 anos).
+
+`Valor Estoque` segue a metodologia do Tesouro (juros acumulados pela taxa de
+emissão) e **não** representa preço de mercado nem valor de liquidação. O rótulo
+da análise deve deixar essa ressalva explícita.
+
+`Quantidade` é uma visão secundária, nunca a base do headline: o PU varia muito
+entre produtos (por exemplo, `Tesouro Reserva` tem PU próximo de 10 contra cerca
+de 1.000 dos demais), então a quantidade distorce a leitura de exposição e de
+apetite. O fluxo líquido usa apenas vendas menos recompras antecipadas; cupons e
+vencimentos são eventos contratuais e ficam fora do cálculo.
 
 ## Cache local
 

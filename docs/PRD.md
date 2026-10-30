@@ -23,6 +23,7 @@ Pequenos investidores do mercado financeiro brasileiro precisam acompanhar diari
 | P1         | Evolução histórica      | Sobreposição de curvas dos últimos 28, 21, 14, 7 e 0 dias com setas (quiver).                                      |
 | P1         | Painel de análise       | Resumo executivo em linguagem natural com classificação de patamar, inclinação, prêmio de risco e estabilidade.    |
 | P1         | Visão 3D                | Superfície 3D da evolução histórica da curva.                                                                      |
+| P1         | Vendas do Tesouro Direto | Consultar vendas do Tesouro Direto via CLI e MCP, com filtros, agregação e cache cumulativo.                       |
 | P2         | Exportação CSV          | Copiar dados e imagem do gráfico para a área de transferência.                                                     |
 | P2         | Evolução do resumo      | Painel comparativo entre curva atual e anterior com classificação de regime (Bear/Bull/ Twist/Estável).            |
 | P2         | Atalho no desktop       | Instalação de atalho no menu de aplicações do sistema.                                                             |
@@ -37,4 +38,4 @@ Pequenos investidores do mercado financeiro brasileiro precisam acompanhar diari
 
 - Não é um sistema de trading ou análise em tempo real
 - Não substitui sistemas profissionais de risco
-- Tesouro Direto (proposto no RFC-001, fora do escopo atual)
+- GUI, resgates e estoque do Tesouro Direto (changes separadas; vendas já estão disponíveis na CLI e no MCP)

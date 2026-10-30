@@ -9,3 +9,6 @@ DEFAULT_MAX_PAGES = 100
 DEFAULT_B3_TIMEOUT_SECONDS = 60
 
 EVOLUTION_DAYS = [28, 21, 14, 7, 0]
+
+TESOURO_CKAN_BASE_URL = "https://www.tesourotransparente.gov.br/ckan"
+TESOURO_DATASET_NAME = "vendas-do-tesouro-direto"

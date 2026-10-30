@@ -154,6 +154,7 @@ Todas as tools são somente leitura (`readOnlyHint: true`,
 | `evolucao` | `data?`, `cursor?`, `limite?` | resumo por data + datas indisponíveis |
 | `estatisticas` | `data?` | menor/máxima, taxa curta/longa, inclinação e juro real |
 | `listar_datas` | `cursor?`, `limite?` | datas em cache, da mais recente para a mais antiga |
+| `tesouro_vendas` | `titulo?`, `inicio?`, `fim?`, `agregar?`, `cursor?`, `limite?` | vendas do Tesouro no cache local, com filtros, agregação e paginação |
 
 ### `data_referencia`
 
@@ -291,6 +292,42 @@ devolve `{"itens": []}`, não erro.
 }
 ```
 
+### `tesouro_vendas`
+
+Consulta somente o cache local de vendas do Tesouro Direto. A tool não acessa a
+rede, não baixa arquivos e não grava estado. Prepare o cache antes com
+`b3-selic-pre tesouro`.
+
+`titulo` é parcial e ignora caixa/acentos; `inicio` e `fim` são inclusivos em
+`AAAA-MM-DD`. Sem datas, o período é de 30 dias até a maior `data_liquidacao`.
+`agregar=true` devolve `agregados` com `quantidade` e `valor` somados e
+`pu_medio = valor / quantidade`.
+
+```json
+{
+  "dataset": "vendas",
+  "origem": "cache",
+  "data_extracao": "2026-10-20T00:00:00+00:00",
+  "publicado_em": "2026-10-16T10:29:05",
+  "data_maxima_liquidacao": "2026-10-14",
+  "total_registros": 2,
+  "periodo": { "inicio": "2026-09-14", "fim": "2026-10-14" },
+  "registros": [
+    {
+      "tipo_titulo": "Tesouro Selic 2029",
+      "vencimento": "2029-01-02",
+      "data_liquidacao": "2026-10-14",
+      "pu": "15000.000000",
+      "quantidade": "2.00",
+      "valor": "30000.00"
+    }
+  ]
+}
+```
+
+Quando há mais itens que `limite`, a resposta inclui `nextCursor`. Sem cache de
+vendas, devolve `cache_vazio` com a dica de executar `b3-selic-pre tesouro`.
+
 ## Erros de domínio
 
 Erros recuperáveis são devolvidos como resultado estruturado, sem `isError`:
@@ -312,6 +349,8 @@ Motivos usados:
 | `data_antiga` | Data fora da janela de 30 dias |
 | `sem_dados` | Data válida, mas sem registros no cache |
 | `cache_vazio` | Nenhuma data de referência válida nem cache |
+| `periodo_invalido` | `inicio` maior que `fim` na `tesouro_vendas` |
+| `dados_invalidos` | CSV de vendas em cache inválido |
 
 Falhas internas não tratadas são devolvidas com `isError: true`, com mensagem
 genérica; o traceback vai para `stderr` e o servidor continua atendendo.
@@ -322,6 +361,8 @@ Caminhos padrão:
 
 ```text
 $XDG_CACHE_HOME/b3-selic-pre/rates/AAAA-MM-DD.json   # curvas
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/vendastesourodireto.csv
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/metadata.json    # vendas do Tesouro
 $XDG_CONFIG_HOME/b3-selic-pre/settings.json          # data_referencia
 ```
 

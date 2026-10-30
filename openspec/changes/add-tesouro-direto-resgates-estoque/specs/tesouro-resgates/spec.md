@@ -61,7 +61,9 @@ O download SHALL usar `ETag`/`If-None-Match` e `Last-Modified`/`If-Modified-Sinc
 
 - **WHEN** os resgates são carregados
 - **THEN** cada recurso SHALL ter seu próprio CSV e seu próprio metadata
-- **THEN** o TTL de 6 horas SHALL ser aplicado individualmente
+- **THEN** o TTL SHALL ser aplicado individualmente
+- **THEN** recompras SHALL usar 1 hora quando contiver o dia corrente ou o último dia útil e 6 horas quando o dado for histórico
+- **THEN** cupom e vencimentos SHALL usar 24 horas
 
 #### Scenario: Corpo parcial ou não-CSV
 

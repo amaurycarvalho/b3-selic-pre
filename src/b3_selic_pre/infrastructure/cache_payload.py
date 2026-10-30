@@ -93,6 +93,27 @@ def write_atomic(path: Path, content: str) -> None:
             tmp_path.unlink(missing_ok=True)
 
 
+def write_atomic_bytes(path: Path, content: bytes) -> None:
+    """Write ``content`` bytes atomically using a same-dir temp file."""
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp.write(content)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+            tmp_path = Path(tmp.name)
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
+
 def read_entry(path: Path) -> CacheEntry | None:
     """Read one valid cache entry without modifying the file."""
     data = load_payload(path, read_only=True)

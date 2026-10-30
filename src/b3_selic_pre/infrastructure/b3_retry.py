@@ -71,3 +71,29 @@ def retry_empty(  # noqa: UP047
         f"{source} retornou resposta vazia para {date} "
         f"após {attempts} tentativas."
     )
+
+
+def retry_transient(  # noqa: UP047
+    operation: Callable[[], _T],
+    *,
+    source: str,
+    attempts: int = TRANSIENT_RETRY_ATTEMPTS,
+    retry_on: tuple[type[BaseException], ...] = TRANSIENT_ERRORS,
+    backoff: tuple[float, ...] = EMPTY_RETRY_BACKOFF_SECONDS,
+    sleep: Callable[[float], object] = time.sleep,
+    random_fn: Callable[[], float] = random.random,
+) -> _T:
+    """Retry transient failures with jittered exponential backoff."""
+    last_error: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except retry_on as exc:
+            last_error = exc
+            if attempt >= attempts:
+                break
+            ceiling = backoff[min(attempt - 1, len(backoff) - 1)]
+            sleep(ceiling * random_fn())
+    raise CommunicationError(
+        f"{source} falhou após {attempts} tentativas: {last_error}"
+    ) from last_error

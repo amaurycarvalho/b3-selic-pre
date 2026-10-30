@@ -14,7 +14,8 @@ INSTRUCTIONS = (
     "Servidor somente leitura das taxas referenciais SELIC Pré. "
     "Atende apenas com dados do cache local; não acessa a B3 ou a CVM "
     "durante as chamadas. Use data_referencia e listar_datas para descobrir "
-    "o que está disponível."
+    "o que está disponível. Para vendas do Tesouro Direto, use tesouro_vendas "
+    "após preparar o cache com `b3-selic-pre tesouro`."
 )
 
 
@@ -22,11 +23,15 @@ class Dispatcher:
     """Executa métodos de protocolo e tools, devolvendo resultados MCP."""
 
     def __init__(
-        self: Dispatcher, cache: object, settings_factory: object
+        self: Dispatcher,
+        cache: object,
+        settings_factory: object,
+        tesouro_cache: object | None = None,
     ) -> None:
         """Crie o dispatcher com o cache e a fábrica de settings."""
         self.cache = cache
         self.settings_factory = settings_factory
+        self.tesouro_cache = tesouro_cache
 
     def dispatch(
         self: Dispatcher,
@@ -79,6 +84,7 @@ class Dispatcher:
         context = tool_module.ToolContext(
             cache=self.cache,
             settings_factory=self.settings_factory,
+            tesouro_cache=self.tesouro_cache,
         )
         try:
             payload = tool_module.call_tool(

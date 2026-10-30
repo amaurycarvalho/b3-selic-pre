@@ -175,7 +175,8 @@ No Linux, `$XDG_CACHE_HOME` tem fallback para `~/.cache`. O caminho é resolvido
 
 ### 5.3 Regras
 
-- TTL de **6 horas** baseado em `checked_at`.
+- TTL condicional baseado em `checked_at`: **1 hora** quando o CSV contém o dia
+  corrente ou o último dia útil; **6 horas** quando o dado mais recente é histórico.
 - Download para arquivo temporário, validação e substituição atômica em **bytes**.
 - Se o download falhar, a versão válida anterior é preservada.
 - Cache ausente, vencido, vazio, corrompido, incompleto ou com `schema_version` antigo é tratado como miss.
@@ -305,6 +306,13 @@ Nenhuma flag no nível raiz. `b3-selic-pre --tesouro` é inválido e retorna `2`
 
 O subcomando é adicionado em `presentation/cli_parser.py` e implementado em `presentation/cli_commands.py`; o cliente é montado no composition root em `presentation/cli.py`.
 
+### 7.5 MCP
+
+A tool somente leitura `tesouro_vendas` consulta apenas o cache local, com
+filtros, agregação e paginação. Ela não acessa a rede e devolve `cache_vazio`
+quando o CSV ainda não foi preparado; a dica orienta executar
+`b3-selic-pre tesouro`.
+
 ---
 
 ## 8. GUI
@@ -361,7 +369,8 @@ Testes que importam Tkinter ou a GUI são marcados com `@pytest.mark.ui` e respe
 
 ## 10. Testes e qualidade
 
-- Testes headless de cliente, cache, parsing, filtros, agregação, ordenação e formatação.
+- Testes headless de cliente, cache, parsing, filtros, agregação, ordenação,
+  formatação, CLI e tool MCP.
 - Testes de UI apenas para montagem/wiring, sem aumentar o orçamento.
 - `make lint`, `make complexity` e suíte completa, por envolver `domain`, CLI, GUI e cache compartilhado.
 - Teste manual opcional da CLI e da janela.
@@ -372,7 +381,6 @@ Testes que importam Tkinter ou a GUI são marcados com `@pytest.mark.ui` e respe
 
 - Resgates e estoque nesta change; serão tratados na change `add-tesouro-direto-resgates-estoque`.
 - Investidores, operações e taxas dos títulos.
-- Tools MCP para Tesouro.
 - Exportação Tesouro no `exportar` ou botão de cópia dedicado.
 - Gráficos de movimentação.
 - Banco de dados.

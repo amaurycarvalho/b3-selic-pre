@@ -26,6 +26,22 @@ _LIMITE = {
     "minimum": 1,
     "description": "Máximo de itens na página.",
 }
+_TITULO = {
+    "type": "string",
+    "description": "Filtro parcial por título, sem caixa/acentos.",
+}
+_INICIO = {
+    "type": "string",
+    "description": "Data inicial de liquidação AAAA-MM-DD (inclusiva).",
+}
+_FIM = {
+    "type": "string",
+    "description": "Data final de liquidação AAAA-MM-DD (inclusiva).",
+}
+_AGREGAR = {
+    "type": "boolean",
+    "description": "Agrupa as vendas por título.",
+}
 
 
 def _schema(
@@ -117,6 +133,25 @@ TOOL_DEFINITIONS: list[dict[str, object]] = [
             "pontos-base e juro real implícito."
         ),
         "inputSchema": _schema({"data": _DATA}),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "tesouro_vendas",
+        "title": "Vendas do Tesouro Direto",
+        "description": (
+            "Consulta as vendas do Tesouro Direto apenas no cache local, "
+            "com filtros por título e período, agregação e paginação."
+        ),
+        "inputSchema": _schema(
+            {
+                "titulo": _TITULO,
+                "inicio": _INICIO,
+                "fim": _FIM,
+                "agregar": _AGREGAR,
+                "cursor": _CURSOR,
+                "limite": _LIMITE,
+            }
+        ),
         "annotations": dict(_READ_ONLY),
     },
     {

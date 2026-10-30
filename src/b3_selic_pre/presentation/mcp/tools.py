@@ -15,6 +15,7 @@ from b3_selic_pre.presentation.mcp.tool_handlers import (
     evolucao,
     exportar,
     listar_datas,
+    tesouro_vendas,
 )
 from b3_selic_pre.presentation.mcp.tool_inputs import arguments
 
@@ -29,6 +30,7 @@ _HANDLERS: dict[str, Handler] = {
     "evolucao": evolucao,
     "estatisticas": estatisticas,
     "listar_datas": listar_datas,
+    "tesouro_vendas": tesouro_vendas,
 }
 
 

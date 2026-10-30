@@ -21,6 +21,13 @@ from b3_selic_pre.infrastructure.logging_setup import (
     configure_stderr_logging,
     log_dir,
 )
+from b3_selic_pre.infrastructure.tesouro_cache import (
+    TesouroCache,
+    default_tesouro_lock_path,
+)
+from b3_selic_pre.infrastructure.tesouro_cached_client import (
+    TesouroDiretoClient,
+)
 from b3_selic_pre.presentation import cli_commands, cli_parser
 from b3_selic_pre.presentation.logging_utils import (
     communication_exit_code,
@@ -117,7 +124,19 @@ def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
         cache=DiskCache(),
         client_factory=CachedB3Client,
         lock_factory=lambda: ActionLock(on_wait=_wait_message),
+        tesouro_cache=TesouroCache(),
     )
+
+
+def _dispatch_tesouro(args: argparse.Namespace) -> int:
+    try:
+        with ActionLock(
+            path=default_tesouro_lock_path(), on_wait=_wait_message
+        ):
+            return cli_commands.tesouro(args, TesouroDiretoClient())
+    except TimeoutError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
 
 def _dispatch(
@@ -139,6 +158,8 @@ def _dispatch(
         return cli_commands.exportar(
             args, settings, CachedB3Client(), log_content
         )
+    if args.comando == "tesouro":
+        return _dispatch_tesouro(args)
     if args.comando == "mcp":
         return _run_mcp(args, settings)
     if args.comando == "criar-atalho":

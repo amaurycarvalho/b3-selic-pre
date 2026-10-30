@@ -9,7 +9,7 @@ O `b3-selic-pre` hoje:
 - tem cache em disco com escrita atômica, validação de completude e leitura somente leitura (`DiskCache`, `cache_payload.write_atomic`);
 - tem contrato `CommunicationError` para falhas de rede/HTTP e logging compartilhado;
 - tem CLI baseada em subcomandos de verbo, sem flags legadas no nível raiz;
-- tem GUI em janela única, com gráfico, sidebar, statusbar, escudo de inicialização e orçamento de testes de UI;
+- tem GUI em janela única, com gráfico, sidebar, statusbar, escudo de inicialização e orçamento de testes de UI; esta change não altera a GUI;
 - tem servidor MCP somente leitura, sem rede durante o atendimento.
 
 O spike de descoberta foi concluído em 2026-10-20. O dataset `vendas-do-tesouro-direto` contém apenas vendas, com seis colunas e formato confirmado. Resgates e estoque são datasets separados e ficam fora desta change.
@@ -34,18 +34,19 @@ Resumo; evidências completas no RFC-001 renomeado:
 - Reestruturar a feature em capabilities comportamentais, não em camadas.
 - Usar a API CKAN JSON para descoberta do dataset, sem scraping HTML.
 - Usar `urllib`, `csv`, `json`, `decimal`, `unicodedata` e `hashlib`.
-- Implementar cache cumulativo com escrita atômica em bytes, TTL de 6 horas e validação antes de substituir a versão anterior.
-- Implementar o subcomando `tesouro` na CLI, com período padrão de 30 dias, `--agregar` e `--json`.
-- Implementar uma janela separada "Tesouro Direto" na GUI, com período padrão de 12 meses e limite de 5.000 linhas.
+- Implementar cache cumulativo com escrita atômica em bytes, TTL condicional e validação antes de substituir a versão anterior.
+- Implementar o subcomando `tesouro` na CLI, com período padrão de 30 dias, `--agregar`, `--json` e `--saida`.
 - Reutilizar os padrões existentes de XDG, retry, logging, erros e formatação.
-- Manter testes headless para as regras e testes de UI apenas para montagem/wiring.
+- Adicionar a tool MCP somente leitura `tesouro_vendas`.
+- Manter testes headless para as regras, exportação e MCP.
 
 **Non-Goals:**
 
 - Resgates e estoque nesta change.
+- GUI do Tesouro (fica para `add-tesouro-gui`).
+- Percentuais, séries e análise de mercado (ficam para `add-tesouro-analise-percentuais`).
 - Investidores, operações e taxas dos títulos.
-- Tools MCP para Tesouro.
-- Exportação Tesouro no subcomando `exportar` ou botão de cópia dedicado.
+- Exportação no subcomando `exportar` ou botão de cópia dedicado; a exportação é via `--saida`.
 - Gráficos de movimentação.
 - Banco de dados (PostgreSQL/SQLite).
 - Agendamento/cron.
@@ -80,16 +81,16 @@ Resumo; evidências completas no RFC-001 renomeado:
 
 **Decisão:** manter um CSV cumulativo (`vendastesourodireto.csv`) e um arquivo de metadados no diretório `$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
 
-- TTL de 6 horas baseado em `checked_at`.
+- TTL condicional baseado em `checked_at`: **1 hora** quando o CSV contém o dia corrente ou o último dia útil; **6 horas** quando o dado mais recente é histórico.
 - Download condicional com `ETag`/`If-Modified-Since`; `304` reutiliza o cache e atualiza apenas `checked_at`.
 - Download para arquivo temporário, validação e substituição atômica em **bytes** via `write_atomic_bytes` (ou generalização de `cache_payload.write_atomic`).
 - Se o download falhar, a versão válida anterior é preservada.
 - Metadados incluem `schema_version`, `dataset_name`, `dataset_id`, `resource_id`, `resource_url`, `etag`, `last_modified`, `downloaded_at`, `checked_at`, `size_bytes`, `sha256`, `row_count`, `first_data_date` e `last_data_date`.
-- Sem housekeeping: o dataset é cumulativo e basta a última versão.
+- Sem housekeeping no cache bruto: o dataset é cumulativo e basta a última versão. O housekeeping de 3 anos é do cache analítico, em `add-tesouro-analise-percentuais`.
 - Leitura somente leitura para consumidores que não devem alterar o cache.
 - Um novo arquivo com menos linhas é aceito, mas gera aviso de revisão.
 
-**Alternativa rejeitada:** cache por data de download e housekeeping copiados do `DiskCache`. Não fazem sentido para um arquivo cumulativo.
+**Alternativa rejeitada:** podar o CSV bruto por data. Perderia histórico e exigiria re-download em revisões; o cache bruto continua cumulativo.
 
 ### 4. Modelo de domínio confirmado
 
@@ -162,24 +163,29 @@ b3-selic-pre tesouro [--titulo T] [--inicio AAAA-MM-DD] [--fim AAAA-MM-DD]
 
 **Alternativa rejeitada:** `--tesouro` como flag raiz. Contradiz `cli-interface`.
 
-### 8. GUI: janela separada
+### 8. Exportação via `--saida`
 
-**Decisão:** adicionar um botão "Tesouro Direto" na barra superior e abrir uma janela `Toplevel` independente, com tabela, filtros, botão de atualização e status próprio.
+**Decisão:** adicionar `--saida` ao subcomando `tesouro` para gravar o CSV/JSON em arquivo ou diretório, sem sobrecarregar o subcomando `exportar`.
 
-- Botão com ícone e tooltip; incluído nos widgets bloqueados pelo escudo de inicialização.
-- Janela única: segundo clique foca a existente.
-- Ao abrir, carrega o cache válido; se não houver, orienta "clique em Atualizar", sem download automático.
-- Tabela `ttk.Treeview` com colunas `Tipo`, `Vencimento`, `Liquidação`, `PU`, `Quantidade`, `Valor`.
-- Datas `DD/MM/YYYY`; números com vírgula.
-- Período padrão de 12 meses; limite de 5.000 linhas exibidas.
-- Progresso indeterminado; sem percentual, pois não há `Content-Length`.
-- "Atualizar" usa cache; "Ignorar cache" faz requisição condicional.
-- Fechar durante download não pode gerar exceção.
-- Status com origem, instante da extração, maior `data_liquidacao` e contagem.
+- Sem `--saida`, a saída continua no stdout.
+- Com diretório, usar `tesouro-vendas.csv` ou `.json`; com `--agregar`, sufixo `-agregado`.
+- Com arquivo, gravar exatamente no caminho informado.
+- Reutilizar os helpers de escrita de artefatos; falha de I/O retorna código `1`.
 
-**Alternativa rejeitada:** aba em `ttk.Notebook` na janela principal. Introduzir abas na janela principal exigiria reestruturar o gráfico e arriscaria o escudo de inicialização. Um `Notebook` dentro do `Toplevel` do Tesouro seria aceitável no futuro, para resgates/estoque.
+**Alternativa rejeitada:** `exportar --tesouro`. Misturaria a curva SELIC, análise e log com datasets brutos do Tesouro e exigiria regras conflitantes para `--data`.
 
-### 9. Erros e logging
+### 9. Tool MCP `tesouro_vendas`
+
+**Decisão:** expor uma tool MCP somente leitura que lê apenas o cache local de vendas.
+
+- Injetar um leitor de cache do Tesouro no `ToolContext`/`Dispatcher`.
+- Reutilizar filtros, agregação, ordenação e paginação da aplicação.
+- Resposta estruturada com `dataset`, `origem: cache`, metadados, `registros`/`agregados` e `nextCursor`.
+- Sem rede, download ou escrita de arquivos; cache ausente gera `cache_vazio`.
+
+**Alternativa rejeitada:** tool que baixa dados. O servidor MCP é somente leitura durante o atendimento.
+
+### 10. Erros e logging
 
 **Decisão:**
 
@@ -187,9 +193,9 @@ b3-selic-pre tesouro [--titulo T] [--inicio AAAA-MM-DD] [--fim AAAA-MM-DD]
 - `TesouroDataError` para CSV malformado, colunas ausentes, datas/valores inválidos e CSV vazio.
 - Erro de validação de período é erro de uso (`ValueError`/`PeriodoInvalidoError`), código `2`.
 - Falhas esperadas em linha única no log; exceções inesperadas com traceback.
-- CLI em `stderr` com código `1` ou `2`; GUI mostra a mensagem na janela e permanece utilizável.
+- CLI em `stderr` com código `1` ou `2`.
 
-### 10. Reuso de infraestrutura existente
+### 11. Reuso de infraestrutura existente
 
 - `xdg.cache_base()` para o diretório base.
 - `cache_payload.write_atomic_bytes()` (novo) ou generalização de `write_atomic` para bytes.
@@ -197,36 +203,36 @@ b3-selic-pre tesouro [--titulo T] [--inicio AAAA-MM-DD] [--fim AAAA-MM-DD]
 - `application/formatting.py` para padrões de CSV e formatação; helpers específicos em `application/tesouro/_formatting.py`.
 - `ActionLock` com caminho dedicado `.../tesouro.lock` para não bloquear atualizações da B3.
 - `application/errors.CommunicationError`.
-- `GuiDependencies` e `gui/launch.py` para composição.
+- `ToolContext`/`Dispatcher`/`McpServer` com leitor de cache do Tesouro para a tool `tesouro_vendas`.
+- Helpers de escrita de artefatos para `--saida`.
 
-### 11. Testes e governança
+### 12. Testes e governança
 
-- Testes headless para cliente, cache, parsing, filtros, agregação, ordenação e formatação.
-- Testes de UI apenas para montagem/wiring, marcados `@pytest.mark.ui`.
-- Não aumentar o orçamento atual de 5 testes de UI.
-- Rodar `make lint`, `make complexity` e a suíte completa, por envolver `domain`, CLI, GUI e cache.
+- Testes headless para cliente, cache, parsing, filtros, agregação, ordenação, formatação, `--saida` e tool MCP.
+- Rodar `make lint`, `make complexity` e a suíte completa, por envolver `domain`, CLI, MCP e cache.
 - Manter as guardas de arquitetura: `domain` puro, `application` sem UI/rede.
 
 ## Risks / Trade-offs
 
 - **[Portal instável]** → retry transitório com backoff/jitter; mensagens claras; cache anterior preservado.
-- **[CSV grande (~7,5 MB)]** → download em chunks, timeout de 60 s, progresso indeterminado e parsing em memória.
-- **[Tabela com 101 mil linhas]** → filtro de 12 meses e limite de 5.000 linhas exibidas na GUI.
+- **[CSV grande (~7,5 MB)]** → download em chunks, timeout de 60 s e parsing em memória.
 - **[Defasagem e revisões]** → exibir maior `data_liquidacao`; aceitar revisões; não prometer dados de hoje.
 - **[Duplicatas legítimas]** → não deduplicar; agregar por soma de `quantidade`/`valor`.
 - **[Ordem não cronológica]** → ordenar na apresentação.
 - **[Cache corrompido]** → tratar como miss, baixar novamente e substituir atomicamente.
 - **[Download truncado]** → validar `Content-Range` e parsing completo antes de substituir.
 - **[Schema futuro diferente]** → validar cabeçalho e falhar como `TesouroDataError`.
-- **[Orçamento de testes de UI]** → preferir view-model headless e limitar testes de janela ao wiring.
+- **[MCP sem cache de vendas]** → devolver `cache_vazio` com dica para executar `b3-selic-pre tesouro`.
 
 ## Decisões aprovadas
 
 - Escopo: somente vendas; resgates/estoque na change `add-tesouro-direto-resgates-estoque`.
 - `--agregar` por título: incluído.
 - CLI: últimos 30 dias por padrão, relativos à maior data disponível.
-- GUI: 12 meses e limite de 5.000 linhas.
-- CLI/JSON: ISO + ponto; GUI: `DD/MM/YYYY` + vírgula.
+- CLI/JSON: ISO + ponto.
+- Exportação: `--saida` grava CSV/JSON em arquivo ou diretório.
+- MCP: tool `tesouro_vendas` somente leitura, com cache local.
+- Cache: 1 h para o dia corrente/último dia útil; 6 h para histórico; sem poda do CSV bruto.
 - `--no-cache`: requisição condicional; `304` reutiliza o cache.
 - Timeout: 60 s por recurso, com retry.
 - Evidências do spike: somente no RFC-001 renomeado.

@@ -29,6 +29,8 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 ./b3-selic-pre-linux consultar --data 2026-06-10 --curva longa
 ./b3-selic-pre-linux atualizar --data 2026-06-10   # carrega evolução e análise
 ./b3-selic-pre-linux exportar --curva ambas --analise --saida exports/
+./b3-selic-pre-linux tesouro --titulo Selic --agregar
+./b3-selic-pre-linux tesouro --json --saida exports/
 ./b3-selic-pre-linux criar-atalho                  # criar atalho no desktop (Linux)
 ./b3-selic-pre-linux --help                       # exibir ajuda
 ./b3-selic-pre-linux --version                    # exibir versão
@@ -43,6 +45,7 @@ A CLI usa subcomandos de verbo. Os principais são:
 | `consultar` | Consulta as taxas de uma data (`--curva curta\|longa\|ambas`). |
 | `atualizar` | Carrega a evolução da curva e imprime a análise determinística. |
 | `exportar` | Exporta curvas, análise e/ou log da aplicação. |
+| `tesouro` | Consulta vendas do Tesouro Direto (`--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
 | `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
@@ -50,6 +53,12 @@ A CLI usa subcomandos de verbo. Os principais são:
 Parâmetros comuns: `--data AAAA-MM-DD` (padrão: hoje), `--no-cache` e
 `--curva curta|longa|ambas`. A sintaxe antiga (`--today`, `--yearly`, `--gui`,
 `--create-shortcut` e data posicional) foi removida.
+
+O subcomando `tesouro` consulta as vendas do Tesouro Direto com filtros por
+título e período, agregação por título, saída CSV/JSON e exportação via
+`--saida`. Por padrão, usa os últimos 30 dias até a maior data de liquidação
+disponível e mantém um cache cumulativo do CSV em
+`$XDG_CACHE_HOME/b3-selic-pre/tesouro/`.
 
 Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
 exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
@@ -68,9 +77,10 @@ estatísticas usando o cache local.
 
 Durante o atendimento o servidor não acessa a B3/CVM e não grava estado. Ele
 expõe as tools `data_referencia`, `consultar_curva`, `exportar_curva_curta`,
-`exportar_curva_longa`, `analise`, `evolucao`, `estatisticas` e `listar_datas`.
-Detalhes de protocolo, tools e execução em Docker estão em
-[Servidor MCP](docs/misc/mcp.md).
+`exportar_curva_longa`, `analise`, `evolucao`, `estatisticas`, `listar_datas` e
+`tesouro_vendas`. A tool de Tesouro lê apenas o cache local; prepare-o antes com
+`b3-selic-pre tesouro`. Detalhes de protocolo, tools e execução em Docker estão
+em [Servidor MCP](docs/misc/mcp.md).
 
 ### Interface Gráfica
 

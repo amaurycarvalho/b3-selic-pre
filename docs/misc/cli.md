@@ -11,6 +11,7 @@ b3-selic-pre gui                     # abre a GUI
 b3-selic-pre consultar [opções]
 b3-selic-pre atualizar [opções]
 b3-selic-pre exportar [opções]
+b3-selic-pre tesouro [opções]
 b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
@@ -26,6 +27,7 @@ Executar sem argumentos é equivalente a `gui`.
 | `consultar`    | Consulta as taxas de uma data e imprime CSV no terminal.                         |
 | `atualizar`    | Carrega a curva e a janela de evolução, gera e imprime a análise determinística. |
 | `exportar`     | Exporta evolução da curva, análise e/ou log da aplicação.                        |
+| `tesouro`      | Consulta as vendas do Tesouro Direto, com filtros, agregação e `--saida`.         |
 | `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
@@ -35,14 +37,19 @@ Executar sem argumentos é equivalente a `gui`.
 | Parâmetro                     | Comandos                             | Descrição                                        |
 | ----------------------------- | ------------------------------------ | ------------------------------------------------ |
 | `--data AAAA-MM-DD`           | `consultar`, `atualizar`, `exportar`, `mcp` | Data de referência. Padrão: data local corrente. |
-| `--no-cache`                  | `consultar`, `atualizar`, `exportar` | Ignora o cache em disco e busca os dados na B3.  |
+| `--no-cache`                  | `consultar`, `atualizar`, `exportar`, `tesouro` | Ignora o cache em disco e força uma verificação. |
 | `--curva curta\|longa\|ambas` | `consultar`, `exportar`              | Representação da curva.                          |
+| `--titulo T`                  | `tesouro`                            | Filtro parcial por título, sem caixa/acentos.    |
+| `--inicio AAAA-MM-DD`         | `tesouro`                            | Data inicial de liquidação, inclusiva.           |
+| `--fim AAAA-MM-DD`            | `tesouro`                            | Data final de liquidação, inclusiva.             |
+| `--agregar`                   | `tesouro`                            | Agrupa as vendas por título.                     |
+| `--json`                      | `tesouro`                            | Emite payload JSON em vez de CSV.                |
 | `--silencioso`                | `atualizar`                          | Carrega os dados sem imprimir a análise.         |
 | `--analise`                   | `exportar`                           | Inclui o texto determinístico da análise.        |
 | `--analise-curva curta\|longa` | `exportar`                          | Representação usada na análise (padrão: curta); exige `--analise`. |
 | `--atualizar`                 | `mcp`                                | Carrega os dados de hoje antes de iniciar o servidor. |
 | `--log`                       | `exportar`                           | Inclui uma cópia do log ativo.                   |
-| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`                           | Destino da exportação.                           |
+| `--saida ARQUIVO\|DIRETÓRIO`  | `exportar`, `tesouro`                | Destino da exportação.                           |
 | `--help`                      | todos                                | Exibe a ajuda.                                   |
 | `--version`                   | todos                                | Exibe a versão e encerra.                        |
 
@@ -115,6 +122,53 @@ saída como `Datas indisponíveis: ...`.
 
 A análise usa as preferências persistidas de `curva_juros` e `curva_evolucao`,
 as mesmas usadas pela GUI.
+
+## `tesouro`
+
+Consulta as vendas do Tesouro Direto publicadas no Tesouro Transparente. O CSV
+cumulativo é mantido em `$XDG_CACHE_HOME/b3-selic-pre/tesouro/` e atualizado com
+verificação condicional (`ETag`/`Last-Modified`). `304` reutiliza o cache.
+
+```bash
+b3-selic-pre tesouro
+b3-selic-pre tesouro --titulo Selic --inicio 2026-09-01 --fim 2026-10-14
+b3-selic-pre tesouro --agregar
+b3-selic-pre tesouro --json
+b3-selic-pre tesouro --no-cache
+b3-selic-pre tesouro --agregar --saida exports/
+```
+
+Regras:
+
+- `--titulo` é parcial e ignora caixa e acentos;
+- `--inicio`/`--fim` são inclusivos, no formato `AAAA-MM-DD`, usados exatamente
+  como informados (sem ajuste para dia útil);
+- sem datas, o período é de 30 dias até a maior `data_liquidacao` disponível;
+- `--inicio` maior que `--fim` retorna código `2` sem iniciar download;
+- `--agregar` soma quantidade e valor por título e calcula `PU_MEDIO` como
+  `valor / quantidade`;
+- período vazio produz apenas o cabeçalho CSV (ou lista vazia no JSON), com
+  código `0`.
+
+Saídas:
+
+| Formato | Cabeçalho / campos |
+| --- | --- |
+| CSV | `TIPO_TITULO;VENCIMENTO;DATA_LIQUIDACAO;PU;QUANTIDADE;VALOR` |
+| CSV agregado | `TIPO_TITULO;QUANTIDADE;VALOR;PU_MEDIO` |
+| JSON | `fonte`, `origem`, `dataset`, `resource_id`, `data_extracao`, `publicado_em`, `data_maxima_liquidacao`, `total_registros`, `periodo`, `registros` |
+| JSON agregado | os mesmos metadados com `agregados` e `total_agregados` no lugar de `registros` |
+
+O CSV usa `;`, datas ISO e ponto decimal. `PU` tem 6 casas; `quantidade` e
+`valor` têm 2 casas. No JSON, os valores monetários são strings com ponto
+decimal.
+
+Com `--saida`:
+
+- diretório: grava `tesouro-vendas.csv`/`.json`;
+- com `--agregar`, usa `tesouro-vendas-agregado.csv`/`.json`;
+- arquivo: grava exatamente no caminho informado;
+- falha de escrita retorna código `1`.
 
 ## `exportar`
 

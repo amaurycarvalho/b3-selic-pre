@@ -52,9 +52,9 @@ Uma resposta `304` SHALL reutilizar o cache e atualizar apenas `checked_at`. Fal
 
 #### Scenario: Cache com TTL
 
-- **WHEN** o cache tem menos de 6 horas
+- **WHEN** o cache tem menos de 24 horas
 - **THEN** o sistema SHALL reutilizá-lo sem acessar a rede
-- **WHEN** o cache tem 6 horas ou mais
+- **WHEN** o cache tem 24 horas ou mais
 - **THEN** o sistema SHALL tentar um download condicional
 
 #### Scenario: Corpo parcial ou não-CSV
@@ -119,7 +119,7 @@ O parsing SHALL converter `Vencimento do Titulo` de `DD/MM/YYYY` para ISO, `Mes 
 
 O sistema SHALL filtrar por título e por intervalo inclusivo de `mes`.
 
-O padrão da CLI SHALL ser o último mês disponível. O padrão da GUI SHALL ser os últimos 12 meses. A agregação por título SHALL exigir um único mês e NÃO SHALL somar `valor_estoque` entre meses.
+O padrão da CLI SHALL ser o último mês disponível. A agregação por título SHALL exigir um único mês e NÃO SHALL somar `valor_estoque` entre meses.
 
 #### Scenario: Último mês na CLI
 

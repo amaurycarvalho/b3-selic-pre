@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [add-tesouro-direto-vendas](openspec/changes/add-tesouro-direto-vendas/) Adicionar a consulta de vendas do Tesouro Direto à CLI e à GUI, com schema confirmado e cache cumulativo
 
+#### Added
+
+- Adicionar o subcomando `tesouro`, com filtros por título/período, agregação por título, saída CSV/JSON e exportação via `--saida`.
+- Adicionar o modelo `VendaTesouroDireto` e o processamento headless de parsing, filtros, agregação e formatação.
+- Adicionar descoberta CKAN, download condicional (`ETag`/`Last-Modified`/`304`), retry transitório e validação de corpo parcial.
+- Adicionar cache cumulativo atômico em `$XDG_CACHE_HOME/b3-selic-pre/tesouro/`, com TTL de 1 h para dado corrente e 6 h para histórico.
+- Adicionar a tool MCP somente leitura `tesouro_vendas`, com filtros, agregação, paginação e erro `cache_vazio`.
+- Atualizar a documentação da CLI, do MCP, das fontes de dados, o README, o PRD e o RFC-001.
+
 ### [add-tesouro-direto-resgates-estoque](openspec/changes/add-tesouro-direto-resgates-estoque/) Adicionar a consulta de resgates (recompras, cupom e vencimentos) e do estoque mensal do Tesouro Direto à CLI e à GUI
 
 ## [1.0.1] - 2026-10-24

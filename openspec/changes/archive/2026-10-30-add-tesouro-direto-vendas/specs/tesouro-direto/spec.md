@@ -34,9 +34,7 @@ O sistema SHALL validar `success: true`, SHALL exigir exatamente um recurso com 
 
 ### Requirement: Download do CSV com retry e cabeçalhos condicionais
 
-O sistema SHALL baixar o CSV com `urllib`, lendo a resposta em chunks e respeitando timeout padrão de 60 segundos por recurso.
-
-O download SHALL usar `ETag`/`If-None-Match` e `Last-Modified`/`If-Modified-Since` quando disponíveis. Uma resposta `304 Not Modified` SHALL reutilizar o cache existente. Falhas transitórias de rede, HTTP 5xx/429, timeout, corpo vazio, corpo parcial ou resposta cujo `Content-Type` não comece por `text/csv` SHALL ser repetidas com backoff/jitter e, após os retries, sinalizadas como `CommunicationError`.
+O sistema SHALL baixar o CSV com `urllib`, em chunks, com timeout de 60 segundos e retry transitório com backoff/jitter. O download SHALL usar cabeçalhos condicionais quando disponíveis. Falhas transitórias não recuperadas SHALL virar `CommunicationError`.
 
 #### Scenario: Download bem-sucedido
 
@@ -83,17 +81,21 @@ O download SHALL usar `ETag`/`If-None-Match` e `Last-Modified`/`If-Modified-Sinc
 
 ### Requirement: Cache cumulativo atômico
 
-O sistema SHALL manter um único CSV cumulativo `vendastesourodireto.csv` e um arquivo `metadata.json` no diretório XDG `.../b3-selic-pre/tesouro/`.
+O sistema SHALL manter um único CSV cumulativo `vendastesourodireto.csv` e um `metadata.json` no diretório XDG.
 
-O cache SHALL aplicar TTL de 6 horas baseado em `checked_at`, gravação atômica em bytes e validação antes da substituição. Um cache corrompido SHALL ser tratado como miss e baixado novamente. O sistema NÃO SHALL manter housekeeping de arquivos datados, pois o dataset é cumulativo.
+O cache SHALL usar TTL condicional (1 hora para o dia corrente/último dia útil; 6 horas para histórico), gravação atômica em bytes e validação antes da substituição. Cache corrompido SHALL ser miss. O cache bruto NÃO SHALL ter housekeeping; a retenção de 3 anos pertence ao cache analítico.
 
-#### Scenario: Cache válido dentro do TTL
+#### Scenario: Dado corrente expira em 1 hora
 
-- **WHEN** o CSV em cache é válido e `checked_at` tem menos de 6 horas
+- **WHEN** o CSV em cache contém o dia corrente ou o último dia útil e `checked_at` tem menos de 1 hora
 - **THEN** o sistema SHALL reutilizá-lo sem acessar a rede
+- **WHEN** `checked_at` tem 1 hora ou mais
+- **THEN** o sistema SHALL tentar um download condicional
 
-#### Scenario: Cache expirado
+#### Scenario: Dado histórico expira em 6 horas
 
+- **WHEN** o dado mais recente do CSV é histórico e `checked_at` tem menos de 6 horas
+- **THEN** o sistema SHALL reutilizá-lo sem acessar a rede
 - **WHEN** `checked_at` tem 6 horas ou mais
 - **THEN** o sistema SHALL tentar um download condicional
 
@@ -243,9 +245,7 @@ O filtro de título SHALL ser parcial e sem distinção de caixa/acentos. O filt
 
 ### Requirement: Formatação CSV e JSON
 
-O sistema SHALL formatar os registros em CSV para consumo por planilhas e em JSON para consumo estruturado.
-
-O CSV de vendas SHALL usar delimitador `;`, separador decimal `.`, datas ISO e o cabeçalho `TIPO_TITULO;VENCIMENTO;DATA_LIQUIDACAO;PU;QUANTIDADE;VALOR`. O CSV agregado SHALL usar `TIPO_TITULO;QUANTIDADE;VALOR;PU_MEDIO`. O JSON SHALL conter `fonte`, `origem`, `dataset`, `resource_id`, `data_extracao`, `publicado_em`, `data_maxima_liquidacao`, `total_registros`, `periodo` e `registros` ou `agregados`; com agregação, SHALL incluir também `total_agregados`.
+O sistema SHALL formatar vendas em CSV e JSON. O CSV SHALL usar `;`, decimal `.`, datas ISO e os cabeçalhos de vendas/agregado. O JSON SHALL conter os metadados do dataset, `registros` ou `agregados` e valores monetários como strings.
 
 #### Scenario: CSV é gerado
 

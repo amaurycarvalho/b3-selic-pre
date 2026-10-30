@@ -29,6 +29,7 @@ def run_mcp_command(
     client_factory: Callable[[], object],
     lock_factory: Callable[[], object],
     settings_factory: Callable[[], Settings] = Settings,
+    tesouro_cache: object | None = None,
 ) -> int:
     """Prepare data when requested and run the MCP stdio server."""
     if getattr(args, "atualizar", False) or getattr(args, "data", None) is not None:
@@ -59,4 +60,5 @@ def run_mcp_command(
     return McpServer(
         cache=cache,
         settings_factory=settings_factory,
+        tesouro_cache=tesouro_cache,
     ).run()

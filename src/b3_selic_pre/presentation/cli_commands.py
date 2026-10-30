@@ -183,3 +183,10 @@ def exportar(
         )
         return 1
     return write_artifacts(artifacts, args.saida)
+
+
+def tesouro(args: argparse.Namespace, client: object) -> int:
+    """Delega a consulta de vendas ao handler headless do Tesouro."""
+    from b3_selic_pre.presentation.cli_tesouro import tesouro as _tesouro
+
+    return _tesouro(args, client)

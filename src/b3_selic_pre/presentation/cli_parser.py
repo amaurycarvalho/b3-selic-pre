@@ -6,7 +6,15 @@ import argparse
 
 from b3_selic_pre import __version__
 
-SUBCOMMANDS = ("consultar", "atualizar", "exportar", "mcp", "gui", "criar-atalho")
+SUBCOMMANDS = (
+    "consultar",
+    "atualizar",
+    "exportar",
+    "tesouro",
+    "mcp",
+    "gui",
+    "criar-atalho",
+)
 CURVAS = ("curta", "longa", "ambas")
 
 
@@ -91,6 +99,45 @@ def build_parser() -> argparse.ArgumentParser:
         "--saida",
         default=None,
         help="Arquivo ou diretório de destino; omitido imprime um artefato.",
+    )
+
+    tesouro = subparsers.add_parser(
+        "tesouro", help="Consulta as vendas do Tesouro Direto."
+    )
+    tesouro.add_argument(
+        "--titulo",
+        default=None,
+        help="Filtro parcial por título, sem caixa/acentos.",
+    )
+    tesouro.add_argument(
+        "--inicio",
+        default=None,
+        help="Data inicial de liquidação no formato AAAA-MM-DD.",
+    )
+    tesouro.add_argument(
+        "--fim",
+        default=None,
+        help="Data final de liquidação no formato AAAA-MM-DD.",
+    )
+    tesouro.add_argument(
+        "--agregar",
+        action="store_true",
+        help="Agrupa as vendas por título.",
+    )
+    tesouro.add_argument(
+        "--json",
+        action="store_true",
+        help="Emite um payload JSON estruturado.",
+    )
+    tesouro.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Força uma verificação condicional no Tesouro Transparente.",
+    )
+    tesouro.add_argument(
+        "--saida",
+        default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
     )
 
     mcp = subparsers.add_parser(

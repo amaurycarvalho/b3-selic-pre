@@ -1,6 +1,6 @@
 ## Context
 
-A change `add-tesouro-direto-vendas` cria a base para consultar vendas do Tesouro Direto: cliente CKAN, cache, parsing, CLI `tesouro`, janela GUI, view-model headless e contratos de erro. Esta change estende essa base para os datasets de **resgates** e **estoque**, que o portal publica separadamente.
+A change `add-tesouro-direto-vendas` cria a base para consultar vendas do Tesouro Direto: cliente CKAN, cache, parsing, CLI `tesouro` e contratos de erro. Esta change estende essa base para os datasets de **resgates** e **estoque**, que o portal publica separadamente.
 
 O spike complementar confirmou:
 
@@ -18,19 +18,22 @@ Esta change deve ser aplicada depois de `add-tesouro-direto-vendas`.
 
 **Goals:**
 
-- Consultar resgates (recompras, cupom e vencimentos) na CLI e na GUI.
-- Consultar o estoque mensal na CLI e na GUI.
+- Consultar resgates (recompras, cupom e vencimentos) na CLI.
+- Consultar o estoque mensal na CLI.
+- Exportar resgates e estoque via `--saida`.
+- Expor as tools MCP `tesouro_resgates` e `tesouro_estoque`.
 - Generalizar a descoberta e o cache para múltiplos recursos.
 - Adicionar modelos `ResgateTesouroDireto` e `EstoqueTesouroDireto`.
 - Reutilizar `CommunicationError`, `TesouroDataError`, `ActionLock`, XDG, retry e formatação.
-- Manter testes headless e não aumentar o orçamento de UI.
+- Manter testes headless, incluindo exportação e MCP.
 
 **Non-Goals:**
 
 - Vendas (change separada).
+- GUI do Tesouro (fica para `add-tesouro-gui`).
+- Exportação no subcomando `exportar`; a exportação é via `--saida`.
+- Percentuais, séries e análise de mercado (ficam para `add-tesouro-analise-percentuais`).
 - Investidores, operações e taxas dos títulos.
-- Tools MCP.
-- Exportação no subcomando `exportar`.
 - Gráficos.
 - Banco de dados.
 - Agendamento/cron.
@@ -67,12 +70,12 @@ Os UUIDs confirmados servem para validação e testes; a seleção em runtime é
 
 - Arquivos: `recompras.csv`, `cupom.csv`, `vencimentos.csv`, `estoque.csv`.
 - Metadados: um arquivo por recurso (`recompras.metadata.json`, etc.) para permitir TTL e escrita atômica independentes.
-- TTL de 6 horas por recurso, baseado em `checked_at`.
+- TTL condicional por recurso, baseado em `checked_at`: 1 hora para recompras quando o recurso contém o dia corrente ou o último dia útil; 6 horas para o histórico de recompras; 24 horas para estoque, cupom e vencimentos.
 - `ETag`/`If-None-Match`, `Last-Modified`/`If-Modified-Since`; `304` atualiza apenas `checked_at`.
 - Escrita atômica em bytes.
 - Falha em um recurso preserva a versão anterior daquele recurso e não impede os demais.
 - Leitura somente leitura para consumidores que não devem alterar o cache.
-- Sem housekeeping.
+- Sem housekeeping no cache bruto. O housekeeping de 3 anos é do cache analítico, em `add-tesouro-analise-percentuais`.
 
 **Racional:** os recursos têm tamanhos, periodicidades e frequências de mudança diferentes; um cache único dificultaria a invalidação e a atualização parcial.
 
@@ -149,7 +152,7 @@ O parsing deve:
 **Resgates:**
 
 - filtro por `tipo_resgate`, título (parcial, sem caixa/acentos) e `data_resgate` inclusivo;
-- período padrão: 30 dias na CLI e 12 meses na GUI, relativos à maior `data_resgate` disponível;
+- período padrão: 30 dias na CLI, relativo à maior `data_resgate` disponível;
 - agregação por `tipo_resgate` + `tipo_titulo`: somar `quantidade` e `valor`;
 - `PU` médio ponderado apenas quando todas as linhas do grupo têm `PU`; para recompras, `PU_MEDIO` fica vazio;
 - ordenação: `data_resgate` desc, `tipo_resgate`, `tipo_titulo`, `vencimento`, `pu`.
@@ -157,7 +160,7 @@ O parsing deve:
 **Estoque:**
 
 - filtro por título e `mes` inclusivo;
-- padrão: **último mês disponível na CLI** e **12 meses na GUI**;
+- padrão: **último mês disponível na CLI**;
 - a tabela pode mostrar vários meses, mas a agregação por título exige um único mês;
 - NÃO somar `valor_estoque` entre meses; estoque é snapshot, não fluxo;
 - agregação por título dentro do mês: somar `quantidade` e `valor_estoque`; `PU` médio ponderado;
@@ -189,32 +192,40 @@ b3-selic-pre tesouro-estoque [--titulo T] [--inicio AAAA-MM] [--fim AAAA-MM]
 - Códigos `0`/`1`/`2`, como em vendas.
 - `--no-cache` faz verificação condicional; `304` reutiliza o cache.
 
-### 7. GUI
+### 7. Exportação via `--saida`
 
-**Decisão:** adicionar abas à janela "Tesouro Direto" existente.
+**Decisão:** adicionar `--saida` a `tesouro-resgates` e `tesouro-estoque` para gravar CSV/JSON em arquivo ou diretório, sem sobrecarregar `exportar`.
 
-- `ttk.Notebook` com abas `Vendas`, `Resgates` e `Estoque`.
-- `Vendas` permanece como definido na change de vendas.
-- `Resgates`: filtro por tipo (`Todos`, `Recompra`, `Cupom`, `Vencimento`), título e período; 12 meses; limite de 5.000 linhas; atualização e status próprios.
-- `Estoque`: filtro por título e intervalo de meses; 12 meses; tabela de snapshots; agregação por título para o mês selecionado; atualização e status próprios.
-- Cada aba tem seu próprio cache, carregamento e mensagens; falha em uma aba não bloqueia as demais.
-- O download/parsing roda em thread e a UI é atualizada via `root.after`.
-- Fechar a janela durante a carga não pode gerar exceção.
-- O view-model de cada aba é headless.
-- Sem aumento do orçamento de UI.
+- Sem `--saida`, a saída continua no stdout.
+- Com diretório, usar `tesouro-resgates.csv`/`.json` e `tesouro-estoque.csv`/`.json`; com `--agregar`, sufixo `-agregado`.
+- Com arquivo, gravar exatamente no caminho informado.
+- Falha de I/O retorna código `1`.
 
-### 8. Erros e logging
+**Alternativa rejeitada:** `exportar --tesouro`. Misturaria a curva SELIC, análise e log com datasets brutos do Tesouro.
+
+### 8. Tools MCP `tesouro_resgates` e `tesouro_estoque`
+
+**Decisão:** expor duas tools MCP somente leitura que leem apenas o cache local.
+
+- Injetar o leitor de cache do Tesouro no `ToolContext`/`Dispatcher`.
+- Reutilizar filtros, agregação, ordenação e paginação da aplicação.
+- Respostas com `dataset`, `origem: cache`, metadados, `registros`/`agregados` e `nextCursor`.
+- Sem rede, download ou escrita; cache ausente gera `cache_vazio`.
+- `tesouro_estoque` com `agregar` exige um único mês.
+
+**Alternativa rejeitada:** tools que baixam dados. O servidor MCP é somente leitura durante o atendimento.
+
+### 9. Erros e logging
 
 - `CommunicationError` para rede/HTTP/timeout/corpo vazio/parcial/Content-Type inválido.
 - `TesouroDataError` para CSV/schema/valores inválidos e recurso ausente ou ambíguo.
-- Falha em um recurso é reportada no recurso/aba correspondente; os demais continuam disponíveis.
+- Falha em um recurso é reportada no recurso correspondente; os demais continuam disponíveis.
 - Falhas esperadas em linha única; exceções inesperadas com traceback.
-- CLI em `stderr`; GUI no status da aba.
+- CLI em `stderr`.
 
-### 9. Testes e governança
+### 10. Testes e governança
 
-- Testes headless para descoberta, seleção do cupom mais novo, parsing por recurso, cache por recurso, filtros, agregação e formatação.
-- Testes de UI apenas para montagem/wiring, sem aumentar o orçamento de 5.
+- Testes headless para descoberta, seleção do cupom mais novo, parsing por recurso, cache por recurso, filtros, agregação, formatação, `--saida` e tools MCP.
 - `make lint`, `make complexity` e suíte completa.
 - Manter as guardas de arquitetura.
 
@@ -224,12 +235,14 @@ b3-selic-pre tesouro-estoque [--titulo T] [--inicio AAAA-MM] [--fim AAAA-MM]
 - **[Recompras sem `PU`]** → `PU` opcional e `PU_MEDIO` vazio na agregação.
 - **[Estoque é snapshot]** → não somar entre meses; agregação exige um mês.
 - **[Múltiplos downloads]** → cache e status por recurso; falhas independentes.
-- **[CSV adicional ~7,2 MB]** → download em chunks, timeout de 60 s e progresso indeterminado.
+- **[CSV adicional ~7,2 MB]** → download em chunks e timeout de 60 s.
 - **[Portal instável]** → retry transitório e preservação da versão anterior.
 - **[Schema futuro diferente]** → validar cabeçalho e falhar como `TesouroDataError`.
-- **[Volume de resgates]** → 102.502 linhas em recompras; filtros e limite de 5.000 na GUI.
+- **[Volume de resgates]** → 102.502 linhas em recompras; filtros e paginação na CLI/MCP.
+- **[MCP sem cache]** → devolver `cache_vazio` com dica para executar o subcomando de dados correspondente.
 
 ## Dependencies
 
 - `add-tesouro-direto-vendas` deve ser implementada/arquivada antes desta change.
-- Reutiliza `tesouro_client`, `tesouro_cache`, `tesouro_cached_client`, `application/tesouro`, `presentation/tesouro_view_model.py` e a janela `presentation/gui/tesouro.py`.
+- Reutiliza `tesouro_client`, `tesouro_cache`, `tesouro_cached_client`, `application/tesouro` e o leitor de cache do Tesouro no MCP.
+- GUI e análise percentual ficam para `add-tesouro-gui` e `add-tesouro-analise-percentuais`.

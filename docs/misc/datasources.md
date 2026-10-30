@@ -6,14 +6,17 @@ Documentação das URLs, APIs e demais fontes externas consultadas pela aplicaç
 ## Escopo
 
 Esta avaliação cobre todo acesso de rede realizado pela aplicação. O código-fonte
-não usa SDKs, bibliotecas HTTP de terceiros nem serviços de telemetria: as únicas
-fontes externas são dois endpoints do portal de derivativos da B3, acessados via
-`urllib.request` em `src/b3_selic_pre/infrastructure/`.
+não usa SDKs, bibliotecas HTTP de terceiros nem serviços de telemetria: as fontes
+externas são dois endpoints do portal de derivativos da B3 e a API CKAN do Tesouro
+Transparente, acessados via `urllib.request` em
+`src/b3_selic_pre/infrastructure/`.
 
 | Fonte | Base URL | Uso | Autenticação |
 | --- | --- | --- | --- |
 | B3 `GetList` | `https://sistemaswebb3-derivativos.b3.com.br/` | Data corrente e fallback de datas passadas | Nenhuma |
 | B3 `GetDownloadFile` | `https://sistemaswebb3-derivativos.b3.com.br/` | Fonte primária para datas passadas (CSV) | Nenhuma |
+| Tesouro CKAN | `https://www.tesourotransparente.gov.br/ckan` | Descoberta do dataset e da URL do CSV | Nenhuma |
+| Tesouro CSV | URL retornada pelo CKAN | Vendas do Tesouro Direto | Nenhuma |
 
 Páginas do GitHub (releases, repositório) e a página pública de taxas da B3
 citadas no `README.md` são apenas referências para o usuário; não são acessadas
@@ -183,6 +186,73 @@ gerar mensagem amigável na CLI e log em linha única:
 Erros de dados (`ValueError`/`TypeError`) representam resposta fora do contrato e
 seguem o fluxo de erro da aplicação, sem retry.
 
+## Tesouro Transparente (CKAN)
+
+### Descoberta
+
+```text
+GET https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id=vendas-do-tesouro-direto
+```
+
+A resposta JSON deve ter `success: true`, um objeto `result` e exatamente um
+recurso com `format` CSV. O sistema não interpreta HTML nem consome o PDF de
+metadados. Resposta inválida, `success` falso ou ausência de um único CSV gera
+`TesouroDataError`.
+
+### Dataset e recurso
+
+| Item | Valor |
+| --- | --- |
+| Dataset | `vendas-do-tesouro-direto` |
+| CSV | `vendastesourodireto.csv` |
+| Separador | `;` |
+| Datas | `DD/MM/YYYY` |
+| Decimal | vírgula |
+| Cabeçalho | `Tipo Titulo;Vencimento do Titulo;Data de Liquidacao da Venda;PU;Quantidade;Valor` |
+
+### Download e cabeçalhos
+
+O download usa `urllib.request`, em chunks de 64 KiB, timeout de 60 s e
+cabeçalhos condicionais `If-None-Match` (`ETag`) e `If-Modified-Since`
+(`Last-Modified`). O servidor pode responder `304 Not Modified`; nesse caso o
+CSV não é regravado e apenas `checked_at` do metadata é atualizado.
+
+Headers observados no spike:
+
+```text
+Content-Type: text/csv
+Transfer-Encoding: chunked
+Content-Range: bytes 0-7488602/7488603
+ETag: "1792146545.96-7488603"
+Last-Modified: Fri, 16 Oct 2026 10:29:05 GMT
+```
+
+O `Content-Range` é usado para validar o tamanho do corpo. `Content-Type` que não
+começa por `text/csv`, corpo vazio ou corpo parcial é falha transitória; após os
+retries, vira `CommunicationError`.
+
+### Retry e classificação
+
+- até 3 tentativas para rede, timeout, HTTP 429/5xx, corpo vazio/parcial e
+  resposta não-CSV, com backoff exponencial e jitter;
+- HTTP 4xx não transitório gera `CommunicationError` sem retry;
+- CSV malformado, colunas ausentes, datas/valores inválidos e CSV vazio geram
+  `TesouroDataError` e não são cacheados;
+- a versão anterior do cache é preservada quando download ou parsing falham.
+
+### Cache
+
+```text
+$XDG_CACHE_HOME/b3-selic-pre/tesouro/
+├── vendastesourodireto.csv
+└── metadata.json
+```
+
+O CSV é cumulativo e não tem poda. O TTL é condicional: 1 hora quando o dado
+mais recente alcança o dia corrente ou o último dia útil, e 6 horas quando é
+histórico. Cache ausente, vazio, corrompido, incompleto ou com `schema_version`
+antigo é tratado como miss. A escrita do CSV e do metadata é atômica.
+
 ## Cache local
 
 As respostas da B3 são cacheadas em disco (ver `disk-cache`), não sendo uma fonte
@@ -226,3 +296,6 @@ Arquivos relevantes:
 | `infrastructure/b3_client.py` | Seleção de fonte, timeouts e busca histórica |
 | `infrastructure/cached_client.py` | Cache em disco e rótulos de origem |
 | `infrastructure/disk_cache.py` | Persistência e invalidação de entradas |
+| `infrastructure/tesouro_client.py` | CKAN, download condicional, retry e validação de corpo |
+| `infrastructure/tesouro_cache.py` | CSV cumulativo, metadata, TTL condicional e escrita atômica |
+| `infrastructure/tesouro_cached_client.py` | Cliente de vendas com `force` e caminho de cache |

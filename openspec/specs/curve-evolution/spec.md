@@ -12,7 +12,8 @@ The system SHALL provide a function `average_rate_by_year(records)` that compute
 - **THEN** the function returns `{0: 14.5}`
 
 ### Requirement: Multi-date historical rate fetch via GetDownloadFile
-The system SHALL provide a function `fetch_rates_download(date_str)` that uses the B3 `GetDownloadFile` endpoint (base64-encoded CSV) and a function `fetch_historical_rates(base_date)` that fetches SELIC Pré rates for 5 dates: the base date and 7, 14, 21, 28 days prior. The base date SHALL use `GetList` when it is the current date. Earlier dates SHALL use `GetDownloadFile` as the primary source and `GetList` only as a fallback after the CSV retries are exhausted. Every date SHALL use the empty-response retry policy and the completeness validation defined by the B3 rate source contract. A date that remains unavailable after all retries and fallback SHALL be reported and SHALL NOT be cached.
+
+O sistema SHALL prover `fetch_rates_download(date_str)`, usando `GetDownloadFile`, e `fetch_historical_rates(base_date)`, que busca 5 datas: a base e 7, 14, 21 e 28 dias antes. A base SHALL usar `GetList` quando for hoje; datas anteriores SHALL usar `GetDownloadFile` como fonte primária e `GetList` apenas após esgotar as retentativas do CSV. Toda data SHALL seguir a retentativa e a validação de completude; data indisponível SHALL ser reportada e não cacheada.
 
 #### Scenario: GetDownloadFile returns parsed RateRecords
 - **WHEN** `fetch_rates_download("2026-06-09")` is called and the B3 returns valid base64 CSV

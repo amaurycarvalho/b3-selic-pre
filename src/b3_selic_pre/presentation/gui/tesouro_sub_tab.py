@@ -62,6 +62,7 @@ class TesouroSubTab(SubTabUI):
         self._client = dependencies.tesouro_client
         self._series_cache = dependencies.tesouro_series_cache
         self._precompute = dependencies.tesouro_precompute
+        self._btd_client = dependencies.tesouro_btd
         self.controller = TesouroAnaliseController(
             kind=kind,
             loader=make_loader(
@@ -69,6 +70,7 @@ class TesouroSubTab(SubTabUI):
                 kind,
                 series_cache=self._series_cache,
                 precompute=self._precompute,
+                btd_client=self._btd_client,
             ),
             **({"provider_factory": factory} if factory is not None else {}),
         )
@@ -81,7 +83,7 @@ class TesouroSubTab(SubTabUI):
         if self._closed:
             return
         present = cache_available(
-            self._client, self.kind
+            self._client, self.kind, self._btd_client
         ) or series_available(self._series_cache, self.kind)
         if not self._cache_loaded:
             self._cache_loaded = True

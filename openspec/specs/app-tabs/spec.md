@@ -97,18 +97,9 @@ A change de Câmbio SHALL poder registrar sua aba sem alterar o shell. Uma aba N
 
 ### Requirement: Aba Sobre
 
-A janela principal SHALL exibir uma aba `Sobre` à direita de `Tesouro Direto`.
+A janela principal SHALL exibir uma aba `Sobre` à direita de `Tesouro Direto`, replicando as funcionalidades do diálogo `Sobre` da aba `SELIC Pré`.
 
-A aba SHALL replicar o conteúdo e as funcionalidades do diálogo `Sobre` da aba
-`SELIC Pré`: identidade, versão, data de lançamento, licença, descrição, link do
-repositório, diretório de logs e aviso de nova versão. O botão `Sobre` da aba
-`SELIC Pré` SHALL continuar disponível e abrindo o diálogo modal.
-
-A aba SHALL exibir o conteúdo em um frame e um textbox somente leitura abaixo
-dos botões com seções em negrito e `:` ao final. O texto SHALL resumir a
-aplicação, a sintaxe dos comandos e parâmetros da CLI e o servidor MCP, incluindo
-o que é MCP, as tools disponibilizadas e a sintaxe para iniciar/atualizar o
-servidor.
+A aba SHALL exibir um frame e um textbox somente leitura abaixo dos botões, com seções em negrito terminadas em `:`. O botão `Sobre` da aba `SELIC Pré` SHALL continuar abrindo o diálogo modal.
 
 #### Scenario: Aba Sobre visível
 

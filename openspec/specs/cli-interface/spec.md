@@ -339,11 +339,7 @@ Os códigos SHALL ser `0` para sucesso, `1` para falha de comunicação ou de da
 
 ### Requirement: Seleção da representação da análise no exportar
 
-O subcomando `exportar` SHALL aceitar `--analise-curva curta|longa`, com `curta` como valor efetivo padrão. A opção SHALL selecionar a representação usada no texto da análise e NÃO SHALL alterar a seleção de artefatos de `--curva`.
-
-`--analise-curva` SHALL ser válido apenas junto com `--analise`. Quando informado sem `--analise`, a CLI SHALL encerrar com código de uso `2`.
-
-A análise da curva longa SHALL usar a taxa média por ano. A análise da curva curta SHALL usar os registros brutos. A opção NÃO SHALL alterar o formato dos CSVs de `--curva`.
+O subcomando `exportar` SHALL aceitar `--analise-curva curta|longa`, com `curta` como padrão. A opção SHALL selecionar a representação da análise sem alterar os artefatos de `--curva` e SHALL ser válida apenas com `--analise`, senão a CLI SHALL sair com código 2. A análise longa SHALL usar a taxa média por ano; a curta, os registros brutos.
 
 #### Scenario: Análise longa
 

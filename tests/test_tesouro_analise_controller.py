@@ -296,3 +296,39 @@ def test_window_change_does_not_call_the_loader_again():
     controller.view_model().current_chart()
 
     assert calls == [(True, False)]
+
+
+def test_view_model_receives_btd_overlay_status():
+    def loader(cache_only, force):
+        return AnaliseData(
+            estoque=_data().estoque,
+            latest_data_date="2026-09",
+            btd_note="Complemento BTD: 2026-09",
+            btd_status_kind="info",
+        )
+
+    controller = TesouroAnaliseController(kind=KIND_ESTOQUE, loader=loader)
+    controller.load(cache_only=True)
+
+    view_model = controller.view_model()
+    assert view_model.btd_note == "Complemento BTD: 2026-09"
+    assert view_model.btd_status_kind == "info"
+    assert "Complemento BTD: 2026-09" in view_model.status_text
+
+
+def test_view_model_keeps_ckan_data_with_btd_warning():
+    def loader(cache_only, force):
+        return AnaliseData(
+            estoque=_data().estoque,
+            latest_data_date="2026-10",
+            btd_note="Complemento BTD não atualizado: timeout",
+            btd_status_kind="warning",
+        )
+
+    controller = TesouroAnaliseController(kind=KIND_ESTOQUE, loader=loader)
+    controller.load(cache_only=True)
+
+    view_model = controller.view_model()
+    assert view_model.has_data
+    assert view_model.status_kind == "warning"
+    assert "não atualizado" in view_model.status_text

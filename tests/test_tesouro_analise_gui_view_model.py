@@ -236,3 +236,21 @@ def test_status_renders_cache_and_generic_errors():
     assert cache_error.status_kind == "error"
     assert load_error.status_text == "Erro ao carregar: rede indisponível"
     assert load_error.status_kind == "error"
+
+
+def test_status_informs_btd_overlay_contribution():
+    view_model = _view_model(KIND_ESTOQUE)
+    view_model.btd_note = "Complemento BTD: 2026-09"
+    view_model.btd_status_kind = "info"
+
+    assert "Complemento BTD: 2026-09" in view_model.status_text
+    assert view_model.status_kind == "success"
+
+
+def test_status_informs_non_blocking_btd_failure():
+    view_model = _view_model(KIND_ESTOQUE)
+    view_model.btd_note = "Complemento BTD não atualizado: timeout"
+    view_model.btd_status_kind = "warning"
+
+    assert "não atualizado" in view_model.status_text
+    assert view_model.status_kind == "warning"

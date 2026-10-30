@@ -87,17 +87,9 @@ Na inicialização, a aplicação SHALL verificar a data de modificação do arq
 
 ### Requirement: Registro de invocação da CLI
 
-A CLI SHALL gravar exatamente um registro de nível INFO por invocação no arquivo ativo de log, reutilizando o formato, o timestamp local e a rotação diária já definidos para a aplicação.
+A CLI SHALL gravar exatamente um registro de nível INFO por invocação no arquivo ativo de log, reutilizando formato, timestamp local e rotação diária.
 
-O registro SHALL conter:
-
-- o comando acionado, incluindo `gui` para a execução sem argumentos e para o subcomando `gui`;
-- os argumentos reconhecidos e seus valores em formato chave=valor; quando o parsing falhar, o argv bruto;
-- os instantes de início e de término em ISO 8601 com fuso local;
-- a duração em segundos;
-- o código de saída da invocação.
-
-O registro SHALL ser emitido após a conclusão da invocação, inclusive para `--help`, `--version`, erro de parsing, falha de comunicação e exceção não tratada. Uma falha ao gravar o log NÃO SHALL alterar o código de saída nem impedir a operação da CLI.
+O registro SHALL conter o comando (`gui` quando aplicável), os argumentos reconhecidos ou o argv bruto em falha de parsing, início e fim em ISO 8601, duração em segundos e código de saída. Ele SHALL ser emitido após a conclusão, inclusive em erro; falha ao gravar o log NÃO SHALL alterar o código de saída.
 
 #### Scenario: Invocação bem-sucedida registra metadados
 - **WHEN** o usuário executa `consultar --data 2026-06-10 --curva longa` com sucesso

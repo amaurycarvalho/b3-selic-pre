@@ -7,6 +7,7 @@ from decimal import Decimal
 from b3_selic_pre.application.tesouro._series_contract import (
     METRICA_ESTOQUE_PCT,
     METRICA_ESTOQUE_VALOR,
+    EstoqueRecord,
     SeriesPoint,
 )
 from b3_selic_pre.application.tesouro._series_snapshot import (
@@ -17,10 +18,9 @@ from b3_selic_pre.application.tesouro._series_snapshot import (
     ordered,
     percentual,
 )
-from b3_selic_pre.domain.models import EstoqueTesouroDireto
 
 
-def _stock_points(records: list[EstoqueTesouroDireto]) -> list[SeriesPoint]:
+def _stock_points(records: list[EstoqueRecord]) -> list[SeriesPoint]:
     totals: dict[str, Decimal] = {}
     sums: dict[tuple[str, str, str], Decimal] = {}
     for item in records:
@@ -58,7 +58,7 @@ def _stock_points(records: list[EstoqueTesouroDireto]) -> list[SeriesPoint]:
 
 
 def build_estoque_snapshot(
-    estoque: list[EstoqueTesouroDireto] | tuple[EstoqueTesouroDireto, ...],
+    estoque: list[EstoqueRecord] | tuple[EstoqueRecord, ...],
 ) -> SeriesSourceSnapshot | None:
     """Build the retained monthly stock series from parsed stock records."""
     if not estoque:

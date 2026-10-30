@@ -51,6 +51,8 @@ class TesouroAnaliseViewModel:
     error: str | None = None
     error_context: str | None = None
     has_data: bool = False
+    btd_note: str | None = None
+    btd_status_kind: str | None = None
     extra: dict[str, object] = field(default_factory=dict)
 
     @property
@@ -110,6 +112,8 @@ class TesouroAnaliseViewModel:
             parts.append(f"Extração: {self.extracted_at}")
         if self.latest_data_date:
             parts.append(f"Dados até: {self.latest_data_date}")
+        if self.btd_note:
+            parts.append(self.btd_note)
         return "  |  ".join(parts)
 
     @property
@@ -120,6 +124,8 @@ class TesouroAnaliseViewModel:
         if self.error:
             return "error"
         if not self.has_data:
+            return "warning"
+        if self.btd_status_kind == "warning":
             return "warning"
         return "success"
 

@@ -17,9 +17,10 @@ The system SHALL extract quantitative metrics from a list of `RateRecord` object
 - **THEN** all metrics SHALL return safe defaults (0.0, None, or empty)
 
 ### Requirement: AFTER_MIN_UP feature computation window
-The system SHALL compute the `AFTER_MIN_UP` feature using only the recovery zone between the last occurrence of the global minimum and the global maximum. The window start SHALL be `last_min = max(i for i, r in enumerate(rates) if r == rates[min_idx])` — the LAST index where the rate equals the minimum value. When `max_idx > last_min`, the analysis window SHALL be `rates[last_min:max_idx+1]`. When `max_idx <= last_min`, `AFTER_MIN_UP` SHALL be False (no recovery zone exists).
 
-The `after_min_ratio` SHALL be computed as `non_negative_deltas / len(deltas)` over this restricted window, where a delta is non-negative if `rates[k+1] - rates[k] >= 0`. Zero deltas SHALL count as recovery (rate did not decrease). The feature SHALL be True when `after_min_ratio >= config.recuperacao_min_ratio`.
+O sistema SHALL calcular `AFTER_MIN_UP` apenas na zona de recuperação entre a última ocorrência do mínimo global (`last_min`) e o máximo global. Quando `max_idx > last_min`, a janela SHALL ser `rates[last_min:max_idx+1]`; caso contrário, a feature SHALL ser False.
+
+`after_min_ratio` SHALL ser `non_negative_deltas / len(deltas)` nessa janela, contando deltas zero como recuperação. A feature SHALL ser True quando `after_min_ratio >= config.recuperacao_min_ratio`.
 
 #### Scenario: Valley with recovery then plateau
 - **WHEN** min_idx=39, last_min=48, max_idx=138, and the recovery zone from last_min to max contains 90 deltas with 21 strictly positive and 66 zero (all >= 0)
@@ -31,9 +32,10 @@ The `after_min_ratio` SHALL be computed as `non_negative_deltas / len(deltas)` o
 - **THEN** last_min SHALL be 48 and the window SHALL start at index 48, excluding the 9 zero-deltas of the valley floor
 
 ### Requirement: AFTER_MAX_DOWN feature computation window
-The system SHALL compute the `AFTER_MAX_DOWN` feature using only the descent zone between the last occurrence of the global maximum and the global minimum. The window start SHALL be `last_max = max(i for i, r in enumerate(rates) if r == rates[max_idx])`. When `min_idx > last_max`, the analysis window SHALL be `rates[last_max:min_idx+1]`. When `min_idx <= last_max`, `AFTER_MAX_DOWN` SHALL be False (no descent zone exists).
 
-The `after_max_ratio` SHALL be computed as `non_positive_deltas / len(deltas)` over this restricted window, where a delta is non-positive if `rates[k+1] - rates[k] <= 0`. Zero deltas SHALL count as descent (rate did not increase). The feature SHALL be True when `after_max_ratio >= config.recuperacao_min_ratio`.
+O sistema SHALL calcular `AFTER_MAX_DOWN` apenas na zona de descida entre a última ocorrência do máximo global (`last_max`) e o mínimo global. Quando `min_idx > last_max`, a janela SHALL ser `rates[last_max:min_idx+1]`; caso contrário, a feature SHALL ser False.
+
+`after_max_ratio` SHALL ser `non_positive_deltas / len(deltas)` nessa janela, contando deltas zero como descida. A feature SHALL ser True quando `after_max_ratio >= config.recuperacao_min_ratio`.
 
 #### Scenario: Peak with descent
 - **WHEN** last_max=25, min_idx=150, and the descent zone contains 124 deltas with 110 strictly negative and 10 zero (all <= 0)
@@ -67,18 +69,10 @@ The system SHALL classify each curve into exactly one primary class, evaluated i
 - **THEN** primary class SHALL NOT be PLANA (falls through to default PLANA only if all 3 conditions met)
 
 ### Requirement: Level 2 — Structural Characteristics gating policy
-The system SHALL classify structural facts into two categories: **dependent** (requiring a specific primary class context) and **independent** (evaluated regardless of primary class).
 
-Dependent facts SHALL retain `gated_by`:
-- `RECUPERACAO_SUSTENTADA` SHALL be gated by `["VALE"]` (requires valley context)
+O sistema SHALL classificar fatos estruturais em dependentes (exigem contexto de classe primária) e independentes (avaliados sempre).
 
-Independent facts SHALL have no `gated_by` restriction:
-- `ACHATAMENTO` (requires ACHATAMENTO_FLAG)
-- `EMPINAMENTO` (requires EMPINAMENTO_FLAG)
-- `TORCAO` (requires TORCAO_FLAG)
-- `DEGRAUS` (requires STAIRCASE)
-- `MONOTONIA_STRUCT` (requires MONOTONIC)
-- `RECUPERACAO_LONGA` (requires LONG_RECOVERY, new)
+`RECUPERACAO_SUSTENTADA` SHALL ser dependente e gated por `["VALE"]`. `ACHATAMENTO`, `EMPINAMENTO`, `TORCAO`, `DEGRAUS`, `MONOTONIA_STRUCT` e `RECUPERACAO_LONGA` SHALL ser independentes, sem `gated_by`.
 
 #### Scenario: Independent structural fact activates with INDEFINIDA primary class
 - **WHEN** primary class is INDEFINIDA and ACHATAMENTO_FLAG is True
@@ -159,17 +153,10 @@ The system SHALL classify each Fact with a `FactType` enum: `CLASSIFICATION` (Le
 - **THEN** report SHALL have blocks for each type, ordered by level
 
 ### Requirement: InferenceConfig centralizes all thresholds
-The system SHALL define all epsilon thresholds in a single `InferenceConfig` dataclass. Every module that needs a threshold SHALL receive it via `InferenceConfig`, never via hardcoded constant. The dataclass SHALL include: `epsilon_slope`, `epsilon_convexity`, `epsilon_amplitude`, `epsilon_horizontal`, `vale_posicao_max`, `pico_posicao_max`, `recuperacao_min_ratio`, `recuperacao_magnitude`, `recuperacao_longa_min_pct`, `recuperacao_longa_min_ratio`, `recuperacao_longa_min_amplitude`, and all other configurable limits.
 
-New RECUPERACAO_LONGA parameters and their defaults:
+O sistema SHALL centralizar todos os limiares em uma única `InferenceConfig`, injetada nos módulos, sem constantes hardcoded. Ela SHALL incluir limites de slope, convexidade, amplitude, horizontalidade, vale/pico, recuperação e recuperação longa, além dos demais limites configuráveis.
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `recuperacao_longa_min_pct` | 0.15 | Minimum fraction of curve length for a qualifying segment |
-| `recuperacao_longa_min_ratio` | 0.70 | Minimum proportion of positive deltas in the segment |
-| `recuperacao_longa_min_amplitude` | 0.40 | Minimum ratio of segment amplitude to total amplitude |
-
-All existing parameters SHALL retain their current defaults. No existing defaults SHALL be changed.
+`RECUPERACAO_LONGA` SHALL usar defaults 0.15 (fração mínima da curva), 0.70 (proporção de deltas positivos) e 0.40 (amplitude relativa). Nenhum default existente SHALL mudar.
 
 #### Scenario: All thresholds in one place
 - **WHEN** a user wants to adjust the slope threshold
@@ -321,7 +308,21 @@ The system SHALL compute an aggregate score using the ScoringPolicy module to lo
 - **THEN** total score is 9
 
 ### Requirement: Complete score weight table in ScoringPolicy
-The ScoringPolicy SHALL define the following mapping:
+
+A `ScoringPolicy` SHALL definir a tabela completa de pesos por fato e os rótulos de intensidade por faixa de score, mantendo os valores usados pelo cálculo atual.
+
+#### Scenario: Known fact resolves from the weight table
+- **WHEN** a scored Fact such as `TORCAO` is evaluated
+- **THEN** the ScoringPolicy SHALL resolve it to `(score_base +2, weight_level ×3)`
+
+#### Scenario: Intensity label follows the score range
+- **WHEN** the aggregate score falls in `0–2`, `3–5`, `6–8`, `9–11`, or `12+`
+- **THEN** the classified intensity SHALL be Estável, Moderada, Relevante, Significativa, or Estrutural respectively
+
+#### Scenario: Complete score weight table
+
+- **WHEN** a `ScoringPolicy` é consultada
+- **THEN** os pesos SHALL ser:
 
 | Fact ID | Score Base | Weight Level |
 |---------|-----------|-------------|
@@ -341,16 +342,6 @@ The ScoringPolicy SHALL define the following mapping:
 | OSCILACAO | -2 | ×1 |
 | MONOTONIA | 0 | ×1 |
 | VOLATILIDADE_MODERADA | 0 | ×1 |
-
-Classification labels: 0–2 Estável, 3–5 Moderada, 6–8 Relevante, 9–11 Significativa, 12+ Estrutural.
-
-#### Scenario: Known fact resolves from the weight table
-- **WHEN** a scored Fact such as `TORCAO` is evaluated
-- **THEN** the ScoringPolicy SHALL resolve it to `(score_base +2, weight_level ×3)`
-
-#### Scenario: Intensity label follows the score range
-- **WHEN** the aggregate score falls in `0–2`, `3–5`, `6–8`, `9–11`, or `12+`
-- **THEN** the classified intensity SHALL be Estável, Moderada, Relevante, Significativa, or Estrutural respectively
 
 ### Requirement: Report structure — 5 blocks with traceability
 The system SHALL generate a report with 5 blocks: (1) CLASSE PRIMÁRIA, (2) ESTRUTURA, (3) QUALIDADE, (4) INTENSIDADE, (5) RESUMO. Each fact SHALL display its confidence and `derived_from_features` trace. The summary SHALL concatenate templates in fixed order (Primary → Structure → Quality → Intensity). Empty blocks SHALL be omitted.
@@ -398,11 +389,10 @@ The system SHALL automatically regenerate and display the analysis report whenev
 - **THEN** the report text updates to match the current view
 
 ### Requirement: RuleEvaluation — per-rule evaluation state tracking
-The system SHALL track evaluation state for each rule during the classification loop. A `RuleEvaluation` struct SHALL be produced for every evaluated rule, containing: `rule_id`, `matched_features` (list of satisfied required and optional features), `missing_features` (list of unsatisfied required and optional features), `activation_score` (weighted ratio of satisfied to total features), and `activated` (whether the rule generated a Fact).
 
-The `activation_score` SHALL be computed as `Σ pesos_das_features_em_matched_features / Σ pesos_de_todas_as_features_da_regra (required + optional)`. Feature weights SHALL be defined in `FEATURE_WEIGHTS` (see R199 requirement).
+O sistema SHALL rastrear o estado de avaliação de cada regra. Para cada regra avaliada SHALL haver um `RuleEvaluation` com `rule_id`, `matched_features`, `missing_features`, `activation_score` e `activated`.
 
-Rules that fail gating or required-feature checks SHALL still produce a `RuleEvaluation` with `activated=False` and their partial `activation_score`. Rules skipped due to exclusive group already activated SHALL NOT produce an evaluation.
+`activation_score` SHALL ser a razão ponderada entre features satisfeitas e todas as features da regra. Regras que falham no gating ou em features obrigatórias SHALL gerar avaliação com `activated=False`; regras ignoradas por grupo exclusivo NÃO SHALL gerar avaliação.
 
 #### Scenario: Evaluation tracks matched and missing features
 - **WHEN** VALE rule is evaluated with VALLEY_EARLY (True), FINAL_GT_INITIAL (True), AFTER_MIN_UP (True), RECOVERY_STRONG (False), SHORT_END_UP (False)
@@ -425,18 +415,10 @@ Rules that fail gating or required-feature checks SHALL still produce a `RuleEva
 - **THEN** no `RuleEvaluation` SHALL be produced for DESCENDENTE
 
 ### Requirement: R199 — Classe Primaria por Dominancia (consome evaluations, nao reavalia)
-The system SHALL provide a fallback mechanism R199 that activates when no primary class rule generated a Fact during the main evaluation loop. R199 SHALL consume the `RuleEvaluation` records already produced — it SHALL NOT re-evaluate features or rules.
 
-R199 SHALL filter evaluations to those whose rule belongs to `exclusive_group == "PRIMARY_CLASS"` (excluding INDEFINIDA). It SHALL select the evaluation with the highest `activation_score`. If that score is >= 0.70, R199 SHALL generate a Fact for the corresponding class with `confidence = activation_score`, `fact_type = CLASSIFICATION`, and `template_id = "fallback_primary"`. If no evaluation reaches 0.70, R199 SHALL take no action (INDEFINIDA remains).
+O sistema SHALL prover o fallback R199, acionado quando nenhuma regra de classe primária gerar um Fact. R199 SHALL consumir os `RuleEvaluation` já produzidos, sem reavaliar features ou regras.
 
-Feature weights for `activation_score` computation SHALL be:
-
-| Feature | Weight | Rationale |
-|---------|--------|-----------|
-| VALLEY_EARLY, PEAK_EARLY, SIGMOIDAL_SHAPE, TREND_UP, TREND_DOWN, OSCILLATING | 3.0 | Assinaturas estruturais — maximo valor diagnostico |
-| FINAL_GT_INITIAL, FINAL_LT_INITIAL, AFTER_MIN_UP, AFTER_MAX_DOWN, AMPLITUDE_LOW, DELTA_FINAL_LOW, SLOPE_FLAT | 2.0 | Evidencias direcionais e de planicidade |
-| RECOVERY_STRONG, MONOTONIC | 1.5 | Confirmacao contextual |
-| SHORT_END_UP, SHORT_END_DOWN, LONG_END_UP, LONG_END_DOWN, MID_END_UP | 1.0 | Evidencias segmentais |
+R199 SHALL considerar apenas regras com `exclusive_group == "PRIMARY_CLASS"` (exceto INDEFINIDA), escolher a maior `activation_score` e, se >= 0.70, gerar Fact com `confidence = activation_score`, `fact_type = CLASSIFICATION` e `template_id = "fallback_primary"`; senão, INDEFINIDA permanece.
 
 #### Scenario: VALE promoted via R199 fallback
 - **WHEN** no PRIMARY_CLASS fact was generated
@@ -458,19 +440,21 @@ Feature weights for `activation_score` computation SHALL be:
 - **WHEN** VALE evaluation has score 0.74, PICO has 0.45, ASCENDENTE has 0.55
 - **THEN** R199 SHALL select VALE (0.74 >= 0.70, highest score)
 
+#### Scenario: Feature weights for activation score
+
+- **WHEN** R199 calcula `activation_score`
+- **THEN** os pesos SHALL ser:
+
+| Feature | Weight | Rationale |
+|---------|--------|-----------|
+| VALLEY_EARLY, PEAK_EARLY, SIGMOIDAL_SHAPE, TREND_UP, TREND_DOWN, OSCILLATING | 3.0 | Assinaturas estruturais — maximo valor diagnostico |
+| FINAL_GT_INITIAL, FINAL_LT_INITIAL, AFTER_MIN_UP, AFTER_MAX_DOWN, AMPLITUDE_LOW, DELTA_FINAL_LOW, SLOPE_FLAT | 2.0 | Evidencias direcionais e de planicidade |
+| RECOVERY_STRONG, MONOTONIC | 1.5 | Confirmacao contextual |
+| SHORT_END_UP, SHORT_END_DOWN, LONG_END_UP, LONG_END_DOWN, MID_END_UP | 1.0 | Evidencias segmentais |
+
 ### Requirement: RECUPERACAO_LONGA — definicao matematica deterministica
-The system SHALL provide a structural fact `RECUPERACAO_LONGA` that detects sustained upward trends. The feature `LONG_RECOVERY` SHALL be True when ALL of the following conditions are satisfied:
 
-1. **TAMANHO MINIMO**: n >= 20 data points.
-2. **SEGMENTO CONTIGUO**: There exists a contiguous segment S = rates[i..j] such that:
-   - a) `|S| >= max(10, n * config.recuperacao_longa_min_pct)`, where `recuperacao_longa_min_pct` defaults to 0.15.
-   - b) The proportion of positive point-to-point deltas in S is >= `config.recuperacao_longa_min_ratio` (default 0.70), where a delta is positive if `rates[k+1] - rates[k] > config.epsilon_slope`.
-3. **SLOPE POSITIVO**: `numpy.polyfit(days[i..j], rates[i..j], 1)[0] > config.epsilon_slope`.
-4. **AMPLITUDE SIGNIFICATIVA**: `(max(rates[i..j]) - min(rates[i..j])) >= amplitude_total * config.recuperacao_longa_min_amplitude`, where `recuperacao_longa_min_amplitude` defaults to 0.40.
-
-If multiple segments satisfy all conditions, the longest segment SHALL be selected.
-
-`RECUPERACAO_LONGA` SHALL be an independent structural fact (no `gated_by` restriction). Its score SHALL be (1, 2).
+O sistema SHALL prover o fato estrutural independente `RECUPERACAO_LONGA`, ativado quando `LONG_RECOVERY` for True. `LONG_RECOVERY` SHALL exigir `n >= 20`, segmento contíguo com tamanho mínimo `max(10, n * min_pct)`, proporção de deltas positivos >= `min_ratio`, inclinação positiva e amplitude do segmento >= `amplitude_total * min_amplitude`. Se vários segmentos qualificarem, o mais longo SHALL ser escolhido. O score SHALL ser `(1, 2)`.
 
 #### Scenario: Long sustained recovery detected
 - **WHEN** a curve of 230 points has a segment of 80 contiguous points with 85% positive deltas (>= 70%), positive regression slope, and amplitude of 0.30 while total amplitude is 0.35 (86% >= 40%)
@@ -525,7 +509,17 @@ The ScoringPolicy SHALL include the following new entries:
 - **AND** intensity SHALL be "Mercado estavel" (score < 3)
 
 ### Requirement: Templates for new facts and fallback
-The system SHALL provide the following templates in the `pt` locale:
+
+O sistema SHALL prover, no locale `pt`, templates para o fallback primário e para os novos fatos estruturais de volatilidade e recuperação longa, com placeholders resolvidos a partir do Fact.
+
+#### Scenario: Fallback template renders with placeholders resolved
+- **WHEN** R199 promotes VALE with confidence 0.74
+- **THEN** the report SHALL display "evidencias parciais de VALE (confianca: 74%)"
+
+#### Scenario: Templates for new facts
+
+- **WHEN** os fatos novos são renderizados no locale `pt`
+- **THEN** os templates SHALL ser:
 
 | template_id | Text |
 |-------------|------|
@@ -533,10 +527,6 @@ The system SHALL provide the following templates in the `pt` locale:
 | `volmod_qual` | "A volatilidade da curva e moderada, indicando nivel intermediario de oscilacao nas expectativas." |
 | `longrec_struct` | "Observa-se uma recuperacao longa e sustentada ao longo de parte significativa da curva, indicando persistencia direcional." |
 
-The `{classe}` placeholder SHALL be replaced with the promoted class name (e.g., "VALE"). The `{pct}` placeholder SHALL be replaced with the confidence percentage (e.g., "74%").
-
-#### Scenario: Fallback template renders with placeholders resolved
-- **WHEN** R199 promotes VALE with confidence 0.74
-- **THEN** the report SHALL display "evidencias parciais de VALE (confianca: 74%)"
+O `{classe}` SHALL ser substituído pelo nome da classe promovida e `{pct}` pelo percentual de confiança.
 
 

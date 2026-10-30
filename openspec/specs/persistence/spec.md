@@ -82,11 +82,7 @@ The system SHALL read the log retention period from the `log_retention_days` key
 
 ### Requirement: Data de referência da última carga
 
-As configurações da aplicação SHALL persistir a chave `data_referencia`, contendo a data resolvida da última carga de dados bem-sucedida.
-
-A chave SHALL ser atualizada pelo subcomando `atualizar`, pela preparação do subcomando `mcp` e por uma carga bem-sucedida da GUI. Os subcomandos `consultar` e `exportar` NÃO SHALL alterar `data_referencia`.
-
-A preparação do `mcp` SHALL atualizar a chave mesmo quando os dados forem obtidos integralmente do cache. Uma carga sem dados NÃO SHALL atualizar a chave.
+As configurações SHALL persistir `data_referencia` com a data resolvida da última carga bem-sucedida. A chave SHALL ser atualizada por `atualizar`, pela preparação do `mcp` e por carga bem-sucedida da GUI; `consultar` e `exportar` NÃO SHALL alterá-la. A preparação do `mcp` SHALL atualizar mesmo com dados vindos do cache; carga sem dados NÃO SHALL atualizar.
 
 #### Scenario: Atualizar persiste a referência
 

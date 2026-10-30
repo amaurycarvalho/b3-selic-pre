@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from b3_selic_pre.application.tesouro._series_contract import EstoqueRecord
 from b3_selic_pre.application.tesouro._series_demand import (
     build_demanda_snapshot,
 )
@@ -13,7 +14,6 @@ from b3_selic_pre.application.tesouro._series_stock import (
     build_estoque_snapshot,
 )
 from b3_selic_pre.domain.models import (
-    EstoqueTesouroDireto,
     ResgateTesouroDireto,
     VendaTesouroDireto,
 )
@@ -23,8 +23,7 @@ def build_series_snapshots(
     vendas: list[VendaTesouroDireto] | tuple[VendaTesouroDireto, ...],
     resgates: list[ResgateTesouroDireto]
     | tuple[ResgateTesouroDireto, ...],
-    estoque: list[EstoqueTesouroDireto]
-    | tuple[EstoqueTesouroDireto, ...],
+    estoque: list[EstoqueRecord] | tuple[EstoqueRecord, ...],
 ) -> dict[str, SeriesSourceSnapshot]:
     """Build each available source snapshot in a single pass per source."""
     snapshots: dict[str, SeriesSourceSnapshot] = {}

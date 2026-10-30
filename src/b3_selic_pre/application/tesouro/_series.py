@@ -9,11 +9,15 @@ from decimal import Decimal
 from b3_selic_pre.application.tesouro._series_contract import (
     BUCKET_DIARIO,
     BUCKET_MENSAL,
+    DIMENSAO_FAMILIA,
+    DIMENSAO_PRODUTO,
+    DIMENSAO_PRODUTO_VENCIMENTO,
     METRICA_DEMANDA_PCT,
     METRICA_DEMANDA_VALOR,
     METRICA_ESTOQUE_PCT,
     METRICA_ESTOQUE_VALOR,
     METRICA_FLUXO_LIQUIDO,
+    EstoqueRecord,
     Record,
     SeriesKey,
     SeriesPoint,
@@ -21,8 +25,8 @@ from b3_selic_pre.application.tesouro._series_contract import (
     validar_bucket,
     validar_dimensao,
 )
+from b3_selic_pre.application.tesouro._taxonomia import classificar_familia
 from b3_selic_pre.domain.models import (
-    EstoqueTesouroDireto,
     ResgateTesouroDireto,
     VendaTesouroDireto,
 )
@@ -75,6 +79,36 @@ def _selecionar(
     ]
 
 
+def _match_familia(item: EstoqueRecord, key: str) -> bool:
+    return classificar_familia(item.tipo_titulo).familia == key
+
+
+def _match_produto(item: EstoqueRecord, key: str) -> bool:
+    return item.tipo_titulo == key
+
+
+def _match_vencimento(item: EstoqueRecord, key: str) -> bool:
+    vencimento = getattr(item, "vencimento", None)
+    return vencimento is not None and f"{item.tipo_titulo}|{vencimento}" == key
+
+
+_MATCHERS = {
+    DIMENSAO_FAMILIA: _match_familia,
+    DIMENSAO_PRODUTO: _match_produto,
+    DIMENSAO_PRODUTO_VENCIMENTO: _match_vencimento,
+}
+
+
+def _selecionar_estoque(
+    records: list[EstoqueRecord],
+    key: SeriesKey,
+) -> list[EstoqueRecord]:
+    matcher = _MATCHERS.get(key.dimension)
+    if matcher is None:
+        return []
+    return [item for item in records if matcher(item, key.key)]
+
+
 def _point(
     period: str,
     metric: str,
@@ -100,7 +134,7 @@ class TesouroSeriesProvider:
         self: TesouroSeriesProvider,
         vendas: list[VendaTesouroDireto] | None = None,
         resgates: list[ResgateTesouroDireto] | None = None,
-        estoque: list[EstoqueTesouroDireto] | None = None,
+        estoque: list[EstoqueRecord] | None = None,
     ) -> None:
         """Store the parsed source records used by the provider."""
         self._vendas = list(vendas or [])
@@ -143,7 +177,7 @@ class TesouroSeriesProvider:
                 item.valor_estoque
             )
         grouped = _agrupar_por_periodo(
-            _selecionar(records, key),
+            _selecionar_estoque(records, key),
             lambda item: item.mes,
             lambda item: item.valor_estoque,
             BUCKET_MENSAL,

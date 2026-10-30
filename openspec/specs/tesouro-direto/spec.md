@@ -157,9 +157,7 @@ O sistema SHALL representar cada venda como um frozen dataclass `VendaTesouroDir
 
 ### Requirement: Parsing e validação do CSV
 
-O sistema SHALL interpretar o CSV usando o módulo `csv` da biblioteca padrão, a partir dos bytes baixados, sem realizar I/O de arquivo ou rede.
-
-O parsing SHALL tentar UTF-8 com BOM, UTF-8 e Latin-1, nessa ordem, e SHALL usar `;` como delimitador. O sistema NÃO SHALL usar `csv.Sniffer`. O cabeçalho SHALL ser validado contra as seis colunas confirmadas. O mapeamento de colunas SHALL ignorar diferenças de caixa e acentuação. Linhas inválidas SHALL produzir erros que identifiquem a linha e a coluna.
+O sistema SHALL interpretar o CSV com o módulo `csv` da biblioteca padrão, a partir dos bytes baixados, sem I/O de arquivo ou rede. O parsing SHALL tentar UTF-8 com BOM, UTF-8 e Latin-1, nessa ordem, usando `;` como delimitador e sem `csv.Sniffer`. O cabeçalho SHALL ser validado contra as seis colunas confirmadas; o mapeamento SHALL ignorar caixa e acentuação. Linhas inválidas SHALL gerar erros com linha e coluna.
 
 #### Scenario: Cabeçalho é validado
 

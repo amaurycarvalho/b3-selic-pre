@@ -143,5 +143,13 @@ class TesouroAnaliseController(TesouroLoadingMixin):
             error=self.error,
             error_context=self.error_context,
             has_data=self.has_data,
+            btd_note=(
+                self._data.btd_note if self._data is not None else None
+            ),
+            btd_status_kind=(
+                self._data.btd_status_kind
+                if self._data is not None
+                else None
+            ),
             extra=extra,
         )

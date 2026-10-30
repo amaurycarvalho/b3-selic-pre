@@ -141,3 +141,37 @@ def test_launch_wires_cache_and_precompute():
 
     assert "tesouro_series_cache" in keywords
     assert "tesouro_precompute" in keywords
+    assert "tesouro_btd" in keywords
+
+
+def test_precompute_stock_uses_merged_btd_latest_month():
+    from b3_selic_pre.domain.models import EstoqueMensalTitulo
+
+    class CapturingCache(FakeCache):
+        def update_if_changed(
+            self, name, hashes, build, *, source, extracted_at
+        ):
+            self.snapshot = build()
+            self.calls.append((name, self.snapshot, source, extracted_at))
+            return True
+
+    cache = CapturingCache()
+    data = _data(
+        estoque=(
+            EstoqueTesouroDireto(
+                "Tesouro Selic 2029",
+                "2029-01-02",
+                "2026-08",
+                Decimal("1"),
+                Decimal("1"),
+                Decimal("100"),
+            ),
+            EstoqueMensalTitulo(
+                "Tesouro Selic 2029", "2026-09", Decimal("120")
+            ),
+        )
+    )
+
+    TesouroPrecompute(cache)(KIND_ESTOQUE, data)
+
+    assert cache.snapshot.latest_data_date == "2026-09"

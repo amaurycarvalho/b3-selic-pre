@@ -4,6 +4,7 @@ from b3_selic_pre.application.tesouro._errors import (
     PeriodoInvalidoError,
     TesouroDataError,
 )
+from b3_selic_pre.application.tesouro._estoque_overlay import merge_estoque
 from b3_selic_pre.application.tesouro._fluxo import (
     FluxoLiquidoItem,
     fluxo_liquido_por_familia,
@@ -126,6 +127,7 @@ from b3_selic_pre.application.tesouro._series_contract import (
     METRICA_ESTOQUE_VALOR,
     METRICA_FLUXO_LIQUIDO,
     METRICAS_SERIE,
+    EstoqueRecord,
     SeriesKey,
     SeriesPoint,
     SeriesProvider,
@@ -197,6 +199,7 @@ __all__ = [
     "SUBFAMILIAS",
     "CachedTesouroSeriesProvider",
     "EstoqueAgregado",
+    "EstoqueRecord",
     "FamiliaIndexador",
     "FluxoLiquidoItem",
     "PercentualItem",
@@ -254,6 +257,7 @@ __all__ = [
     "inicio_janela",
     "maior_data_liquidacao",
     "maior_data_resgate",
+    "merge_estoque",
     "meses_presentes",
     "normalizar_texto",
     "ordenar_estoque",

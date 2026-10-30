@@ -48,3 +48,12 @@ class EstoqueTesouroDireto:
     pu: Decimal
     quantidade: Decimal
     valor_estoque: Decimal
+
+
+@dataclass(frozen=True)
+class EstoqueMensalTitulo:
+    """One monthly stock total by title from a complementary source."""
+
+    tipo_titulo: str
+    mes: str
+    valor_estoque: Decimal

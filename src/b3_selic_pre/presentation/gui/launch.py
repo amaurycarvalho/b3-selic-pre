@@ -16,6 +16,7 @@ from b3_selic_pre.infrastructure.desktop import (
 from b3_selic_pre.infrastructure.links import open_directory, open_url
 from b3_selic_pre.infrastructure.logging_setup import configure_logging, log_dir
 from b3_selic_pre.infrastructure.release_check import fetch_latest_version
+from b3_selic_pre.infrastructure.tesouro_btd import TesouroBtdClient
 from b3_selic_pre.infrastructure.tesouro_cached_client import (
     TesouroDiretoClient,
 )
@@ -73,6 +74,7 @@ def launch_gui(
         tesouro_provider_factory=TesouroSeriesProvider,
         tesouro_series_cache=series_cache,
         tesouro_precompute=TesouroPrecompute(series_cache),
+        tesouro_btd=TesouroBtdClient(),
     )
     app = SelicPreApp(root, dependencies)
 

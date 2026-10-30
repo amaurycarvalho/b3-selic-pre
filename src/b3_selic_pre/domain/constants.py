@@ -14,3 +14,7 @@ TESOURO_CKAN_BASE_URL = "https://www.tesourotransparente.gov.br/ckan"
 TESOURO_DATASET_NAME = "vendas-do-tesouro-direto"
 TESOURO_RESGATES_DATASET_NAME = "resgates-do-tesouro-direto"
 TESOURO_ESTOQUE_DATASET_NAME = "estoque-do-tesouro-direto"
+TESOURO_BTD_PUBLICATIONS_URL = (
+    "https://www.tesourotransparente.gov.br/publicacoes/"
+    "balanco-do-tesouro-direto-btd"
+)

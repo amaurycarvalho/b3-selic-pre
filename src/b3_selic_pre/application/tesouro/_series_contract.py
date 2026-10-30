@@ -54,6 +54,15 @@ _JANELA_PARA_BUCKET = {
 Record = EstoqueTesouroDireto | VendaTesouroDireto | ResgateTesouroDireto
 
 
+@runtime_checkable
+class EstoqueRecord(Protocol):
+    """Structural stock record shared by the CKAN and BTD sources."""
+
+    tipo_titulo: str
+    mes: str
+    valor_estoque: Decimal
+
+
 @dataclass(frozen=True)
 class SeriesKey:
     """Identifica uma dimensão e uma chave de série."""

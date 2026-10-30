@@ -31,13 +31,7 @@ O servidor NÃO SHALL escrever em `stdout` nada que não seja uma mensagem JSON-
 
 ### Requirement: Preparação opcional na inicialização
 
-O subcomando `mcp` SHALL aceitar os parâmetros opcionais `--atualizar` e `--data <AAAA-MM-DD>`.
-
-Quando `--atualizar` for informado, o sistema SHALL executar, antes de iniciar o servidor, a mesma etapa de carga do subcomando `atualizar`, usando a data de referência padrão (hoje). Quando `--data` for informado, o sistema SHALL executar a mesma etapa de carga com a data informada. Quando ambos forem informados, o sistema SHALL executar uma única carga usando a data informada.
-
-A preparação SHALL reutilizar os mesmos serviços de carga do subcomando `atualizar`, SHALL ocorrer sob o lock de ação compartilhado com `atualizar`, SHALL registrar progresso em `stderr`, NÃO SHALL escrever em `stdout` e SHALL liberar o lock antes de o servidor começar a atender. Uma falha na preparação SHALL abortar a inicialização com código de saída diferente de zero, sem iniciar o servidor.
-
-Sem `--atualizar` e sem `--data`, o servidor SHALL iniciar diretamente e atender usando apenas o cache local padrão.
+O subcomando `mcp` SHALL aceitar `--atualizar` e `--data <AAAA-MM-DD>`. Com `--atualizar`, SHALL executar antes do servidor a carga de `atualizar` com a data padrão; com `--data`, com a data informada; com ambos, uma carga com a data informada. A preparação SHALL reutilizar a carga, rodar sob o lock compartilhado, registrar progresso em `stderr`, sem escrever em `stdout` e liberar o lock antes de atender. Falha SHALL abortar a inicialização; sem preparação, o servidor SHALL usar o cache local.
 
 #### Scenario: Atualização padrão antes do servidor
 
@@ -77,15 +71,7 @@ Sem `--atualizar` e sem `--data`, o servidor SHALL iniciar diretamente e atender
 
 ### Requirement: Protocolo moderno 2026-07-28
 
-O servidor SHALL implementar a revisão MCP `2026-07-28`, na qual cada requisição declara sua versão de protocolo e suas capacidades em `_meta`, sem handshake `initialize`.
-
-O servidor SHALL validar os campos obrigatórios `io.modelcontextprotocol/protocolVersion` e `io.modelcontextprotocol/clientCapabilities` em cada requisição. Uma requisição sem esses campos SHALL ser rejeitada com erro JSON-RPC `-32602`.
-
-O servidor SHALL implementar a RPC obrigatória `server/discover`, devolvendo as versões de protocolo suportadas, as capacidades e a identidade do servidor.
-
-Quando a versão solicitada não for suportada, o servidor SHALL responder com `UnsupportedProtocolVersionError` (`-32022`), listando as versões suportadas e a versão solicitada. Ao receber um `initialize` legado, o servidor SHALL responder com erro que nomeie as versões suportadas.
-
-Todo resultado SHALL incluir `resultType` com o valor `complete`.
+O servidor SHALL implementar MCP `2026-07-28`, com versão e capacidades declaradas em `_meta` por requisição, sem `initialize`. Requisições sem `protocolVersion` ou `clientCapabilities` SHALL ser rejeitadas com `-32602`. O servidor SHALL implementar `server/discover`, retornando versões suportadas, capacidades e identidade. Versão não suportada SHALL responder `-32022` com as versões suportadas; `initialize` legado SHALL ser rejeitado. Todo resultado SHALL incluir `resultType=complete`.
 
 #### Scenario: Descoberta retorna versão e identidade
 

@@ -24,15 +24,18 @@ SERIES_PREFIX = "series"
 SERIES_PERIOD = "series"
 
 SOURCE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
-    "estoque": ("estoque",),
+    "estoque": ("estoque", "estoque-btd"),
     "demanda": ("vendas",),
     "fluxo": ("vendas", "recompras"),
 }
 RAW_FILES: dict[str, str] = {
     "estoque": "estoque.csv",
+    "estoque-btd": "estoque-btd.json",
     "vendas": "vendastesourodireto.csv",
     "recompras": "recompras.csv",
 }
+OPTIONAL_SOURCES = frozenset({"estoque-btd"})
+ABSENT_SENTINEL = "<absent>"
 
 
 def composite_hash(hashes: Mapping[str, str]) -> str:
@@ -60,6 +63,9 @@ def source_hashes(
     for name in names:
         value = _file_hash(directory / RAW_FILES[name])
         if value is None:
+            if name in OPTIONAL_SOURCES:
+                result[name] = ABSENT_SENTINEL
+                continue
             return None
         result[name] = value
     return result
@@ -181,6 +187,8 @@ class TesouroSeriesCache:
 
 
 __all__ = [
+    "ABSENT_SENTINEL",
+    "OPTIONAL_SOURCES",
     "RAW_FILES",
     "SERIES_PREFIX",
     "SERIES_SCHEMA_VERSION",

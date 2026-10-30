@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from b3_selic_pre.application.tesouro import SeriesPoint, SeriesSourceSnapshot
 
-SERIES_SCHEMA_VERSION = 1
+SERIES_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)

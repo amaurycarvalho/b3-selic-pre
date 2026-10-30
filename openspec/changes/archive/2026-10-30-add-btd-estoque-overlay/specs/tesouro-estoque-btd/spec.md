@@ -32,7 +32,7 @@ O sistema SHALL obter a edição mais recente da publicação `Balanco do Tesour
 
 ### Requirement: Parsing do estoque por título do BTD
 
-O sistema SHALL ler a aba de estoque por título do XLSX do BTD e produzir registros mensais com `tipo_titulo`, `mes` e `valor_estoque`. O mês SHALL ser convertido de `MMM/AA` para `AAAA-MM`; os valores em R$ milhões SHALL ser convertidos para reais.
+O sistema SHALL ler a aba de estoque por título do XLSX do BTD e produzir registros mensais com `tipo_titulo`, `mes` e `valor_estoque`. O mês SHALL ser convertido de `MMM/AA` para `AAAA-MM`; os valores em R$ milhões SHALL ser convertidos para reais. Linhas de total/agregado da seção, como `Estoque` ou `Total`, NÃO SHALL ser tratadas como títulos.
 
 #### Scenario: Aba de estoque identificada
 
@@ -40,6 +40,7 @@ O sistema SHALL ler a aba de estoque por título do XLSX do BTD e produzir regis
 - **THEN** o sistema SHALL identificar a aba `2.1 - Estoque por Título`
 - **THEN** o sistema SHALL ler o cabeçalho de meses e a seção de valores em R$ milhões
 - **THEN** a seção percentual da mesma aba NÃO SHALL ser confundida com valores absolutos
+- **THEN** a linha de total/agregado `Estoque` NÃO SHALL ser lida como um título
 
 #### Scenario: Histórico mensal disponível
 
@@ -89,7 +90,7 @@ O sistema SHALL manter um cache próprio do estoque BTD normalizado, com gravaç
 
 ### Requirement: Sobreposição sem substituição do CKAN
 
-O sistema SHALL combinar o estoque detalhado do CKAN com os registros agregados do BTD, acrescentando apenas registros cujo par `tipo_titulo` e `mes` não exista no CKAN. Registros já presentes no CKAN NÃO SHALL ser substituídos por valores do BTD.
+O sistema SHALL combinar o estoque detalhado do CKAN com os registros agregados do BTD, acrescentando apenas registros de meses posteriores ao maior mês existente no CKAN. Meses já cobertos pelo CKAN NÃO SHALL receber registros do BTD, mesmo quando os títulos agregados do BTD tiverem nomes diferentes dos títulos detalhados do CKAN; registros do CKAN NÃO SHALL ser substituídos por valores do BTD.
 
 #### Scenario: BTD mais recente
 
@@ -99,7 +100,7 @@ O sistema SHALL combinar o estoque detalhado do CKAN com os registros agregados 
 
 #### Scenario: Meses coincidentes
 
-- **WHEN** BTD e CKAN contêm o mesmo `tipo_titulo` no mesmo mês
+- **WHEN** BTD e CKAN contêm dados do mesmo mês, inclusive com títulos agregados de nomes diferentes
 - **THEN** o valor do CKAN SHALL ser mantido
 - **THEN** o valor do BTD NÃO SHALL gerar um registro duplicado
 

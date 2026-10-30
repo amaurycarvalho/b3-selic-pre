@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from b3_selic_pre.domain.models import (
+    EstoqueMensalTitulo,
     EstoqueTesouroDireto,
     VendaTesouroDireto,
 )
@@ -277,3 +278,147 @@ def test_series_available_checks_every_needed_snapshot():
     assert series_available(complete, KIND_VISAO_GERAL) is True
     assert series_available(partial, KIND_VISAO_GERAL) is False
     assert series_available(None, KIND_ESTOQUE) is False
+
+
+def _btd(mes, valor="120"):
+    return EstoqueMensalTitulo(
+        "Tesouro Selic 2029", mes, Decimal(valor)
+    )
+
+
+class FakeBtd:
+    def __init__(self, cached=None, refreshed=None, error=None):
+        self.cached = cached
+        self.refreshed = refreshed
+        self.error = error
+        self.calls = []
+
+    def read_cached(self):
+        self.calls.append("read")
+        return self.cached
+
+    def refresh(self, force=False):
+        self.calls.append("refresh")
+        if self.error is not None:
+            raise self.error
+        return self.refreshed
+
+
+class FakeStockAugust:
+    def __init__(self):
+        self.calls = []
+
+    def fetch_estoque(self, force=False):
+        self.calls.append("estoque")
+        records = [
+            EstoqueTesouroDireto(
+                "Tesouro Selic 2029", "2029-01-02", "2026-08",
+                Decimal("1"), Decimal("1"), Decimal("100"),
+            )
+        ]
+        return records, {"last_data_date": "2026-08"}, "network"
+
+
+def test_estoque_refresh_merges_new_btd_month():
+    btd = FakeBtd(refreshed=type("Entry", (), {"records": (_btd("2026-09"),)})())
+
+    data = make_loader(
+        FakeStockAugust(), KIND_ESTOQUE, btd_client=btd
+    )(False, False)
+
+    assert data is not None
+    assert [item.mes for item in data.estoque] == ["2026-08", "2026-09"]
+    assert data.latest_data_date == "2026-09"
+    assert data.btd_note == "Complemento BTD: 2026-09"
+    assert data.btd_status_kind == "info"
+    assert btd.calls == ["refresh"]
+
+
+def test_btd_without_novelty_does_not_claim_new_data():
+    btd = FakeBtd(refreshed=type("Entry", (), {"records": (_btd("2026-08"),)})())
+
+    data = make_loader(
+        FakeStockAugust(), KIND_ESTOQUE, btd_client=btd
+    )(False, False)
+
+    assert data is not None
+    assert [item.mes for item in data.estoque] == ["2026-08"]
+    assert data.latest_data_date == "2026-08"
+    assert data.btd_note is None
+
+
+def test_btd_failure_keeps_ckan_data():
+    btd = FakeBtd(error=RuntimeError("sem rede"))
+
+    data = make_loader(
+        FakeStockAugust(), KIND_ESTOQUE, btd_client=btd
+    )(False, False)
+
+    assert data is not None
+    assert [item.mes for item in data.estoque] == ["2026-08"]
+    assert data.btd_status_kind == "warning"
+    assert "não atualizado" in data.btd_note
+
+
+def test_cache_only_reads_btd_next_to_ckan_without_network():
+    btd = FakeBtd(cached=type("Entry", (), {"records": (_btd("2026-11"),)})())
+    client = FakeClient()
+
+    data = make_loader(client, KIND_ESTOQUE, btd_client=btd)(True, False)
+
+    assert data is not None
+    assert data.latest_data_date == "2026-11"
+    assert data.btd_note == "Complemento BTD: 2026-11"
+    assert client.calls == ["estoque"]
+    assert btd.calls == ["read"]
+
+
+def test_cache_only_with_only_ckan_is_unchanged():
+    btd = FakeBtd(cached=None)
+
+    data = make_loader(
+        FakeClient(), KIND_ESTOQUE, btd_client=btd
+    )(True, False)
+
+    assert data is not None
+    assert data.latest_data_date == "2026-10"
+    assert data.btd_note is None
+
+
+def test_cache_only_with_only_btd_uses_the_overlay():
+    class NoStock(FakeClient):
+        def read_cached_estoque(self):
+            self.calls.append("estoque")
+            return None
+
+    btd = FakeBtd(cached=type("Entry", (), {"records": (_btd("2026-09"),)})())
+    client = NoStock()
+
+    data = make_loader(client, KIND_ESTOQUE, btd_client=btd)(True, False)
+
+    assert data is not None
+    assert [item.mes for item in data.estoque] == ["2026-09"]
+    assert data.latest_data_date == "2026-09"
+
+
+def test_visao_geral_refresh_uses_btd_cache_without_network():
+    btd = FakeBtd(cached=type("Entry", (), {"records": (_btd("2026-09"),)})())
+    client = FakeNetworkClient()
+    client.fetch_estoque = lambda force=False: (
+        [
+            EstoqueTesouroDireto(
+                "Tesouro Selic 2029", "2029-01-02", "2026-08",
+                Decimal("1"), Decimal("1"), Decimal("100"),
+            )
+        ],
+        {"last_data_date": "2026-08"},
+        "network",
+    )
+
+    data = make_loader(
+        client, KIND_VISAO_GERAL, btd_client=btd
+    )(False, False)
+
+    assert data is not None
+    assert data.latest_data_date == "2026-09"
+    assert "refresh" not in btd.calls

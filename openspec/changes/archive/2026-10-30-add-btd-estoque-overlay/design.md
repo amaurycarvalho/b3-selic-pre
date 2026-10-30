@@ -35,7 +35,7 @@ O estoque do BTD é menos granular que o CKAN (sem vencimento, PU e quantidade) 
 
 ### 1. BTD como sobreposição, não como fonte primária
 
-O merge adiciona apenas pares `(tipo_titulo, mes)` ausentes no CKAN e nunca substitui valores existentes. Isso evita misturar revisões diferentes e preserva a granularidade do CKAN.
+O merge adiciona apenas meses do BTD posteriores ao maior mês existente no CKAN e nunca substitui valores existentes. Os títulos do BTD são agregados por indexador e não têm correspondência um-a-um com os vencimentos do CKAN; portanto, meses sobrepostos são ignorados mesmo quando os nomes dos títulos diferem. Isso evita dupla contagem e preserva a granularidade do CKAN.
 
 Alternativa rejeitada: trocar o CKAN pelo BTD. Perderia vencimento/PU/quantidade, a CLI e o histórico desde 2002, e introduziria divergências conhecidas em 2026.
 
@@ -47,7 +47,7 @@ Alternativa rejeitada: inferir IDs numéricos do `thot-arquivos`; não são docu
 
 ### 3. Parsing XLSX com biblioteca padrão
 
-Abrir o XLSX com `zipfile`, ler `xl/workbook.xml`, `xl/sharedStrings.xml` e a worksheet cujo `A1` começa com `ANEXO 2.1 - ESTOQUE POR TÍTULO`. O cabeçalho mensal é reconhecido por `MMM/AA`; a leitura para na primeira seção (R$ milhões) antes do bloco de percentuais. Valores são multiplicados por 1.000.000 e convertidos para `Decimal`.
+Abrir o XLSX com `zipfile`, ler `xl/workbook.xml`, `xl/sharedStrings.xml` e a worksheet cujo `A1` começa com `ANEXO 2.1 - ESTOQUE POR TÍTULO`. O cabeçalho mensal é reconhecido por `MMM/AA`; a leitura para na primeira seção (R$ milhões) antes do bloco de percentuais e ignora linhas de total/agregado como `Estoque`. Valores são multiplicados por 1.000.000 e convertidos para `Decimal`.
 
 Alternativa rejeitada: adicionar `openpyxl`/`pandas`. O projeto evita dependências novas e a planilha relevante é simples o bastante para leitura estrutural.
 

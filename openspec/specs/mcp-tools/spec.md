@@ -57,13 +57,7 @@ A tool SHALL ser somente leitura e NÃO SHALL alterar a data de referência.
 
 ### Requirement: Tool consultar_curva
 
-A tool `consultar_curva` SHALL aceitar `data` opcional, `curva` opcional com valores `curta` ou `longa`, `cursor` opcional e `limite` opcional.
-
-Quando `data` for omitida, a tool SHALL usar a data de referência. A data SHALL seguir as mesmas regras de validação da CLI: formato `AAAA-MM-DD`, não futura, dentro da janela de 30 dias e ajustada para o dia útil anterior em fins de semana.
-
-Para `curva=curta`, cada item SHALL conter o dia útil 252, o dia corrido 365, a taxa numérica e a representação textual original da taxa. Para `curva=longa`, cada item SHALL conter o ano, a menor taxa, a maior taxa e a taxa média anual.
-
-A resposta SHALL incluir `nextCursor` quando houver continuação. Se não houver registros para a data, a tool SHALL devolver erro de domínio `sem_dados`.
+A tool `consultar_curva` SHALL aceitar `data`, `curva` (`curta`/`longa`), `cursor` e `limite`, todos opcionais. Sem `data`, SHALL usar a data de referência, validada como na CLI. Para `curta`, cada item SHALL conter dia útil 252, dia corrido 365, taxa numérica e texto original; para `longa`, ano, menor taxa, maior taxa e média anual. A resposta SHALL incluir `nextCursor` quando houver continuação; sem registros, SHALL retornar `sem_dados`.
 
 #### Scenario: Consulta da curva curta
 
@@ -101,11 +95,7 @@ A resposta SHALL incluir `nextCursor` quando houver continuação. Se não houve
 
 ### Requirement: Tools exportar_curva_curta e exportar_curva_longa
 
-As tools `exportar_curva_curta` e `exportar_curva_longa` SHALL aceitar `data` opcional e SHALL devolver o conteúdo CSV do artefato correspondente ao subcomando `exportar`, sem gravar arquivos.
-
-`exportar_curva_curta` SHALL devolver CSV com delimitador `;` e colunas `DATA;DU252;DC365;TAXA`, cobrindo a janela de evolução de cinco datas. `exportar_curva_longa` SHALL devolver CSV com delimitador `;` e colunas `DATA;ANO;TAXA_MEDIA`.
-
-As respostas SHALL incluir o nome do artefato, o tipo de conteúdo e a lista de datas indisponíveis. Se não houver nenhum dado, a tool SHALL devolver erro de domínio `sem_dados`.
+As tools `exportar_curva_curta` e `exportar_curva_longa` SHALL aceitar `data` opcional e devolver o CSV do artefato correspondente, sem gravar arquivos. `exportar_curva_curta` SHALL usar `;` e colunas `DATA;DU252;DC365;TAXA` na janela de cinco datas; `exportar_curva_longa`, `;` e `DATA;ANO;TAXA_MEDIA`. A resposta SHALL incluir nome do artefato, tipo de conteúdo e datas indisponíveis; sem dados, SHALL retornar `sem_dados`.
 
 #### Scenario: Exportação da curva curta
 
@@ -132,13 +122,7 @@ As respostas SHALL incluir o nome do artefato, o tipo de conteúdo e a lista de 
 
 ### Requirement: Tool analise
 
-A tool `analise` SHALL aceitar `data` opcional e `curva` opcional com valores `curta` ou `longa`, com `curta` como padrão. A tool SHALL devolver o texto determinístico da análise da curva e, quando houver data anterior disponível, o texto da evolução.
-
-Para `curva=curta`, a análise SHALL usar os registros brutos. Para `curva=longa`, a análise SHALL usar a série de taxas médias por ano. A resposta SHALL identificar a curva usada e SHALL listar as datas indisponíveis.
-
-Se existir uma análise pré-calculada para a curva solicitada, o sistema PODE reutilizá-la. Se a análise pré-calculada for de outra curva, o sistema SHALL recalcular o texto em tempo de execução. Uma análise de uma curva NUNCA SHALL ser devolvida para a outra.
-
-Se não houver dados para a data, a tool SHALL devolver erro de domínio `sem_dados`.
+A tool `analise` SHALL aceitar `data` e `curva` (`curta`/`longa`), com `curta` como padrão, e devolver o texto determinístico da análise e, quando disponível, o da evolução. `curta` SHALL usar registros brutos; `longa`, as taxas médias anuais. A resposta SHALL identificar a curva e listar datas indisponíveis. Análise pré-calculada PODE ser reutilizada apenas para a mesma curva; outra curva SHALL ser recalculada. Sem dados, SHALL retornar `sem_dados`.
 
 #### Scenario: Análise curta é o padrão
 

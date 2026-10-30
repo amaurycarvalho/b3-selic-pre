@@ -101,10 +101,8 @@ class BcbSgsClient(_JsonClient):
         super().__init__(opener=opener, timeout=timeout, sleep=sleep)
         self.codigo = codigo
 
-    def fetch_series(
-        self: BcbSgsClient, inicio: str, fim: str
-    ) -> list[MarketQuote]:
-        """Fetch SGS quotes between two ISO dates."""
+    def fetch_payload(self: BcbSgsClient, inicio: str, fim: str) -> bytes:
+        """Fetch the raw SGS payload between two ISO dates."""
         query = urllib.parse.urlencode(
             {
                 "formato": "json",
@@ -113,8 +111,15 @@ class BcbSgsClient(_JsonClient):
             }
         )
         url = SGS_URL_TEMPLATE.format(codigo=self.codigo)
-        body = self._get(f"{url}?{query}", f"BCB SGS {self.codigo}")
-        return parse_sgs(body, extraido_em=_now_iso())
+        return self._get(f"{url}?{query}", f"BCB SGS {self.codigo}")
+
+    def fetch_series(
+        self: BcbSgsClient, inicio: str, fim: str
+    ) -> list[MarketQuote]:
+        """Fetch SGS quotes between two ISO dates."""
+        return parse_sgs(
+            self.fetch_payload(inicio, fim), extraido_em=_now_iso()
+        )
 
 
 def _value(row: dict[str, object]) -> float | None:

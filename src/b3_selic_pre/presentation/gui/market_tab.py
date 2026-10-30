@@ -12,6 +12,7 @@ from b3_selic_pre.presentation.gui.market_sub_tab_ui import (
     ASSET_OPTIONS,
     MarketSubTabUI,
 )
+from b3_selic_pre.presentation.gui.reserves_sub_tab import ReservesSubTab
 from b3_selic_pre.presentation.market_chart_data import build_chart_data
 from b3_selic_pre.presentation.market_tab import MarketTabController
 from b3_selic_pre.presentation.market_view_model import (
@@ -22,7 +23,10 @@ from b3_selic_pre.presentation.tabs import LazyTabRegistry, TabSpec
 
 Widget = Any
 
-SUB_TABS = (("dolar-ouro", "Dólar e Ouro"),)
+SUB_TABS = (
+    ("dolar-ouro", "Dólar e Ouro"),
+    ("reservas", "Reservas Internacionais"),
+)
 DEFAULT_SUB_TAB = "dolar-ouro"
 class DolarOuroSubTab(MarketSubTabUI):
     """Sub-aba com controles, status, selo de defasagem e Atualizar próprio."""
@@ -197,7 +201,14 @@ class CambioOuroTab:
     def _build(
         self: CambioOuroTab, sub_id: str, frame: Widget, label: str
     ) -> object:
-        _ = (sub_id, label)
+        _ = label
+        if sub_id == "reservas":
+            return ReservesSubTab(
+                frame,
+                root=self.root,
+                dependencies=self.deps,
+                icons=self.icons,
+            )
         return DolarOuroSubTab(
             frame,
             root=self.root,

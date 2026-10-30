@@ -7,6 +7,11 @@ from collections.abc import Callable
 from b3_selic_pre.presentation.mcp.catalog import TOOL_NAMES
 from b3_selic_pre.presentation.mcp.context import ToolContext
 from b3_selic_pre.presentation.mcp.protocol import InvalidParams
+from b3_selic_pre.presentation.mcp.reserves_handlers import (
+    reservas_exportar,
+    reservas_indicadores,
+    reservas_serie,
+)
 from b3_selic_pre.presentation.mcp.tool_handlers import (
     analise,
     consultar_curva,
@@ -43,6 +48,9 @@ _HANDLERS: dict[str, Handler] = {
     "mercado_previsao": mercado_previsao,
     "mercado_indicadores": mercado_indicadores,
     "mercado_exportar": mercado_exportar,
+    "reservas_serie": reservas_serie,
+    "reservas_indicadores": reservas_indicadores,
+    "reservas_exportar": reservas_exportar,
 }
 
 

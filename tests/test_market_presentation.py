@@ -426,7 +426,7 @@ def test_shell_registers_cambio_between_tesouro_and_sobre():
     ]
 
 
-def test_market_gui_declares_single_lazy_sub_tab():
+def test_market_gui_declares_lazy_sub_tabs_in_order():
     path = (
         Path(__file__).resolve().parents[1]
         / "src"
@@ -437,7 +437,9 @@ def test_market_gui_declares_single_lazy_sub_tab():
     )
     source = path.read_text(encoding="utf-8")
 
-    assert 'SUB_TABS = (("dolar-ouro", "Dólar e Ouro"),)' in source
+    assert '("dolar-ouro", "Dólar e Ouro")' in source
+    assert '("reservas", "Reservas Internacionais")' in source
+    assert source.index('"dolar-ouro"') < source.index('"reservas"')
     assert "load_cache_only" in source
     assert "controller.refresh" in source
 

@@ -161,6 +161,9 @@ Todas as tools são somente leitura (`readOnlyHint: true`,
 | `mercado_previsao` | `ativo?`, `horizonte?` | cenário pré-calculado com bandas de 80% e 95% |
 | `mercado_indicadores` | nenhum | prêmio a termo, prêmio DOL, gap Focus, volatilidade e regime |
 | `mercado_exportar` | `ativo?`, `inicio?`, `fim?`, `formato?`, `prever?` | CSV/JSON de histórico e cenário, sem gravar arquivos |
+| `reservas_serie` | `inicio?`, `fim?`, `janela?`, `cursor?`, `limite?` | série de reservas do BCB com proveniência e paginação |
+| `reservas_indicadores` | nenhum | nível, variações, tendência, drawdown, posição, regime e limiares |
+| `reservas_exportar` | `inicio?`, `fim?`, `janela?`, `formato?` | CSV/JSON de reservas e indicadores, sem gravar arquivos |
 
 ### `data_referencia`
 
@@ -394,6 +397,29 @@ arquivos. `formato=csv` usa `;` e nomes `mercado-historico.csv`; com
 `prever=true`, inclui também `mercado-previsao.csv`. `formato=json` devolve
 `mercado.json` com séries, cenário e indicadores. Prepare o cache antes com
 `b3-selic-pre mercado --atualizar`; as tools nunca acessam a rede.
+
+### `reservas_serie`
+
+Consulta apenas o cache local de reservas. `janela` aceita `12m` (padrão) ou
+`3a`; sem `inicio` e `fim`, usa a janela escolhida até a maior data em cache.
+Cada item contém `data`, `ativo`, `valor` em US$ milhões, `unidade`, `origem`,
+`metodo`, `extraido_em`, `defasado` e `defasagem_horas`. A resposta inclui
+`nextCursor` quando houver continuação e devolve `sem_dados` quando não há
+série para a janela.
+
+### `reservas_indicadores`
+
+Devolve `nivel_atual`, `var_1m`, `var_3m`, `var_12m`, `tendencia_90d`,
+`drawdown_12m`, `posicao_faixa_12m`, `regime` (`aumento`, `estavel` ou
+`deterioracao`) e `limiares`. Métricas sem histórico suficiente são omitidas.
+O regime é um sinal direcional, não uma recomendação.
+
+### `reservas_exportar`
+
+Devolve `nome`, `content_type`, `conteudo` e `datas_indisponiveis`, sem gravar
+arquivos. `formato=csv` usa `;` e o nome `reservas-serie.csv`; `formato=json`
+devolve `reservas.json` com série, indicadores, origem e `gerado_em`. Prepare o
+cache antes com `b3-selic-pre reservas --atualizar`.
 
 ## Erros de domínio
 

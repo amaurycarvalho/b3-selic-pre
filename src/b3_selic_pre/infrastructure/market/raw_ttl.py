@@ -20,18 +20,41 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
+def _recent_days(config: object) -> int:
+    resolucao = getattr(config, "resolucao", None)
+    return int(getattr(resolucao, "diario_dias", 14))
+
+
+def _recent_minutes(config: object) -> int:
+    cache = getattr(config, "cache", None)
+    return int(
+        getattr(cache, "recente_minutos", None)
+        or getattr(config, "recente_minutos", 20)
+    )
+
+
+def _month_minutes(config: object) -> int:
+    cache = getattr(config, "cache", None)
+    return int(
+        getattr(cache, "mes_horas", None)
+        or getattr(config, "mes_horas", 3)
+    ) * 60
+
+
 def ttl_minutes(
-    config: MarketConfig, data_date: str, reference: str | None = None
+    config: MarketConfig | object,
+    data_date: str,
+    reference: str | None = None,
 ) -> int | None:
     """Return the TTL for a data date, or ``None`` when immutable."""
     day = _parse_date(data_date)
     ref = _parse_date(reference or datetime.now(UTC).date().isoformat())
     if day is None or ref is None:
-        return config.cache.recente_minutos
-    if (ref - day).days <= config.resolucao.diario_dias:
-        return config.cache.recente_minutos
+        return _recent_minutes(config)
+    if (ref - day).days <= _recent_days(config):
+        return _recent_minutes(config)
     if (day.year, day.month) == (ref.year, ref.month):
-        return config.cache.mes_horas * 60
+        return _month_minutes(config)
     return None
 
 

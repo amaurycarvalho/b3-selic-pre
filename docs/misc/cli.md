@@ -15,6 +15,7 @@ b3-selic-pre tesouro [opções]
 b3-selic-pre tesouro-resgates [opções]
 b3-selic-pre tesouro-estoque [opções]
 b3-selic-pre mercado [opções]
+b3-selic-pre reservas [opções]
 b3-selic-pre mcp [opções]
 b3-selic-pre criar-atalho
 b3-selic-pre --help
@@ -34,6 +35,7 @@ Executar sem argumentos é equivalente a `gui`.
 | `tesouro-resgates` | Consulta recompras, cupons e vencimentos, com filtros, agregação e `--saida`. |
 | `tesouro-estoque` | Consulta o estoque mensal, com filtros por mês, agregação e `--saida`.         |
 | `mercado`      | Consulta ou exporta séries de dólar e ouro, com cenário e indicadores.           |
+| `reservas`     | Consulta ou exporta as reservas internacionais do BCB, com CSV/JSON e `--saida`. |
 | `mcp`          | Inicia o servidor MCP via `stdio`, somente leitura.                              |
 | `gui`          | Abre a interface gráfica.                                                        |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações.                                |
@@ -403,3 +405,31 @@ impresso no stdout.
 Códigos de retorno: `0` em sucesso, `1` quando não há dados para a janela ou a
 escrita falha, e `2` para datas inválidas, `--inicio` posterior a `--fim` ou
 múltiplos artefatos sem diretório de destino.
+
+## `reservas`
+
+Consulta a série diária de reservas internacionais do BCB SGS 13621 (conceito
+de liquidez, em US$ milhões).
+
+```bash
+b3-selic-pre reservas
+b3-selic-pre reservas --janela 3a
+b3-selic-pre reservas --inicio 2026-01-01 --fim 2026-10-30
+b3-selic-pre reservas --formato json --indicadores
+b3-selic-pre reservas --saida exports/
+b3-selic-pre reservas --atualizar
+```
+
+Sem `--atualizar` e sem `--no-cache`, o comando lê apenas o cache local e não
+acessa a rede. A janela padrão cobre os 12 meses anteriores à maior data em
+cache; `--janela 3a` cobre até 36 meses. `--no-cache` recarrega a janela retida
+de três anos antes de emitir a saída.
+
+O CSV de série usa `;`, datas ISO, ponto decimal e as colunas
+`DATA;VALOR;UNIDADE;ORIGEM;METODO`. O JSON contém `janela`, `serie`,
+`indicadores`, `origem` e `gerado_em`; `--indicadores` mantém os indicadores no
+payload. Os nomes padrão em diretório são `reservas-serie.csv` e
+`reservas.json`.
+
+Códigos de retorno: `0` em sucesso, `1` quando não há dados para a janela ou a
+escrita falha, e `2` para datas inválidas ou `--inicio` posterior a `--fim`.

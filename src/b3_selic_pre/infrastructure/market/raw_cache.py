@@ -13,6 +13,10 @@ from b3_selic_pre.application.market.config import MarketConfig
 from b3_selic_pre.domain.market import MarketQuote
 from b3_selic_pre.infrastructure.cache_payload import write_atomic
 from b3_selic_pre.infrastructure.market.raw_index import last_date, missing_dates
+from b3_selic_pre.infrastructure.market.raw_snapshot import (
+    SNAPSHOT_NAME,
+    SnapshotMixin,
+)
 from b3_selic_pre.infrastructure.market.raw_ttl import is_fresh, ttl_minutes
 from b3_selic_pre.infrastructure.xdg import cache_base
 
@@ -38,7 +42,7 @@ def _parse_date(value: str) -> date | None:
         return None
 
 
-class MarketRawCache:
+class MarketRawCache(SnapshotMixin):
     """Stores one normalized raw quote per source and date."""
 
     def __init__(
@@ -224,4 +228,9 @@ class MarketRawCache:
         return missing_dates(self, fonte, inicio, fim)
 
 
-__all__ = ["RAW_SCHEMA_VERSION", "MarketRawCache", "market_cache_root"]
+__all__ = [
+    "RAW_SCHEMA_VERSION",
+    "SNAPSHOT_NAME",
+    "MarketRawCache",
+    "market_cache_root",
+]

@@ -14,6 +14,7 @@ SUBCOMMANDS = (
     "tesouro-resgates",
     "tesouro-estoque",
     "mercado",
+    "reservas",
     "mcp",
     "gui",
     "criar-atalho",
@@ -23,6 +24,7 @@ TIPOS_RESGATE = ("recompra", "cupom", "vencimento")
 ATIVOS = ("usd", "ouro", "ambos")
 RESOLUCOES = ("auto", "dia", "semana", "mes")
 FORMATOS = ("csv", "json")
+JANELAS_RESERVAS = ("12m", "3a")
 
 
 def _add_data_options(parser: argparse.ArgumentParser) -> None:
@@ -276,6 +278,43 @@ def build_parser() -> argparse.ArgumentParser:
     mercado.add_argument(
         "--atualizar", action="store_true",
         help="Atualiza as fontes antes de emitir a saída.",
+    )
+
+    reservas = subparsers.add_parser(
+        "reservas",
+        help="Consulta ou exporta as reservas internacionais do BCB.",
+    )
+    reservas.add_argument(
+        "--inicio", default=None,
+        help="Data inicial no formato AAAA-MM-DD.",
+    )
+    reservas.add_argument(
+        "--fim", default=None,
+        help="Data final no formato AAAA-MM-DD.",
+    )
+    reservas.add_argument(
+        "--janela", choices=JANELAS_RESERVAS, default="12m",
+        help="Janela de exibição (padrão: 12m).",
+    )
+    reservas.add_argument(
+        "--formato", choices=FORMATOS, default="csv",
+        help="Formato de saída (padrão: csv).",
+    )
+    reservas.add_argument(
+        "--indicadores", action="store_true",
+        help="Inclui os indicadores no payload JSON.",
+    )
+    reservas.add_argument(
+        "--saida", default=None,
+        help="Arquivo ou diretório de destino; omitido imprime no stdout.",
+    )
+    reservas.add_argument(
+        "--no-cache", action="store_true",
+        help="Recarrega a janela retida mesmo com cache válido.",
+    )
+    reservas.add_argument(
+        "--atualizar", action="store_true",
+        help="Atualiza a série antes de emitir a saída.",
     )
 
     mcp = subparsers.add_parser(

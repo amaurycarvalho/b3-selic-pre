@@ -35,6 +35,8 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 ./b3-selic-pre-linux tesouro-estoque --mes 2026-08 --json
 ./b3-selic-pre-linux mercado --formato json
 ./b3-selic-pre-linux mercado --prever --saida exports/
+./b3-selic-pre-linux reservas --janela 3a --formato json
+./b3-selic-pre-linux reservas --atualizar --saida exports/
 ./b3-selic-pre-linux criar-atalho                  # criar atalho no desktop (Linux)
 ./b3-selic-pre-linux --help                       # exibir ajuda
 ./b3-selic-pre-linux --version                    # exibir versão
@@ -53,6 +55,7 @@ A CLI usa subcomandos de verbo. Os principais são:
 | `tesouro-resgates` | Consulta recompras, cupons e vencimentos (`--tipo`, `--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `tesouro-estoque` | Consulta o estoque mensal (`--titulo`, `--inicio`, `--fim`, `--mes`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
 | `mercado` | Consulta ou exporta dólar e ouro (`--ativo`, `--inicio`, `--fim`, `--resolucao`, `--prever`, `--formato`, `--saida`, `--no-cache`, `--atualizar`). |
+| `reservas` | Consulta ou exporta as reservas internacionais do BCB SGS 13621 (`--inicio`, `--fim`, `--janela`, `--formato`, `--indicadores`, `--saida`, `--no-cache`, `--atualizar`). |
 | `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
 | `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
 | `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
@@ -73,6 +76,13 @@ data disponível. O ouro é derivado de `XAU/USD x USD/BRL / 31,1034768` e cada
 ponto informa origem, método e horário de extração. O cache de mercado fica em
 `$XDG_CACHE_HOME/b3-selic-pre/market/`.
 
+O subcomando `reservas` consulta a série diária oficial BCB SGS 13621 (conceito
+de liquidez, em US$ milhões), com janela padrão de 12 meses ou 3 anos. Sem
+`--atualizar` nem `--no-cache`, lê apenas o cache local. O CSV usa
+`DATA;VALOR;UNIDADE;ORIGEM;METODO`; o JSON inclui `janela`, `serie`,
+`indicadores`, `origem` e `gerado_em`. Os artefatos padrão são
+`reservas-serie.csv` e `reservas.json`.
+
 Consulte [Linha de Comando (CLI)](docs/misc/cli.md) para parâmetros, formatos de
 exportação, regras de `--saida`, validação de data, logging e códigos de retorno.
 
@@ -92,9 +102,10 @@ Durante o atendimento o servidor não acessa a B3/CVM e não grava estado. Ele
 expõe as tools `data_referencia`, `consultar_curva`, `exportar_curva_curta`,
 `exportar_curva_longa`, `analise`, `evolucao`, `estatisticas`, `listar_datas`,
 `tesouro_vendas`, `tesouro_resgates`, `tesouro_estoque`, `mercado_serie`,
-`mercado_previsao`, `mercado_indicadores` e `mercado_exportar`. As tools de Tesouro
-leem apenas o cache local; prepare-o antes com o subcomando de dados
-correspondente. Detalhes de protocolo, tools e execução em Docker estão em
+`mercado_previsao`, `mercado_indicadores`, `mercado_exportar`,
+`reservas_serie`, `reservas_indicadores` e `reservas_exportar`. As tools de
+Tesouro e de reservas leem apenas o cache local; prepare-o antes com o
+subcomando de dados correspondente. Detalhes de protocolo, tools e execução em Docker estão em
 [Servidor MCP](docs/misc/mcp.md).
 
 ### Interface Gráfica
@@ -105,10 +116,12 @@ A janela principal organiza o conteúdo em abas por classe de ativo:
 - **Tesouro Direto**: sub-abas `Visão geral`, `Estoque` e `Apetite do mercado`,
   com gráficos de percentual atual e evolução, toolbar, hover sobre os pontos e
   texto orientativo redimensionável.
-- **Câmbio e Reservas**: sub-aba `Dólar e Ouro`, com histórico de 12 meses,
-  cenário de 12 meses, sinais de política cambial, alternância base 100 e
-  overlay de Fibonacci. A sub-aba carrega apenas o cache na primeira exibição e
-  tem `Atualizar` próprio.
+- **Câmbio e Reservas**: sub-abas `Dólar e Ouro` e `Reservas Internacionais`,
+  nesta ordem. `Dólar e Ouro` traz histórico de 12 meses, cenário de 12 meses,
+  sinais de política cambial, alternância base 100 e overlay de Fibonacci.
+  `Reservas Internacionais` traz a série diária do BCB, janelas de 12 meses ou
+  3 anos, médias móveis, regime e aviso de defasagem. As sub-abas carregam
+  apenas o cache na primeira exibição e têm `Atualizar` próprio.
 - **Sobre**: o mesmo conteúdo do diálogo `Sobre`, com repositório, logs e aviso
   de nova versão.
 

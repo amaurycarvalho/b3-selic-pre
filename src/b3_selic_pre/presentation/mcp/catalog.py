@@ -92,6 +92,11 @@ _PREVER = {
     "type": "boolean",
     "description": "Inclui também o artefato de cenário.",
 }
+_JANELA_RESERVAS = {
+    "type": "string",
+    "enum": ["12m", "3a"],
+    "description": "Janela de reservas (padrão: 12m).",
+}
 
 
 def _schema(
@@ -301,6 +306,53 @@ TOOL_DEFINITIONS: list[dict[str, object]] = [
                 "fim": _FIM,
                 "formato": _FORMATO,
                 "prever": _PREVER,
+            }
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "reservas_serie",
+        "title": "Série de reservas internacionais",
+        "description": (
+            "Consulta a série diária de reservas internacionais do BCB "
+            "SGS 13621 apenas no cache local, com filtros de janela, "
+            "proveniência por item e paginação."
+        ),
+        "inputSchema": _schema(
+            {
+                "inicio": _INICIO,
+                "fim": _FIM,
+                "janela": _JANELA_RESERVAS,
+                "cursor": _CURSOR,
+                "limite": _LIMITE,
+            }
+        ),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "reservas_indicadores",
+        "title": "Indicadores de reservas",
+        "description": (
+            "Devolve nível, variações de 1/3/12 meses, tendência de 90 "
+            "dias, drawdown de 12 meses, posição na faixa, regime e "
+            "limiares usados, lendo apenas o cache local."
+        ),
+        "inputSchema": _schema(),
+        "annotations": dict(_READ_ONLY),
+    },
+    {
+        "name": "reservas_exportar",
+        "title": "Exportar reservas",
+        "description": (
+            "Devolve o conteúdo CSV ou JSON da série de reservas e dos "
+            "indicadores, sem gravar arquivos e lendo apenas o cache local."
+        ),
+        "inputSchema": _schema(
+            {
+                "inicio": _INICIO,
+                "fim": _FIM,
+                "janela": _JANELA_RESERVAS,
+                "formato": _FORMATO,
             }
         ),
         "annotations": dict(_READ_ONLY),

@@ -29,6 +29,7 @@ class Dispatcher:
         tesouro_cache: object | None = None,
         tesouro_cache_factory: object | None = None,
         market_services: object | None = None,
+        reserves_services: object | None = None,
     ) -> None:
         """Crie o dispatcher com o cache e a fábrica de settings."""
         self.cache = cache
@@ -36,6 +37,7 @@ class Dispatcher:
         self.tesouro_cache = tesouro_cache
         self.tesouro_cache_factory = tesouro_cache_factory
         self.market_services = market_services
+        self.reserves_services = reserves_services
 
     def dispatch(
         self: Dispatcher,
@@ -91,6 +93,7 @@ class Dispatcher:
             tesouro_cache=self.tesouro_cache,
             tesouro_cache_factory=self.tesouro_cache_factory,
             market_services=self.market_services,
+            reserves_services=self.reserves_services,
         )
         try:
             payload = tool_module.call_tool(

@@ -122,6 +122,7 @@ def _log_text(active_log: Path | None) -> str | None:
 
 def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
     from b3_selic_pre.infrastructure.market import build_market_services
+    from b3_selic_pre.infrastructure.reserves import build_reserves_services
     from b3_selic_pre.presentation.mcp.command import run_mcp_command
 
     return run_mcp_command(
@@ -133,6 +134,7 @@ def _run_mcp(args: argparse.Namespace, settings: Settings) -> int:
         tesouro_cache=TesouroCache(),
         tesouro_cache_factory=lambda resource: TesouroCache(resource=resource),
         market_services=build_market_services(),
+        reserves_services=build_reserves_services(),
     )
 
 
@@ -155,6 +157,15 @@ def _dispatch_mercado(args: argparse.Namespace) -> int:
 
     return cli_commands.mercado(
         args, MarketTabController(build_market_services())
+    )
+
+
+def _dispatch_reservas(args: argparse.Namespace) -> int:
+    from b3_selic_pre.infrastructure.reserves import build_reserves_services
+    from b3_selic_pre.presentation.reserves_tab import ReservesTabController
+
+    return cli_commands.reservas(
+        args, ReservesTabController(build_reserves_services())
     )
 
 
@@ -188,6 +199,8 @@ def _dispatch_other(
         return _dispatch_tesouro(args, handler)
     if args.comando == "mercado":
         return _dispatch_mercado(args)
+    if args.comando == "reservas":
+        return _dispatch_reservas(args)
     if args.comando == "mcp":
         return _run_mcp(args, settings)
     if args.comando == "criar-atalho":

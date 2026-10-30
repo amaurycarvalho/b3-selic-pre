@@ -169,6 +169,9 @@ class TestToolsCatalog:
             "mercado_previsao",
             "mercado_indicadores",
             "mercado_exportar",
+            "reservas_serie",
+            "reservas_indicadores",
+            "reservas_exportar",
         }
         for tool in tools:
             assert tool["annotations"]["readOnlyHint"] is True

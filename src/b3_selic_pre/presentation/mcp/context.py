@@ -36,3 +36,4 @@ class ToolContext:
     tesouro_cache: object | None = None
     tesouro_cache_factory: Callable[[str], object] | None = None
     market_services: object | None = None
+    reserves_services: object | None = None

@@ -243,6 +243,28 @@ Todas somente leitura, alimentadas apenas por cache/artefato pré-calculado, com
 
 Limiares de regime, janela padrão, sobreposição de revisão, TTLs e retenção ficam em `application/reserves/config.py`, construídos a partir de mapping, sem importar `Settings`. A presentation monta a configuração e a injeta, seguindo o padrão de `CurvaJurosConfig`.
 
+### 14. Texto orientativo e hover da sub-aba
+
+A sub-aba `Reservas Internacionais` replica o padrão de orientação de
+`Dólar e Ouro`: um `Text` somente leitura ao lado do gráfico, com as seções
+`Objetivo`, `Responde a pergunta`, `Indicadores envolvidos` e
+`Como interpretar`. O texto cobre BCB SGS 13621, conversão para US$ bilhões,
+variações, tendência, drawdown, posição na faixa, regime, médias móveis,
+janelas e defasagem.
+
+Decisões de layout:
+
+- O painel orientativo ocupa 20% da largura útil (`weight=1` contra
+  `weight=4` do gráfico). Em `Dólar e Ouro`, a divisão é 3:1 (25%).
+- A largura solicitada do `Text` cai de 36 para 29 colunas, também 20% menor,
+  para que a redução não dependa apenas da distribuição do `PanedWindow`.
+- O texto continua somente leitura, com rolagem vertical e quebra de palavra.
+
+Cada ponto histórico do gráfico registra um `HoverPoint` com data, valor em US$
+bilhões, médias móveis de 30 e 90 dias e indicação de máximo/mínimo da janela.
+O hover usa a mesma infraestrutura dos gráficos de mercado, com distância
+máxima de 20 px, e não acessa rede nem recalcula indicadores.
+
 ## Risks / Trade-offs
 
 - **Dependência de change ainda não implementada** → implementar `add-cambio-ouro-forecast` primeiro; o delta de `market-data-cache` só arquiva depois que ela existir. O `openspec validate` atual avisa que o arquivamento falharia hoje; isso é esperado e é o mecanismo que força a ordem.

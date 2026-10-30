@@ -324,3 +324,10 @@ def mercado(args: argparse.Namespace, controller: object) -> int:
     if filtered is None:
         return 1
     return _market_write(filtered, args)
+
+
+def reservas(args: argparse.Namespace, controller: object) -> int:
+    """Delega a consulta de reservas ao handler headless dedicado."""
+    from b3_selic_pre.presentation.cli_reserves import reservas as _handler
+
+    return _handler(args, controller)

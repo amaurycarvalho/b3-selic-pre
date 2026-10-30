@@ -11,10 +11,15 @@ from pathlib import Path
 from b3_selic_pre.application.market.config import MarketConfig
 from b3_selic_pre.infrastructure.action_lock import ActionLock, action_lock
 from b3_selic_pre.infrastructure.cache_payload import write_atomic
+from b3_selic_pre.infrastructure.market.precompute_paths import (
+    MANIFEST_NAME,
+    artifact_path,
+    derived_path,
+    manifest_path,
+)
 from b3_selic_pre.infrastructure.market.raw_cache import market_cache_root
 
 PRECOMPUTE_SCHEMA_VERSION = 1
-MANIFEST_NAME = "manifest.json"
 _LOCK_NAME = "market.lock"
 
 logger = logging.getLogger(__name__)
@@ -42,13 +47,15 @@ class MarketPrecomputeCache:
         cache_dir: str | Path | None = None,
         config: MarketConfig | None = None,
         lock_path: str | Path | None = None,
+        namespace: str | None = None,
     ) -> None:
         """Initialize the precompute cache and its lock path."""
         self.cache_dir = (
             Path(cache_dir) if cache_dir else market_cache_root()
         )
         self.config = config or MarketConfig()
-        self.manifest_path = self.cache_dir / MANIFEST_NAME
+        self.namespace = namespace
+        self.manifest_path = manifest_path(self.cache_dir, namespace)
         self.lock_path = lock_path or self.cache_dir / "locks" / _LOCK_NAME
 
     def lock(self: MarketPrecomputeCache) -> ActionLock:
@@ -57,11 +64,11 @@ class MarketPrecomputeCache:
 
     def derived_path(self: MarketPrecomputeCache, key: str) -> Path:
         """Return the derived series path for ``key``."""
-        return self.cache_dir / "derived" / key / "series.json"
+        return derived_path(self.cache_dir, self.namespace, key)
 
     def artifact_path(self: MarketPrecomputeCache, key: str) -> Path:
         """Return the precomputed artifact path for ``key``."""
-        return self.cache_dir / "precomputed" / key / "artifact.json"
+        return artifact_path(self.cache_dir, self.namespace, key)
 
     def load_manifest(self: MarketPrecomputeCache) -> dict[str, object] | None:
         """Read the manifest without modifying any file."""
@@ -106,7 +113,7 @@ class MarketPrecomputeCache:
 
     def write_manifest(self: MarketPrecomputeCache, manifest: dict[str, object]) -> None:
         """Write the manifest atomically."""
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         write_atomic(
             self.manifest_path,
             json.dumps(manifest, ensure_ascii=False),
@@ -129,7 +136,7 @@ class MarketPrecomputeCache:
         current = manifest.get("latest_data_date")
         if current is None or latest_data_date > str(current):
             manifest["latest_data_date"] = latest_data_date
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         write_atomic(
             self.manifest_path,
             json.dumps(manifest, ensure_ascii=False),

@@ -76,7 +76,130 @@ def test_cache_miss_is_not_an_error():
 
     assert not controller.has_data
     assert controller.error is None
+    assert controller.error_context is None
     assert controller.view_model().status_kind == "warning"
+
+
+def test_cache_read_failure_uses_cache_error_context():
+    def loader(cache_only, force):
+        raise OSError("disco indisponível")
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+
+    controller.load(cache_only=True)
+
+    view_model = controller.view_model()
+    assert controller.error == "disco indisponível"
+    assert controller.error_context == "ler o cache"
+    assert view_model.status_text == (
+        "Erro ao ler o cache: disco indisponível"
+    )
+
+
+def test_retry_hides_previous_error_while_loading():
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE,
+        loader=lambda cache_only, force: _data(),
+    )
+    controller.load(cache_only=True)
+
+    def failing_refresh(cache_only, force):
+        raise RuntimeError("falha anterior")
+
+    controller.loader = failing_refresh
+    controller.load(force=True)
+    assert controller.error == "falha anterior"
+
+    seen = []
+
+    def retry(cache_only, force):
+        view_model = controller.view_model()
+        seen.append(
+            (view_model.loading, view_model.error, view_model.status_text)
+        )
+        return _data()
+
+    controller.loader = retry
+    controller.load(force=True)
+
+    assert seen == [(True, None, "Atualizando dados do Tesouro…")]
+    assert controller.error is None
+
+
+def test_begin_load_clears_previous_error():
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE,
+        loader=lambda cache_only, force: _data(),
+    )
+    controller.error = "falha anterior"
+    controller.error_context = "ler o cache"
+
+    controller.begin_load()
+
+    view_model = controller.view_model()
+    assert controller.loading
+    assert controller.loading_origin == "network"
+    assert controller.error is None
+    assert controller.error_context is None
+    assert "falha anterior" not in view_model.status_text
+    assert view_model.status_kind == "info"
+
+
+def test_note_cache_presence_only_requests_reload_on_absent_to_present():
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=lambda cache_only, force: None
+    )
+
+    assert controller.note_cache_presence(False) is False
+    assert controller.note_cache_presence(True) is True
+    assert controller.note_cache_presence(True) is False
+
+
+def test_note_cache_presence_ignores_loading_or_existing_data():
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=lambda cache_only, force: _data()
+    )
+    controller.load(cache_only=True)
+
+    assert controller.note_cache_presence(False) is False
+    assert controller.note_cache_presence(True) is False
+
+    other = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=lambda cache_only, force: None
+    )
+    other.loading = True
+    assert other.note_cache_presence(True) is False
+
+
+def test_load_forwards_stage_callback_to_three_position_loader():
+    stages = []
+
+    def loader(cache_only, force, stage_callback=None):
+        stage_callback("vendas")
+        stage_callback("estoque")
+        return _data()
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+
+    controller.load(force=True, stage_callback=stages.append)
+
+    assert stages == ["vendas", "estoque"]
+
+
+def test_two_position_loader_remains_compatible_with_stage_callback():
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE,
+        loader=lambda cache_only, force: _data(),
+    )
+
+    data = controller.load(force=True, stage_callback=lambda stage: None)
+
+    assert data is not None
+    assert controller.error is None
 
 
 def test_window_change_updates_view_model_and_rejects_invalid():

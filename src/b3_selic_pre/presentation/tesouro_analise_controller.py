@@ -12,6 +12,10 @@ from b3_selic_pre.application.tesouro import (
     fluxo_liquido_por_familia,
 )
 from b3_selic_pre.presentation.tesouro_analise_data import AnaliseData
+from b3_selic_pre.presentation.tesouro_analise_loading import (
+    AnaliseLoader,
+    TesouroLoadingMixin,
+)
 from b3_selic_pre.presentation.tesouro_analise_view_model import (
     KIND_APETITE,
     KIND_ESTOQUE,
@@ -26,11 +30,8 @@ DEFAULT_WINDOWS = {
 }
 
 
-AnaliseLoader = Callable[[bool, bool], AnaliseData | None]
-
-
 @dataclass
-class TesouroAnaliseController:
+class TesouroAnaliseController(TesouroLoadingMixin):
     """Carrega cache e atualização de uma sub-aba, sem importar Tkinter."""
 
     kind: str
@@ -40,12 +41,16 @@ class TesouroAnaliseController:
     )
     window: str = ""
     loading: bool = False
+    loading_origin: str | None = None
+    loading_stage: str | None = None
     cache_available: bool = False
     error: str | None = None
+    error_context: str | None = None
     source: str = "Cache"
     extracted_at: str | None = None
     _data: AnaliseData | None = field(default=None, repr=False)
     _provider: TesouroSeriesProvider | None = field(default=None, repr=False)
+    _cache_present: bool = field(default=False, repr=False)
 
     def __post_init__(self: TesouroAnaliseController) -> None:
         """Apply the default window for the sub-tab kind."""
@@ -62,36 +67,6 @@ class TesouroAnaliseController:
         if window not in JANELAS_DEMANDA:
             raise ValueError(f"Janela inválida: {window}.")
         self.window = window
-
-    def load(
-        self: TesouroAnaliseController,
-        *,
-        cache_only: bool = False,
-        force: bool = False,
-    ) -> AnaliseData | None:
-        """Load data through the injected loader, isolating failures."""
-        self.loading = True
-        try:
-            data = self.loader(cache_only, force)
-        except Exception as exc:
-            if not cache_only:
-                self.error = str(exc)
-            data = None
-        finally:
-            self.loading = False
-        if data is None:
-            return None
-        self.error = None
-        self.cache_available = True
-        self._data = data
-        self.source = data.source
-        self.extracted_at = data.extracted_at
-        self._provider = data.provider or self.provider_factory(
-            vendas=list(data.vendas),
-            resgates=list(data.resgates),
-            estoque=list(data.estoque),
-        )
-        return data
 
     def _latest(self: TesouroAnaliseController) -> str | None:
         data = self._data
@@ -162,8 +137,11 @@ class TesouroAnaliseController:
             source=self.source,
             extracted_at=self.extracted_at,
             loading=self.loading,
+            loading_origin=self.loading_origin,
+            loading_stage=self.loading_stage,
             cache_available=self.cache_available,
             error=self.error,
+            error_context=self.error_context,
             has_data=self.has_data,
             extra=extra,
         )

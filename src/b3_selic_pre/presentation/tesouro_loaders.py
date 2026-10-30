@@ -17,6 +17,12 @@ from b3_selic_pre.presentation.tesouro_series_loader import (
 
 Client = Any
 Loader = Any
+StageCallback = Callable[[str], None]
+
+
+def _emit(stage_callback: StageCallback | None, stage: str) -> None:
+    if stage_callback is not None:
+        stage_callback(stage)
 
 
 def _metadata_time(metadata: dict[str, object]) -> str | None:
@@ -79,8 +85,14 @@ def _cache_data(client: Client, kind: str) -> AnaliseData | None:
     )
 
 
-def _refresh_data(client: Client, kind: str, force: bool) -> AnaliseData:
+def _refresh_data(
+    client: Client,
+    kind: str,
+    force: bool,
+    stage_callback: StageCallback | None = None,
+) -> AnaliseData:
     if kind == KIND_ESTOQUE:
+        _emit(stage_callback, "estoque")
         records, metadata, origin = client.fetch_estoque(force=force)
         return AnaliseData(
             estoque=tuple(records),
@@ -88,8 +100,10 @@ def _refresh_data(client: Client, kind: str, force: bool) -> AnaliseData:
             source=_source(origin),
             extracted_at=_metadata_time(metadata),
         )
+    _emit(stage_callback, "vendas")
     sales, sales_meta, sales_origin = client.fetch_vendas(force=force)
     if kind == KIND_APETITE:
+        _emit(stage_callback, "resgates")
         try:
             redemptions, _redemption_meta, redemption_origin = (
                 client.fetch_resgates(force=force)
@@ -107,6 +121,7 @@ def _refresh_data(client: Client, kind: str, force: bool) -> AnaliseData:
             ),
             extracted_at=_metadata_time(sales_meta),
         )
+    _emit(stage_callback, "estoque")
     stock, stock_meta, stock_origin = client.fetch_estoque(force=force)
     return AnaliseData(
         vendas=tuple(sales),
@@ -151,7 +166,11 @@ def make_loader(
 ) -> Loader:
     """Create a cache/refresh loader for a sub-tab kind."""
 
-    def loader(cache_only: bool, force: bool) -> AnaliseData | None:
+    def loader(
+        cache_only: bool,
+        force: bool,
+        stage_callback: StageCallback | None = None,
+    ) -> AnaliseData | None:
         if client is None:
             raise RuntimeError("Cliente do Tesouro não configurado.")
         if cache_only:
@@ -162,6 +181,6 @@ def make_loader(
             if data is not None and precompute is not None:
                 precompute(kind, data)
             return data
-        return _refresh_data(client, kind, force)
+        return _refresh_data(client, kind, force, stage_callback)
 
     return loader

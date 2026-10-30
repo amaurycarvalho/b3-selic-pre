@@ -30,6 +30,9 @@ __all__ = [
 ]
 
 
+_LOADING_STAGES = ("vendas", "resgates", "estoque")
+
+
 @dataclass
 class TesouroAnaliseViewModel:
     """Estado e dados derivados de uma sub-aba, sem importar Tkinter."""
@@ -42,8 +45,11 @@ class TesouroAnaliseViewModel:
     source: str = "Cache"
     extracted_at: str | None = None
     loading: bool = False
+    loading_origin: str | None = None
+    loading_stage: str | None = None
     cache_available: bool = False
     error: str | None = None
+    error_context: str | None = None
     has_data: bool = False
     extra: dict[str, object] = field(default_factory=dict)
 
@@ -70,21 +76,33 @@ class TesouroAnaliseViewModel:
     @property
     def placeholder_message(self: TesouroAnaliseViewModel) -> str | None:
         """Return the centered chart message while there is no data."""
+        if self.loading:
+            return self.loading_text
         if self.has_data:
             return None
-        if self.loading and self.cache_available:
-            return "Carregando dados do Tesouro…"
         return self.empty_message
+
+    @property
+    def loading_text(self: TesouroAnaliseViewModel) -> str:
+        """Return the status text describing the current load."""
+        if self.loading_origin == "cache":
+            return "Lendo dados do Tesouro no cache…"
+        if self.loading_origin == "network":
+            base = "Atualizando dados do Tesouro…"
+            if self.loading_stage in _LOADING_STAGES:
+                return f"{base} ({self.loading_stage})"
+            return base
+        return "Carregando dados do Tesouro…"
 
     @property
     def status_text(self: TesouroAnaliseViewModel) -> str:
         """Return the status line for the sub-tab."""
-        if self.error:
-            return f"Erro ao carregar: {self.error}"
         if self.loading:
-            if self.cache_available or self.has_data:
-                return "Carregando dados do Tesouro…"
-            return self.empty_message
+            return self.loading_text
+        if self.error:
+            if self.error_context == "ler o cache":
+                return f"Erro ao ler o cache: {self.error}"
+            return f"Erro ao carregar: {self.error}"
         if not self.has_data:
             return self.empty_message
         parts = [f"Fonte: {self.source}"]
@@ -97,10 +115,10 @@ class TesouroAnaliseViewModel:
     @property
     def status_kind(self: TesouroAnaliseViewModel) -> str:
         """Return the status severity used by the status bar."""
+        if self.loading:
+            return "info"
         if self.error:
             return "error"
-        if self.loading:
-            return "info" if self.cache_available or self.has_data else "warning"
         if not self.has_data:
             return "warning"
         return "success"

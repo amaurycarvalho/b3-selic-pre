@@ -159,9 +159,7 @@ def test_estoque_and_apetite_evolution_enable_vertical_grid():
 
 def test_placeholder_guides_refresh_without_cache():
     view_model = TesouroAnaliseViewModel(kind=KIND_ESTOQUE, has_data=False)
-    view_model.loading = True
 
-    assert view_model.placeholder_message == view_model.empty_message
     assert "Pressione Atualizar" in view_model.status_text
     assert view_model.status_kind == "warning"
 
@@ -171,9 +169,10 @@ def test_placeholder_reports_loading_when_cache_exists():
         kind=KIND_ESTOQUE, has_data=False, cache_available=True
     )
     view_model.loading = True
+    view_model.loading_origin = "cache"
 
-    assert view_model.placeholder_message == "Carregando dados do Tesouro…"
-    assert view_model.status_text == "Carregando dados do Tesouro…"
+    assert view_model.placeholder_message == "Lendo dados do Tesouro no cache…"
+    assert view_model.status_text == "Lendo dados do Tesouro no cache…"
     assert view_model.status_kind == "info"
 
 
@@ -181,3 +180,59 @@ def test_placeholder_disappears_when_data_exists():
     view_model = _view_model(KIND_ESTOQUE)
 
     assert view_model.placeholder_message is None
+
+
+def test_loading_without_cache_does_not_guide_refresh():
+    view_model = TesouroAnaliseViewModel(kind=KIND_ESTOQUE, has_data=False)
+    view_model.loading = True
+    view_model.loading_origin = "network"
+
+    assert view_model.placeholder_message == "Atualizando dados do Tesouro…"
+    assert "Pressione Atualizar" not in view_model.status_text
+    assert view_model.status_text == "Atualizando dados do Tesouro…"
+    assert view_model.status_kind == "info"
+
+
+def test_loading_from_network_includes_current_stage():
+    view_model = TesouroAnaliseViewModel(kind=KIND_ESTOQUE, has_data=False)
+    view_model.loading = True
+    view_model.loading_origin = "network"
+    view_model.loading_stage = "estoque"
+
+    assert view_model.status_text == (
+        "Atualizando dados do Tesouro… (estoque)"
+    )
+    assert view_model.placeholder_message == view_model.status_text
+    assert view_model.status_kind == "info"
+
+
+def test_loading_hides_previous_error():
+    view_model = TesouroAnaliseViewModel(
+        kind=KIND_ESTOQUE,
+        has_data=False,
+        error="falha",
+        error_context="ler o cache",
+    )
+    view_model.loading = True
+    view_model.loading_origin = "network"
+
+    assert "falha" not in view_model.status_text
+    assert view_model.status_kind == "info"
+
+
+def test_status_renders_cache_and_generic_errors():
+    cache_error = TesouroAnaliseViewModel(
+        kind=KIND_ESTOQUE,
+        error="arquivo corrompido",
+        error_context="ler o cache",
+    )
+    load_error = TesouroAnaliseViewModel(
+        kind=KIND_ESTOQUE, error="rede indisponível"
+    )
+
+    assert cache_error.status_text == (
+        "Erro ao ler o cache: arquivo corrompido"
+    )
+    assert cache_error.status_kind == "error"
+    assert load_error.status_text == "Erro ao carregar: rede indisponível"
+    assert load_error.status_kind == "error"

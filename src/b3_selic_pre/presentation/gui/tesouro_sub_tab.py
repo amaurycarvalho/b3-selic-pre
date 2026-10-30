@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import Any
 
 from b3_selic_pre.presentation.charts_tesouro import (
@@ -81,11 +80,19 @@ class TesouroSubTab(SubTabUI):
         """Load cache once, off the UI thread, when the sub-tab is visible."""
         if self._closed:
             return
+        present = cache_available(
+            self._client, self.kind
+        ) or series_available(self._series_cache, self.kind)
         if not self._cache_loaded:
             self._cache_loaded = True
-            self.controller.cache_available = cache_available(
-                self._client, self.kind
-            ) or series_available(self._series_cache, self.kind)
+            self.controller.note_cache_presence(present)
+            self._start_load(cache_only=True)
+            self._draw()
+            return
+        if (
+            not self.controller.has_data
+            and self.controller.note_cache_presence(present)
+        ):
             self._start_load(cache_only=True)
             self._draw()
             return
@@ -104,32 +111,15 @@ class TesouroSubTab(SubTabUI):
         ignore_cache = force or self.ignore_cache_var.get()
         self._start_load(force=ignore_cache)
 
-    def _start_load(
-        self: TesouroSubTab,
-        *,
-        cache_only: bool = False,
-        force: bool = False,
-    ) -> None:
-        if self._loading or self._closed:
-            return
-        self._loading = True
-        self.controller.loading = True
-        self.update_loading_state(True)
-        view_model = self.controller.view_model()
-        self.apply_status(view_model.status_text, view_model.status_kind)
-        threading.Thread(
-            target=self._load_worker,
-            args=(cache_only, force),
-            daemon=True,
-        ).start()
-
     def _load_worker(
         self: TesouroSubTab, cache_only: bool, force: bool
     ) -> None:
         data = None
         try:
             data = self.controller.load(
-                cache_only=cache_only, force=force
+                cache_only=cache_only,
+                force=force,
+                stage_callback=self._on_stage,
             )
         except Exception:
             pass
@@ -152,6 +142,7 @@ class TesouroSubTab(SubTabUI):
             return
         self._loading = False
         self.controller.loading = False
+        self.controller.loading_stage = None
         self.update_loading_state(False)
         self._draw()
 

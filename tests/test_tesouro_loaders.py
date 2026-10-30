@@ -66,6 +66,23 @@ class FakeClient:
         return [], {}, "cache"
 
 
+class FakeNetworkClient:
+    def __init__(self):
+        self.calls = []
+
+    def fetch_vendas(self, force=False):
+        self.calls.append("vendas")
+        return [], {}, "network"
+
+    def fetch_resgates(self, force=False):
+        self.calls.append("resgates")
+        return [], {}, "network"
+
+    def fetch_estoque(self, force=False):
+        self.calls.append("estoque")
+        return [], {}, "network"
+
+
 def test_visao_geral_reads_only_stock_and_sales_from_cache():
     client = FakeClient()
 
@@ -111,6 +128,45 @@ def test_cache_available_is_scoped_by_sub_tab():
 
 def test_cache_available_without_client_is_false():
     assert cache_available(None, KIND_ESTOQUE) is False
+
+
+def test_refresh_loader_emits_stages_before_each_network_call():
+    stages = []
+    client = FakeNetworkClient()
+
+    make_loader(client, KIND_APETITE)(False, False, stages.append)
+
+    assert stages == ["vendas", "resgates"]
+    assert client.calls == ["vendas", "resgates"]
+
+
+def test_estoque_refresh_loader_emits_only_the_stock_stage():
+    stages = []
+    client = FakeNetworkClient()
+
+    make_loader(client, KIND_ESTOQUE)(False, False, stages.append)
+
+    assert stages == ["estoque"]
+    assert client.calls == ["estoque"]
+
+
+def test_visao_geral_refresh_loader_emits_sales_then_stock_stages():
+    stages = []
+    client = FakeNetworkClient()
+
+    make_loader(client, KIND_VISAO_GERAL)(False, False, stages.append)
+
+    assert stages == ["vendas", "estoque"]
+    assert client.calls == ["vendas", "estoque"]
+
+
+def test_cache_only_loader_does_not_emit_network_stages():
+    stages = []
+    client = FakeClient()
+
+    make_loader(client, KIND_ESTOQUE)(True, False, stages.append)
+
+    assert stages == []
 
 
 from b3_selic_pre.application.tesouro import (

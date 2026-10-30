@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from b3_selic_pre.presentation.gui.tesouro_chart_panel import ChartPanel
@@ -174,6 +175,46 @@ class SubTabUI:
         elif self.progress.winfo_manager():  # type: ignore[attr-defined]
             self.progress.stop()  # type: ignore[attr-defined]
             self.progress.pack_forget()  # type: ignore[attr-defined]
+
+    def _start_load(
+        self: SubTabUI, *, cache_only: bool = False, force: bool = False
+    ) -> None:
+        """Start a load in the worker thread and show its initial status."""
+        if self._loading or self._closed:  # type: ignore[attr-defined]
+            return
+        self._loading = True  # type: ignore[attr-defined]
+        self.controller.begin_load(  # type: ignore[attr-defined]
+            cache_only=cache_only
+        )
+        self.update_loading_state(True)
+        view_model = self.controller.view_model()  # type: ignore[attr-defined]
+        self.apply_status(view_model.status_text, view_model.status_kind)
+        threading.Thread(
+            target=self._load_worker,  # type: ignore[attr-defined]
+            args=(cache_only, force),
+            daemon=True,
+        ).start()
+
+    def _on_stage(self: SubTabUI, stage: str) -> None:
+        """Marshal a worker stage callback to the UI thread."""
+        if self._closed:  # type: ignore[attr-defined]
+            return
+        try:
+            self.root.after(  # type: ignore[attr-defined]
+                0, self._apply_stage, stage
+            )
+        except Exception:
+            return
+
+    def _apply_stage(self: SubTabUI, stage: str) -> None:
+        """Apply the current load stage and refresh the statusbar."""
+        if self._closed or not self._root_alive():  # type: ignore[attr-defined]
+            return
+        if not self.controller.loading:  # type: ignore[attr-defined]
+            return
+        self.controller.loading_stage = stage  # type: ignore[attr-defined]
+        view_model = self.controller.view_model()  # type: ignore[attr-defined]
+        self.apply_status(view_model.status_text, view_model.status_kind)
 
     def apply_status(self: SubTabUI, message: str, kind: str) -> None:
         """Write a message and its severity color to the statusbar."""

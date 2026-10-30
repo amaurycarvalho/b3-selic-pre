@@ -117,16 +117,17 @@ def render_chart(fig: Figure, records: list[RateRecord], consolidated: bool = Fa
         major_3yr = nearest_ticks(all_years, range(0, 21, 3), 1)
         minor_1yr = nearest_ticks(all_years, range(21), 1, set(major_3yr))
         _setup_xy_grid(ax, "Ano", 20, major_3yr, minor_1yr)
-        ax.legend()
+        ax.legend(loc="upper right")
     else:
         days = [r.day252 for r in records]
         rates = [float(r.rate.replace(",", ".")) for r in records]
         ax.plot(days, rates, color="green", marker=".",
-                linestyle="-", linewidth=1.5)
+                linestyle="-", linewidth=1.5, label="Taxa")
         all_days = sorted({r.day252 for r in records})
         major_66du = nearest_ticks(all_days, range(66, 757, 66), 44)
         minor_22du = nearest_ticks(all_days, range(1, 757, 22), 22, set(major_66du))
         _setup_xy_grid(ax, "Dias úteis", 756, major_66du, minor_22du)
+        ax.legend(loc="upper right")
     fig.tight_layout()
 
 
@@ -164,7 +165,7 @@ def render_curve_evolution(fig: Figure, date_rates: dict[str, list[RateRecord]])
     sample = lambda date_str, tick: average_rate_by_year(date_rates[date_str]).get(tick)
     _draw_evolution_arrows(ax, dates_sorted, all_years, plt.cm.Blues, sample)
     _setup_xy_grid(ax, "Ano", 20, major_3yr, minor_1yr)
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8, loc="upper right")
     fig.tight_layout()
 
 
@@ -206,7 +207,7 @@ def render_detailed_evolution(fig: Figure, date_rates: dict[str, list[RateRecord
     sample = lambda date_str, pos: nearest_rate(date_rate_map[date_str], pos, 22)
     _draw_evolution_arrows(ax, dates_sorted, minor_22du, plt.cm.Greens, sample)
     _setup_xy_grid(ax, "Dias úteis", 756, major_66du, minor_22du)
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8, loc="upper right")
     fig.tight_layout()
 
 

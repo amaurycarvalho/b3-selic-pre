@@ -1,10 +1,10 @@
-# Spec Delta
+# app-tabs Specification
 
 ## Purpose
 
 Organizar a janela principal em abas por classe de ativo, com carregamento lazy e um registro de abas que permita adicionar Câmbio no futuro sem reestruturar o shell.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Abas de nível superior
 
@@ -94,6 +94,56 @@ A change de Câmbio SHALL poder registrar sua aba sem alterar o shell. Uma aba N
 
 - **WHEN** a change de Câmbio não foi aplicada
 - **THEN** a aba `Câmbio` NÃO SHALL ser exibida
+
+### Requirement: Aba Sobre
+
+A janela principal SHALL exibir uma aba `Sobre` à direita de `Tesouro Direto`.
+
+A aba SHALL replicar o conteúdo e as funcionalidades do diálogo `Sobre` da aba
+`SELIC Pré`: identidade, versão, data de lançamento, licença, descrição, link do
+repositório, diretório de logs e aviso de nova versão. O botão `Sobre` da aba
+`SELIC Pré` SHALL continuar disponível e abrindo o diálogo modal.
+
+A aba SHALL exibir o conteúdo em um frame e um textbox somente leitura abaixo
+dos botões com seções em negrito e `:` ao final. O texto SHALL resumir a
+aplicação, a sintaxe dos comandos e parâmetros da CLI e o servidor MCP, incluindo
+o que é MCP, as tools disponibilizadas e a sintaxe para iniciar/atualizar o
+servidor.
+
+#### Scenario: Aba Sobre visível
+
+- **WHEN** a janela principal é aberta
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto` e `Sobre` SHALL estar disponíveis
+- **THEN** `Sobre` SHALL estar à direita de `Tesouro Direto`
+
+#### Scenario: Funcionalidades preservadas
+
+- **WHEN** o usuário acessa a aba `Sobre`
+- **THEN** o link do repositório, o diretório de logs e o aviso de nova versão SHALL funcionar como no diálogo
+- **THEN** o botão `Sobre` da aba `SELIC Pré` SHALL continuar abrindo o diálogo
+
+#### Scenario: Texto orientativo da aplicação
+
+- **WHEN** o usuário acessa a aba `Sobre`
+- **THEN** SHALL existir um textbox somente leitura abaixo dos botões
+- **THEN** as seções SHALL estar em negrito e terminar com `:`
+- **THEN** ele SHALL resumir a aplicação, a sintaxe/parâmetros da CLI e o servidor MCP
+- **THEN** ele SHALL explicar o que é MCP, listar as tools e mostrar como iniciar/atualizar
+
+### Requirement: Legenda da curva SELIC Pré
+
+As visualizações 2D da aba `SELIC Pré` SHALL exibir a legenda no canto superior
+direito, inclusive na curva curta, na curva longa e nas evoluções.
+
+#### Scenario: Legenda sempre visível
+
+- **WHEN** uma curva ou evolução 2D é renderizada na aba `SELIC Pré`
+- **THEN** a legenda SHALL estar visível no canto superior direito
+
+#### Scenario: Curva curta rotulada
+
+- **WHEN** a curva curta é exibida
+- **THEN** a legenda SHALL conter o rótulo `Taxa`
 
 ### Requirement: Atalhos restritos à aba ativa
 

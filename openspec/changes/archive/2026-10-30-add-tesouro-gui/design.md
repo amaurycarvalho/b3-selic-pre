@@ -171,6 +171,58 @@ A change futura registra `CambioTab` com suas próprias sub-abas (Dólar/Ouro) e
 - A GUI de Tesouro nasce nesta change, já no formato final.
 - As specs `tesouro-direto-gui` e `tesouro-resgates-estoque-gui` das changes antigas são substituídas por `app-tabs` e `tesouro-analise-gui`.
 
+### 11. Chrome e interação das sub-abas
+
+**Decisão:** cada sub-aba tem controles, statusbar, toolbar de gráfico e texto orientativo próprios.
+
+- O botão `Atualizar` usa apenas o ícone `view-refresh`; durante a carga troca para `content-loading`.
+- Tooltips cobrem o seletor de janela, o botão de atualizar e o checkbox `Ignorar cache`.
+- A statusbar fica na base, com o texto de status e a barra de progresso indeterminado; separadores dividem seleção, gráficos e statusbar.
+- Cada gráfico tem um `NavigationToolbar2Tk` com o mesmo comportamento do gráfico SELIC Pré, incluindo o botão de copiar a imagem.
+- Um `HoverTooltip` mostra o conteúdo do ponto de dados mais próximo do cursor; os renderizadores registram os pontos de hover.
+- O texto orientativo fica em um `tk.Text` somente leitura, com `Objetivo`, `Responde a pergunta`, `Indicadores envolvidos` e `Como interpretar`.
+- Um `ttk.PanedWindow` horizontal fornece a splitbar móvel entre gráficos e texto orientativo.
+- Os títulos da `Visão geral` passam a `Estoque vs Apetite do mercado (janela até data)` e `Gap Apetite menos Estoque (janela até data)`.
+- A evolução de `Estoque` e `Apetite do mercado` exibe grades verticais nos pontos de dados.
+
+### 12. Aba Sobre
+
+**Decisão:** extrair o conteúdo do diálogo Sobre para uma `AboutTab`, registrada após `Tesouro Direto`.
+
+- A aba reutiliza o cabeçalho, a descrição, os botões de repositório e diretório de logs e a verificação de nova versão.
+- O botão `Sobre` da aba SELIC Pré continua abrindo o diálogo modal; nenhum comportamento é removido.
+
+### 13. Legenda da curva SELIC Pré
+
+**Decisão:** todas as renderizações 2D da aba SELIC Pré exibem legenda no canto superior direito.
+
+- A curva curta passa a ter o rótulo `Taxa`; a curva longa mantém `Menor taxa` e `Maior taxa`.
+- As visualizações de evolução mantêm as datas como rótulos e usam `loc="upper right"`.
+- O gráfico 3D continua usando a barra de cores, sem legenda convencional.
+
+### 14. Correções observadas em uso
+
+**Decisão:** manter o lazy por sub-aba e tirar a leitura inicial do cache da thread da UI.
+
+- O delay ao abrir `Tesouro Direto` vinha da leitura/parsing síncronos do cache, não da construção antecipada das sub-abas.
+- A primeira exibição inicia uma thread somente-cache e retorna ao `root.after`; nenhuma rede é acessada.
+- A leitura é escopada: `Visão geral` lê estoque e vendas; `Estoque` lê apenas estoque; `Apetite` lê vendas e resgates.
+- A statusbar é empacotada na base antes do painel expansível para não ser esmagada.
+- Cada gráfico tem uma toolbar independente, exibida na vertical à esquerda do canvas (ver seção 15).
+- Os títulos do texto orientativo usam tag em negrito e `:`.
+- A aba `Sobre` usa um `LabelFrame` e um `tk.Text` somente leitura com resumo da aplicação, CLI e MCP.
+
+### 15. Estados de carregamento e toolbars verticais
+
+**Decisão:** feedback imediato ao trocar de sub-aba e toolbar própria por gráfico.
+
+- Antes de iniciar a leitura assíncrona, um probe barato de cache (`has_data`) decide o texto centralizado:
+  - sem cache: “Nenhum dado em cache. Pressione Atualizar para carregar.”, também na statusbar;
+  - com cache: “Carregando dados do Tesouro…”, também na statusbar durante a leitura.
+- A linha de detalhe (fluxo líquido) fica ao lado do checkbox `Ignorar cache`, não acima da statusbar.
+- Cada gráfico cria sua própria `NavigationToolbar2Tk` com `pack_toolbar=False`, empilhada verticalmente à esquerda do canvas, sem os separadores/spacers da toolbar original.
+- O texto da aba `Sobre` usa seções em negrito com `:`, incluindo sintaxe/parâmetros da CLI e explicação, tools e sintaxe do servidor MCP.
+
 ## Risks / Trade-offs
 
 - **[Refactor de GUI em código funcional]** → isolar a tela atual em um controller e só trocar o parent; adaptar os 5 testes existentes sem reescrever a lógica.

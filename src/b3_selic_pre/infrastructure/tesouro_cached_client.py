@@ -22,6 +22,9 @@ from b3_selic_pre.domain.models import (
     VendaTesouroDireto,
 )
 from b3_selic_pre.infrastructure.tesouro_cache import SCHEMA_VERSION, TesouroCache
+from b3_selic_pre.infrastructure.tesouro_cache_presence import (
+    TesouroCachePresenceMixin,
+)
 from b3_selic_pre.infrastructure.tesouro_client import (
     TesouroDownload,
     TesouroResource,
@@ -35,7 +38,7 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-class TesouroDiretoClient:
+class TesouroDiretoClient(TesouroCachePresenceMixin):
     """Fetches Tesouro datasets through the conditional cached source."""
 
     def __init__(
@@ -54,6 +57,43 @@ class TesouroDiretoClient:
 
     def _resource_cache(self: TesouroDiretoClient, key: str) -> TesouroCache:
         return TesouroCache(self._cache.cache_dir, resource=key)
+
+    def read_cached_vendas(
+        self: TesouroDiretoClient,
+    ) -> tuple[list[VendaTesouroDireto], dict[str, object], str] | None:
+        """Read sales from disk without any network access."""
+        cached = self._cache.read()
+        if cached is None:
+            return None
+        return parse_vendas(cached[0]), cached[1], "cache"
+
+    def read_cached_estoque(
+        self: TesouroDiretoClient,
+    ) -> tuple[list[EstoqueTesouroDireto], dict[str, object], str] | None:
+        """Read the stock resource from disk without any network access."""
+        cached = self._resource_cache("estoque").read()
+        if cached is None:
+            return None
+        return parse_estoque(cached[0]), cached[1], "cache"
+
+    def read_cached_resgates(
+        self: TesouroDiretoClient,
+    ) -> tuple[list[ResgateTesouroDireto], dict[str, object], str] | None:
+        """Read every redemption resource from disk without network access."""
+        records: list[ResgateTesouroDireto] = []
+        metadata: dict[str, dict[str, object]] = {}
+        for key in RESGATE_KEYS:
+            cached = self._resource_cache(key).read()
+            if cached is None:
+                continue
+            try:
+                records.extend(parse_resgates(cached[0], key))
+            except TesouroDataError:
+                continue
+            metadata[key] = cached[1]
+        if not metadata:
+            return None
+        return records, combine_metadata(metadata), "cache"
 
     def fetch_vendas(
         self: TesouroDiretoClient,

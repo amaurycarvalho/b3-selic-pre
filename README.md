@@ -89,6 +89,22 @@ correspondente. Detalhes de protocolo, tools e execução em Docker estão em
 
 ### Interface Gráfica
 
+A janela principal organiza o conteúdo em abas por classe de ativo:
+
+- **SELIC Pré** (aba padrão): a tela atual de curva, evolução e análise.
+- **Tesouro Direto**: sub-abas `Visão geral`, `Estoque` e `Apetite do mercado`,
+  com gráficos de percentual atual e evolução, toolbar, hover sobre os pontos e
+  texto orientativo redimensionável.
+- **Sobre**: o mesmo conteúdo do diálogo `Sobre`, com repositório, logs e aviso
+  de nova versão.
+
+As abas e sub-abas são construídas sob demanda, na primeira exibição. Na
+primeira abertura de uma sub-aba, apenas o cache local é lido; use `Atualizar`
+para buscar dados e `Ignorar cache` para forçar uma verificação condicional
+(`304` reutiliza o cache). Os dados brutos de vendas, resgates e estoque
+continuam disponíveis somente na CLI (`tesouro`, `tesouro-resgates`,
+`tesouro-estoque`), não na GUI.
+
 Vide a [documentação](docs/misc/panels.md) da interface, com indicadores e parametrizações disponíveis.
 
 ---

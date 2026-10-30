@@ -140,6 +140,15 @@ class TesouroCache:
             return None
         return data
 
+    def has_data(self: TesouroCache) -> bool:
+        """Return whether a valid CSV and metadata exist on disk."""
+        if self._read_metadata() is None:
+            return False
+        try:
+            return self.csv_path.stat().st_size > 0
+        except OSError:
+            return False
+
     def is_fresh(
         self: TesouroCache, metadata: dict[str, object], now: datetime | None = None
     ) -> bool:

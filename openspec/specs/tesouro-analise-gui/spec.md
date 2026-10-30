@@ -1,10 +1,10 @@
-# Spec Delta
+# tesouro-analise-gui Specification
 
 ## Purpose
 
 Exibir, na aba Tesouro Direto, a composição percentual do estoque e o apetite percentual do mercado, com gráficos de percentual atual e evolução, carregamento lazy e atualização independente.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Sub-abas de análise
 
@@ -188,6 +188,138 @@ Durante a carga, a sub-aba SHALL exibir progresso indeterminado e desabilitar su
 
 - **WHEN** o usuário fecha a janela durante uma carga
 - **THEN** nenhuma exceção SHALL ser lançada
+
+### Requirement: Controles e status da sub-aba
+
+Cada sub-aba SHALL ter:
+
+- botão `Atualizar` somente com ícone, trocando para o ícone de carregamento durante a atualização;
+- tooltips no seletor de janela, no botão `Atualizar` e no checkbox `Ignorar cache`;
+- statusbar própria, sempre visível na base, com fonte, extração, data-base e barra de progresso indeterminado;
+- separadores visuais entre a seleção de dados, a área de gráficos e a statusbar;
+- linha de detalhe (por exemplo, fluxo líquido) ao lado do checkbox `Ignorar cache`, sem ocupar espaço acima da statusbar;
+- leitura inicial do cache fora da thread da UI, sem acesso automático à rede.
+
+#### Scenario: Controles identificáveis
+
+- **WHEN** uma sub-aba é exibida
+- **THEN** o botão `Atualizar` SHALL exibir apenas o ícone
+- **THEN** o seletor, o botão e o checkbox SHALL ter tooltips
+
+#### Scenario: Progresso na statusbar
+
+- **WHEN** a sub-aba está carregando
+- **THEN** a barra de progresso indeterminado SHALL aparecer na statusbar
+- **THEN** os controles de atualização SHALL ficar desabilitados
+
+#### Scenario: Separadores
+
+- **WHEN** a sub-aba é exibida
+- **THEN** separadores SHALL dividir a seleção de dados, os gráficos e a statusbar
+
+### Requirement: Texto orientativo redimensionável
+
+Cada sub-aba SHALL exibir um texto somente leitura ao lado dos gráficos,
+contendo as seções `Objetivo`, `Responde a pergunta`, `Indicadores envolvidos`
+e `Como interpretar`. Os títulos das seções SHALL estar em negrito e terminar
+com `:`.
+
+Uma splitbar móvel SHALL separar o texto orientativo da área de gráficos.
+
+#### Scenario: Seções obrigatórias
+
+- **WHEN** o texto orientativo é exibido
+- **THEN** ele SHALL conter `Objetivo`, `Responde a pergunta`, `Indicadores envolvidos` e `Como interpretar`
+
+#### Scenario: Splitbar móvel
+
+- **WHEN** o usuário arrasta a splitbar
+- **THEN** a divisão entre texto e gráficos SHALL mudar de tamanho
+
+### Requirement: Toolbars verticais por gráfico e hover
+
+Cada gráfico SHALL ter uma toolbar independente, com as mesmas funções da
+toolbar do gráfico SELIC Pré, incluindo cópia da imagem. A toolbar SHALL ser
+exibida na vertical, do lado esquerdo do respectivo gráfico, sem separadores
+entre os botões.
+
+Quando o cursor estiver sobre um ponto de dados, o sistema SHALL exibir um
+rótulo com o conteúdo daquele ponto.
+
+#### Scenario: Toolbar por gráfico
+
+- **WHEN** uma sub-aba é exibida
+- **THEN** cada gráfico SHALL ter sua própria toolbar
+- **THEN** a toolbar SHALL aparecer na vertical à esquerda do gráfico
+
+#### Scenario: Independência
+
+- **WHEN** o usuário navega no primeiro gráfico
+- **THEN** a toolbar do segundo gráfico SHALL permanecer independente
+
+#### Scenario: Rótulo no hover
+
+- **WHEN** o cursor passa sobre um ponto de dados
+- **THEN** um rótulo SHALL mostrar os valores daquele ponto
+- **THEN** o rótulo SHALL desaparecer ao sair do ponto
+
+### Requirement: Títulos e grade vertical
+
+A `Visão geral` SHALL usar os títulos `Estoque vs Apetite do mercado (janela até
+data)` e `Gap Apetite menos Estoque (janela até data)`.
+
+As evoluções de `Estoque` e `Apetite do mercado` SHALL exibir grades verticais
+nos pontos de dados.
+
+#### Scenario: Títulos padronizados
+
+- **WHEN** a `Visão geral` é exibida
+- **THEN** os títulos SHALL seguir a redação definida
+
+#### Scenario: Grade vertical
+
+- **WHEN** a evolução de `Estoque` ou `Apetite do mercado` é exibida
+- **THEN** o gráfico SHALL ter linhas de grade verticais nos pontos de dados
+
+### Requirement: Estados de carregamento e cache
+
+Quando não houver dados em cache, os gráficos SHALL exibir um texto centralizado
+informando que não há dados e a statusbar SHALL orientar a pressionar
+`Atualizar`.
+
+Quando houver dados em cache, durante a leitura os gráficos SHALL exibir um
+texto centralizado informando que os dados estão sendo carregados.
+
+#### Scenario: Sem cache
+
+- **WHEN** uma sub-aba sem cache fica visível
+- **THEN** os gráficos SHALL mostrar um texto centralizado de ausência de dados
+- **THEN** a statusbar SHALL orientar a pressionar `Atualizar`
+
+#### Scenario: Com cache
+
+- **WHEN** uma sub-aba com cache fica visível e os dados ainda estão sendo lidos
+- **THEN** os gráficos SHALL mostrar um texto centralizado de carregamento
+
+### Requirement: Leitura inicial sem bloquear a UI
+
+A primeira exibição de uma sub-aba SHALL ler apenas o cache, em thread separada
+da UI, e atualizar os widgets via `root.after`.
+
+A leitura SHALL ser restrita aos dados da sub-aba: `Visão geral` lê estoque e
+vendas; `Estoque` lê apenas estoque; `Apetite do mercado` lê vendas e resgates.
+
+#### Scenario: Sub-aba visível é a única construída
+
+- **WHEN** o usuário seleciona `Tesouro Direto`
+- **THEN** apenas a sub-aba visível SHALL ser construída
+- **THEN** as demais SHALL permanecer sem conteúdo até a primeira visibilidade
+
+#### Scenario: Cache não bloqueia
+
+- **WHEN** a sub-aba visível é construída
+- **THEN** a leitura do cache SHALL ocorrer fora da thread da UI
+- **THEN** nenhuma requisição de rede SHALL ser iniciada
 
 ### Requirement: View-model headless e orçamento de UI
 

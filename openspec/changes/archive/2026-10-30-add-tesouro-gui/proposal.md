@@ -13,6 +13,9 @@ O carregamento lazy é necessário para manter o startup rápido: só a aba vis�
 - Carregar o conteúdo das sub-abas de forma lazy, na primeira vez que ficarem visíveis; abas ocultas NÃO SHALL ser construídas no startup.
 - Ao exibir uma sub-aba pela primeira vez, ler apenas o cache analítico; se não houver cache, orientar “clique em Atualizar”, sem download automático.
 - Oferecer “Atualizar” e “Ignorar cache” por sub-aba, com progresso indeterminado e status próprio.
+- Refinar o chrome das sub-abas: botão de atualizar apenas com ícone, tooltips, statusbar com progresso, separadores, toolbar de gráfico com cópia, rótulos de hover e painel redimensionável com texto orientativo.
+- Exibir a legenda do gráfico SELIC Pré sempre no canto superior direito.
+- Adicionar a aba de nível superior `Sobre`, à direita de `Tesouro Direto`, replicando o conteúdo e as funcionalidades do botão `Sobre` da aba SELIC Pré; o botão existente permanece.
 - Remover do escopo das changes de vendas/resgates a janela `Toplevel` e as abas de tabelas; as tabelas brutas continuam apenas na CLI.
 - Manter o título atual da janela até a change de Câmbio.
 - **Non-goals:** conteúdo de câmbio, ouro, projeções, tabelas brutas no GUI, novos cálculos analíticos, alteração do gráfico principal SELIC Pré, exportação dedicada, MCP.

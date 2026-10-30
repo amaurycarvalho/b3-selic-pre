@@ -4,6 +4,13 @@ Curva de juros (taxa referencial SELIC) conforme a B3.
 
 ## Interface gráfica
 
+A janela principal exibe um notebook de nível superior com as abas `SELIC Pré`
+e `Tesouro Direto`, nesta ordem. `SELIC Pré` é a aba padrão e mantém a tela
+descrita abaixo. As abas são construídas na primeira exibição (lazy loading);
+o startup monta apenas `SELIC Pré`.
+
+## Aba SELIC Pré
+
 Dois modos base selecionáveis por radio button, com opção adicional de evolução:
 
 | Modo                    | Descrição                                                                                                                                                                                   |
@@ -29,6 +36,40 @@ Recursos disponíveis:
 - Exportação do gráfico em PNG
 - Criação de atalho no desktop (botão "Criar Atalho Desktop" ou `criar-atalho`)
 - Painel de análise textual (sidebar) com indicadores de nível e evolução
+
+## Aba Tesouro Direto
+
+A aba `Tesouro Direto` é construída na primeira vez que é selecionada e contém
+três sub-abas, montadas individualmente na primeira visibilidade:
+
+| Sub-aba | Percentual atual | Evolução |
+| --- | --- | --- |
+| **Visão geral** | Barras agrupadas de estoque vs apetite por família | Gap (apetite − estoque) por família |
+| **Estoque** | Barras 100% empilhadas por família, com detalhe por título | Área 100% empilhada mensal |
+| **Apetite do mercado** | Agregação da janela por família, com detalhe por título | Área 100% empilhada (diária, semanal ou mensal) |
+
+Cada sub-aba oferece o seletor de janela `14d`, `3m`, `12m` e `3a`, ancorado na
+maior data disponível (nenhum período futuro é gerado). O título de cada
+gráfico indica a janela e a data-base. Na sub-aba `Apetite do mercado`, o fluxo
+líquido (vendas − recompras) da janela também é exibido.
+
+Na primeira exibição, apenas o cache local é lido; se não houver cache, a
+sub-aba orienta clicar em `Atualizar`. Cada sub-aba tem `Atualizar` (usa cache
+válido) e `Ignorar cache` (verificação condicional; `304` reutiliza o cache),
+com progresso indeterminado na statusbar e status próprio (fonte, extração e
+data-base). Os controles têm tooltips e separadores dividem seleção, gráficos e
+statusbar.
+
+Cada gráfico tem toolbar de navegação vertical e cópia da imagem à esquerda,
+e exibe o valor do ponto de dados quando o cursor passa sobre ele. Sem cache, os
+gráficos mostram um texto centralizado e a statusbar orienta a pressionar
+`Atualizar`; com cache, mostram o texto de carregamento durante a leitura. Ao lado dos gráficos há um texto
+somente leitura com `Objetivo`, `Responde a pergunta`, `Indicadores envolvidos`
+e `Como interpretar` (títulos em negrito, com `:`), separado por uma splitbar
+móvel. A aba `Sobre`, à direita de `Tesouro Direto`, replica o conteúdo do
+diálogo `Sobre` e inclui um resumo somente leitura da aplicação, da CLI e do
+servidor MCP. Falhas ficam isoladas por sub-aba. As tabelas brutas de vendas, resgates e estoque
+permanecem apenas na CLI.
 
 ## Painel de Análise (sidebar)
 

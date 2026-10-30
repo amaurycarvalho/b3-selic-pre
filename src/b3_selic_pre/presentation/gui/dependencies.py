@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from b3_selic_pre.presentation.settings import Settings
@@ -37,6 +38,10 @@ def _no_latest_version() -> str | None:
     return None
 
 
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
 @dataclass
 class GuiDependencies:
     """Adapters e serviços usados pela interface gráfica."""
@@ -50,3 +55,6 @@ class GuiDependencies:
     open_directory: Callable[[str], bool] = _no_open_directory
     log_directory: Callable[[], str] = _no_log_directory
     latest_version: Callable[[], str | None] = _no_latest_version
+    tesouro_client: Any = None
+    tesouro_provider_factory: Callable[..., Any] | None = None
+    now: Callable[[], str] = _now_iso

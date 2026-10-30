@@ -749,3 +749,28 @@ class EvolutionEmptyDataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SelicLegendTest(unittest.TestCase):
+    def test_raw_chart_legend_is_upper_right(self):
+        fig = RecordingFig()
+        render_chart(fig, _records((1, 14.0), (60, 15.0)))
+        self.assertEqual(fig.axes[0]._legend_kwargs["loc"], "upper right")
+
+    def test_consolidated_chart_legend_is_upper_right(self):
+        fig = RecordingFig()
+        render_chart(
+            fig, _records((1, 14.0), (365, 15.0)), consolidated=True
+        )
+        self.assertEqual(fig.axes[0]._legend_kwargs["loc"], "upper right")
+
+    def test_evolution_legend_is_upper_right(self):
+        fig = RecordingFig()
+        render_curve_evolution(
+            fig,
+            {
+                "2026-01-01": _records((1, 14.0)),
+                "2026-01-02": _records((1, 14.5)),
+            },
+        )
+        self.assertEqual(fig.axes[0]._legend_kwargs["loc"], "upper right")

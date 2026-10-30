@@ -98,6 +98,10 @@ from b3_selic_pre.application.tesouro._resources import (
 from b3_selic_pre.application.tesouro._series import (
     TesouroSeriesProvider,
 )
+from b3_selic_pre.application.tesouro._series_aggregation import (
+    SeriesShare,
+    agregar_series,
+)
 from b3_selic_pre.application.tesouro._series_contract import (
     BUCKET_DIARIO,
     BUCKET_MENSAL,
@@ -190,6 +194,7 @@ __all__ = [
     "SeriesKey",
     "SeriesPoint",
     "SeriesProvider",
+    "SeriesShare",
     "TesouroDataError",
     "TesouroResourceSpec",
     "TesouroSeriesProvider",
@@ -198,6 +203,7 @@ __all__ = [
     "agregar_estoque",
     "agregar_por_titulo",
     "agregar_resgates",
+    "agregar_series",
     "bucket_para_janela",
     "bucket_para_metrica",
     "build_agregados_payload",

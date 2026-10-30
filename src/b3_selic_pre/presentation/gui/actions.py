@@ -15,12 +15,22 @@ class ActionsMixin:
     """Gerencia cópia de dados/gráfico, atalhos de teclado e dicas de tela."""
 
     def _setup_shortcuts(self: App) -> None:
-        """Registra os atalhos de teclado da janela principal."""
-        self.root.bind("<Control-d>", lambda e: self.copy_data())
-        self.root.bind("<Control-Shift-C>", lambda e: self.copy_chart())
-        self.root.bind("<F5>", lambda e: self.fetch_rates())
-        self.root.bind("<Control-e>", lambda e: self.evolution_cb.invoke())
-        self.root.bind("<Control-l>", lambda e: self.sidebar_cb.invoke())
+        """Registra os atalhos globais restritos à aba SELIC Pré."""
+        self.root.bind("<Control-d>", self._guarded(self.copy_data))
+        self.root.bind("<Control-Shift-C>", self._guarded(self.copy_chart))
+        self.root.bind("<F5>", self._guarded(self.fetch_rates))
+        self.root.bind(
+            "<Control-e>", self._guarded(self.evolution_cb.invoke)
+        )
+        self.root.bind("<Control-l>", self._guarded(self.sidebar_cb.invoke))
+
+    def _guarded(self: App, action: object) -> object:
+        """Wrap a shortcut so it only runs while SELIC Pré is active."""
+        def handler(event: object = None) -> object:
+            if self.is_active():
+                return action()  # type: ignore[operator]
+            return None
+        return handler
 
     def _setup_tooltips(self: App) -> None:
         """Vincula dicas de texto aos principais controles da janela."""

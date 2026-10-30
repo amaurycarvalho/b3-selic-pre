@@ -64,8 +64,3 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage.xml
-      - name: Upload mutation report
-        uses: actions/upload-artifact@v7
-        with:
-          name: mutation-report-${{ matrix.python-version }}
-          path: mutation_report.html

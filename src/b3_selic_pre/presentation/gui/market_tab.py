@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 from typing import Any
@@ -13,6 +14,7 @@ from b3_selic_pre.presentation.gui.market_sub_tab_ui import (
     MarketSubTabUI,
 )
 from b3_selic_pre.presentation.gui.reserves_sub_tab import ReservesSubTab
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.market_chart_data import build_chart_data
 from b3_selic_pre.presentation.market_tab import MarketTabController
 from b3_selic_pre.presentation.market_view_model import (
@@ -22,6 +24,8 @@ from b3_selic_pre.presentation.market_view_model import (
 from b3_selic_pre.presentation.tabs import LazyTabRegistry, TabSpec
 
 Widget = Any
+
+logger = logging.getLogger(__name__)
 
 SUB_TABS = (
     ("dolar-ouro", "Dólar e Ouro"),
@@ -112,6 +116,11 @@ class DolarOuroSubTab(MarketSubTabUI):
                 else self.controller.refresh()  # type: ignore[union-attr]
             )
         except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                "Falha ao carregar a sub-aba Dólar e Ouro",
+            )
             error = str(exc)
         self._results.put((payload, error))
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from b3_selic_pre.presentation.charts_tesouro import (
@@ -12,6 +13,7 @@ from b3_selic_pre.presentation.charts_tesouro import (
 )
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.tesouro_sub_tab_ui import SubTabUI
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.tesouro_analise_controller import (
     TesouroAnaliseController,
 )
@@ -31,6 +33,8 @@ from b3_selic_pre.presentation.tesouro_loaders import (
 from b3_selic_pre.presentation.tesouro_series_loader import series_available
 
 Widget = Any
+
+logger = logging.getLogger(__name__)
 
 
 class TesouroSubTab(SubTabUI):
@@ -123,8 +127,13 @@ class TesouroSubTab(SubTabUI):
                 force=force,
                 stage_callback=self._on_stage,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                "Falha ao carregar a sub-aba do Tesouro Direto "
+                f"({self.kind})",
+            )
         try:
             self.root.after(0, self._finish_load)
         except Exception:

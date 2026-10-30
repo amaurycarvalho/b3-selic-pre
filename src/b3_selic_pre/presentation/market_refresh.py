@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 from typing import Any
 
 from b3_selic_pre.application.market.forecast import FocusExpectation
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.market_sources import (
     B3_SOURCE,
     DOL_SOURCE,
@@ -20,6 +22,12 @@ from b3_selic_pre.presentation.market_sources import (
     dol_ticker,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _log_source_failure(exc: Exception, source: str) -> None:
+    log_exception_once(logger, exc, f"Falha ao atualizar a fonte {source}")
+
 
 class RefreshMixin:
     """Fetch every market source and persist raw data + precompute."""
@@ -30,6 +38,7 @@ class RefreshMixin:
             if quotes:
                 self._raw().write_quotes(SGS_SOURCE, quotes)
         except Exception as exc:
+            _log_source_failure(exc, "BCB SGS 1")
             errors.append(f"BCB SGS 1: {exc}")
         try:
             quotes = self.services.b3.fetch_historical_exchange(  # type: ignore[attr-defined]
@@ -38,6 +47,7 @@ class RefreshMixin:
             if quotes:
                 self._raw().write_quotes(B3_SOURCE, quotes)
         except Exception as exc:
+            _log_source_failure(exc, "B3")
             errors.append(f"B3: {exc}")
 
     def _refresh_dol(self: RefreshMixin, today: str, errors: list[str]) -> None:
@@ -50,6 +60,7 @@ class RefreshMixin:
             if quotes:
                 self._raw().write_quotes(DOL_SOURCE, quotes)
         except Exception as exc:
+            _log_source_failure(exc, "B3 DOL")
             errors.append(f"B3 DOL: {exc}")
 
     def _refresh_focus(
@@ -58,6 +69,7 @@ class RefreshMixin:
         try:
             expectations = self.services.focus.fetch_expectations()  # type: ignore[attr-defined]
         except Exception as exc:
+            _log_source_failure(exc, "BCB Focus")
             errors.append(f"BCB Focus: {exc}")
             return []
         if expectations:
@@ -70,6 +82,7 @@ class RefreshMixin:
         try:
             xau = self.services.gold.fetch_series()  # type: ignore[attr-defined]
         except Exception as exc:
+            _log_source_failure(exc, "Yahoo GC=F")
             errors.append(f"Yahoo GC=F: {exc}")
             return
         if not xau:
@@ -113,15 +126,23 @@ class RefreshMixin:
                         signatures,
                         latest,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                log_exception_once(
+                    logger,
+                    exc,
+                    "Falha no pré-cálculo derivado de mercado",
+                )
             self._precompute().update_if_changed(
                 key, signatures, latest, lambda: payload
             )
             try:
                 self._precompute().housekeeping(latest)
-            except Exception:
-                pass
+            except Exception as exc:
+                log_exception_once(
+                    logger,
+                    exc,
+                    "Falha no housekeeping do pré-cálculo de mercado",
+                )
         result = self.load_cache_only()
         result["erros_fontes"] = errors
         return result

@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from b3_selic_pre.domain.models import (
@@ -139,6 +140,23 @@ def test_refresh_loader_emits_stages_before_each_network_call():
 
     assert stages == ["vendas", "resgates"]
     assert client.calls == ["vendas", "resgates"]
+
+
+def test_apetite_refresh_logs_tolerated_redemption_failure(caplog):
+    client = FakeNetworkClient()
+
+    def fail(force=False):
+        raise OSError("resgates fora")
+
+    client.fetch_resgates = fail
+
+    with caplog.at_level(logging.ERROR):
+        data = make_loader(client, KIND_APETITE)(False, False)
+
+    assert data is not None
+    assert data.resgates == ()
+    assert "Falha ao atualizar os resgates do Tesouro Direto" in caplog.text
+    assert caplog.records[-1].exc_info is not None
 
 
 def test_estoque_refresh_loader_emits_only_the_stock_stage():

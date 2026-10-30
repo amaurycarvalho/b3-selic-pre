@@ -1,5 +1,6 @@
 """Testes headless do controlador, view-model e gráfico de reservas."""
 
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -190,6 +191,52 @@ def test_refresh_keeps_previous_state_on_network_failure(tmp_path):
 
     assert payload["serie"]["itens"]
     assert any("BCB SGS" in error for error in payload["erros_fontes"])
+
+
+def test_refresh_logs_source_failure(tmp_path, caplog):
+    controller, _, _ = _controller(tmp_path, points=_series())
+    controller.refresh()
+    controller.services.source = FakeSource(fail=True)
+
+    with caplog.at_level(logging.ERROR):
+        payload = controller.refresh()
+
+    assert payload["serie"]["itens"]
+    assert "Falha ao atualizar a fonte de reservas" in caplog.text
+    assert FONTE_RESERVAS in caplog.text
+    assert caplog.records[-1].exc_info is not None
+
+
+def test_refresh_logs_precompute_failure(tmp_path, monkeypatch, caplog):
+    controller, services, _ = _controller(tmp_path, points=_series())
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("disco cheio")
+
+    monkeypatch.setattr(services.precompute, "update_if_changed", fail)
+
+    with caplog.at_level(logging.ERROR):
+        payload = controller.refresh()
+
+    assert payload["serie"]["itens"]
+    assert "Falha no pré-cálculo das Reservas Internacionais" in caplog.text
+    assert caplog.records[-1].exc_info is not None
+
+
+def test_refresh_logs_housekeeping_failure(tmp_path, monkeypatch, caplog):
+    controller, services, _ = _controller(tmp_path, points=_series())
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("disco cheio")
+
+    monkeypatch.setattr(services.precompute, "housekeeping", fail)
+
+    with caplog.at_level(logging.ERROR):
+        payload = controller.refresh()
+
+    assert payload["serie"]["itens"]
+    assert "Falha no housekeeping das Reservas Internacionais" in caplog.text
+    assert caplog.records[-1].exc_info is not None
 
 
 def test_refresh_prunes_old_points_outside_retention(tmp_path):

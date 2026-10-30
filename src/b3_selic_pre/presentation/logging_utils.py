@@ -63,7 +63,8 @@ def _mark_logged(exc: BaseException) -> None:
         pass
 
 
-def _is_logged(exc: BaseException | None) -> bool:
+def was_logged(exc: BaseException | None) -> bool:
+    """Return whether the exception was already logged."""
     return bool(getattr(exc, _LOG_MARKER, False))
 
 
@@ -89,12 +90,23 @@ def log_exception(
     _mark_logged(exc)
 
 
+def log_exception_once(
+    logger: logging.Logger,
+    exc: BaseException,
+    context: str,
+) -> None:
+    """Log an exception only when it was not logged before."""
+    if was_logged(exc):
+        return
+    log_exception(logger, exc, context)
+
+
 def _log_uncaught(
     logger: logging.Logger,
     exc: BaseException | None,
     context: str,
 ) -> None:
-    if exc is None or _is_logged(exc):
+    if exc is None or was_logged(exc):
         return
     log_exception(logger, exc, context)
 

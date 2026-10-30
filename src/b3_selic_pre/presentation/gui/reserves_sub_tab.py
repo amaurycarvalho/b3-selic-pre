@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 from typing import Any
@@ -14,6 +15,7 @@ from b3_selic_pre.presentation.gui.reserves_orientation import (
     build_reserves_orientation,
 )
 from b3_selic_pre.presentation.gui.tooltip import Tooltip
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.reserves_chart_data import build_chart_data
 from b3_selic_pre.presentation.reserves_tab import ReservesTabController
 from b3_selic_pre.presentation.reserves_view_model import (
@@ -23,6 +25,8 @@ from b3_selic_pre.presentation.reserves_view_model import (
 
 Widget = Any
 JANELA_OPTIONS = {"12 meses": "12m", "3 anos": "3a"}
+
+logger = logging.getLogger(__name__)
 
 
 class ReservesSubTab:
@@ -181,6 +185,11 @@ class ReservesSubTab:
                 else self.controller.refresh()  # type: ignore[union-attr]
             )
         except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                "Falha ao carregar a sub-aba Reservas Internacionais",
+            )
             error = str(exc)
         self._results.put((payload, error))
 

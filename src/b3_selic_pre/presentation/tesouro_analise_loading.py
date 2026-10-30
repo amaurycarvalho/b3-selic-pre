@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from collections.abc import Callable
 
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.tesouro_analise_data import AnaliseData
 
 AnaliseLoader = Callable[..., AnaliseData | None]
 StageCallback = Callable[[str], None]
+
+logger = logging.getLogger(__name__)
 
 
 def _accepts_stage_callback(loader: AnaliseLoader) -> bool:
@@ -62,6 +66,16 @@ class TesouroLoadingMixin:
         try:
             data = self._invoke_loader(cache_only, force, stage_callback)
         except Exception as exc:
+            if cache_only:
+                context = (
+                    "Falha ao ler o cache do Tesouro Direto "
+                    f"({self.kind})"
+                )
+            else:
+                context = (
+                    f"Falha ao atualizar o Tesouro Direto ({self.kind})"
+                )
+            log_exception_once(logger, exc, context)
             self.error = str(exc)
             self.error_context = "ler o cache" if cache_only else None
             data = None

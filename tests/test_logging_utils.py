@@ -11,7 +11,9 @@ from b3_selic_pre.presentation.logging_utils import (
     install_tk_exception_hook,
     is_communication_error,
     log_exception,
+    log_exception_once,
     log_invocation,
+    was_logged,
 )
 
 
@@ -101,6 +103,30 @@ class LogExceptionTest(unittest.TestCase):
         with self.assertLogs(logger, level="ERROR"):
             log_exception(logger, error, "context")
         self.assertTrue(getattr(error, "_b3_selic_logged", False))
+        self.assertTrue(was_logged(error))
+
+    def test_unlogged_exception_is_not_reported_as_logged(self):
+        self.assertFalse(was_logged(ValueError("bad value")))
+        self.assertFalse(was_logged(None))
+
+
+class LogExceptionOnceTest(unittest.TestCase):
+    def test_unlogged_exception_is_logged(self):
+        logger = logging.getLogger("test_once_unlogged")
+        error = ValueError("boom")
+        with self.assertLogs(logger, level="ERROR") as captured:
+            log_exception_once(logger, error, "context")
+        self.assertEqual(len(captured.records), 1)
+        self.assertTrue(was_logged(error))
+
+    def test_logged_exception_is_not_logged_again(self):
+        logger = logging.getLogger("test_once_logged")
+        error = ValueError("boom")
+        with self.assertLogs(logger, level="ERROR") as captured:
+            log_exception_once(logger, error, "first")
+            log_exception_once(logger, error, "second")
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(captured.records[0].getMessage(), "first")
 
 
 class LogInvocationTest(unittest.TestCase):

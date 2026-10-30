@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Any
@@ -25,8 +26,11 @@ from b3_selic_pre.application.reserves.series import (
 )
 from b3_selic_pre.domain.market import MarketQuote
 from b3_selic_pre.domain.reserves import FONTE_RESERVAS
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 
 RESERVES_SOURCE = "bcb_sgs_13621"
+
+logger = logging.getLogger(__name__)
 
 
 class ReservesTabController:
@@ -175,6 +179,11 @@ class ReservesTabController:
         try:
             return self._source().fetch_series(start, self._today())
         except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                f"Falha ao atualizar a fonte de reservas ({FONTE_RESERVAS})",
+            )
             errors.append(f"{FONTE_RESERVAS}: {exc}")
             return []
 
@@ -211,11 +220,21 @@ class ReservesTabController:
                 latest,
                 lambda: payload,
             )
-        except Exception:
+        except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                "Falha no pré-cálculo das Reservas Internacionais",
+            )
             return
         try:
             self._precompute().housekeeping(latest)
-        except Exception:
+        except Exception as exc:
+            log_exception_once(
+                logger,
+                exc,
+                "Falha no housekeeping das Reservas Internacionais",
+            )
             return
 
     def refresh(

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.tesouro_analise_data import AnaliseData
 from b3_selic_pre.presentation.tesouro_chart_data import (
     KIND_APETITE,
@@ -24,6 +26,8 @@ from b3_selic_pre.presentation.tesouro_overlay import (
 
 Client = Any
 StageCallback = Any
+
+logger = logging.getLogger(__name__)
 
 
 def _refresh_stock(
@@ -51,7 +55,12 @@ def _refresh_appetite(
         redemptions, _redemption_meta, redemption_origin = (
             client.fetch_resgates(force=force)
         )
-    except Exception:
+    except Exception as exc:
+        log_exception_once(
+            logger,
+            exc,
+            "Falha ao atualizar os resgates do Tesouro Direto",
+        )
         redemptions, redemption_origin = [], "cache"
     return AnaliseData(
         vendas=tuple(sales),

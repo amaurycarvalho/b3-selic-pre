@@ -2,6 +2,7 @@
 
 import ast
 import json
+import logging
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -186,6 +187,67 @@ def test_controller_refresh_records_focus_failure(tmp_path):
     payload = controller.refresh()
 
     assert any("BCB Focus" in error for error in payload["erros_fontes"])
+
+
+def test_refresh_logs_each_failed_source(tmp_path, caplog):
+    class BrokenSgs:
+        def fetch_series(self, inicio, fim):
+            raise OSError("sgs fora")
+
+    class BrokenB3:
+        def fetch_historical_exchange(self, inicio, fim):
+            raise OSError("b3 fora")
+
+        def fetch_dol(self, ticker, inicio, fim):
+            raise OSError("dol fora")
+
+    class BrokenFocus:
+        def fetch_expectations(self):
+            raise OSError("focus fora")
+
+    controller, _ = _controller(
+        tmp_path,
+        sgs=BrokenSgs(),
+        b3=BrokenB3(),
+        focus=BrokenFocus(),
+        gold=FakeGold(fail=True),
+    )
+
+    with caplog.at_level(logging.ERROR):
+        payload = controller.refresh()
+
+    errors = payload["erros_fontes"]
+    assert any("BCB SGS 1" in error for error in errors)
+    assert any("B3 DOL" in error for error in errors)
+    assert any("BCB Focus" in error for error in errors)
+    assert any("Yahoo GC=F" in error for error in errors)
+    for source in ("BCB SGS 1", "B3 DOL", "BCB Focus", "Yahoo GC=F"):
+        assert f"Falha ao atualizar a fonte {source}" in caplog.text
+    assert all(record.exc_info is not None for record in caplog.records)
+
+
+def test_refresh_logs_derived_and_housekeeping_failures(
+    tmp_path, monkeypatch, caplog
+):
+    controller, services = _controller(
+        tmp_path,
+        sgs=FakeSgs(_series(ATIVO_USD)),
+        gold=FakeGold(_series(ATIVO_OURO, start=2000.0)),
+    )
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("disco cheio")
+
+    monkeypatch.setattr(services.precompute, "write_derived", fail)
+    monkeypatch.setattr(services.precompute, "housekeeping", fail)
+
+    with caplog.at_level(logging.ERROR):
+        payload = controller.refresh()
+
+    assert payload["series"][ATIVO_USD]["itens"]
+    assert "Falha no pré-cálculo derivado de mercado" in caplog.text
+    assert "Falha no housekeeping do pré-cálculo de mercado" in caplog.text
+    assert all(record.exc_info is not None for record in caplog.records)
 
 
 def test_second_execution_reuses_derived_and_precomputed(tmp_path, monkeypatch):

@@ -1,9 +1,12 @@
+import logging
 from decimal import Decimal
 
+from b3_selic_pre.application.errors import CommunicationError
 from b3_selic_pre.domain.models import (
     EstoqueTesouroDireto,
     VendaTesouroDireto,
 )
+from b3_selic_pre.presentation.logging_utils import log_exception
 from b3_selic_pre.presentation.tesouro_analise_controller import (
     AnaliseData,
     TesouroAnaliseController,
@@ -96,6 +99,77 @@ def test_cache_read_failure_uses_cache_error_context():
     assert view_model.status_text == (
         "Erro ao ler o cache: disco indisponível"
     )
+
+
+def test_cache_read_failure_is_logged_with_sub_tab_and_operation(caplog):
+    def loader(cache_only, force):
+        raise OSError("disco indisponível")
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+
+    with caplog.at_level(logging.ERROR):
+        controller.load(cache_only=True)
+
+    assert "Falha ao ler o cache do Tesouro Direto" in caplog.text
+    assert KIND_ESTOQUE in caplog.text
+    assert caplog.records[-1].exc_info is not None
+
+
+def test_refresh_failure_is_logged_with_sub_tab_and_operation(caplog):
+    def loader(cache_only, force):
+        raise RuntimeError("falha")
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+
+    with caplog.at_level(logging.ERROR):
+        controller.load(force=True)
+
+    assert "Falha ao atualizar o Tesouro Direto" in caplog.text
+    assert KIND_ESTOQUE in caplog.text
+    assert caplog.records[-1].exc_info is not None
+
+
+def test_cache_read_communication_failure_is_logged_without_traceback(
+    caplog,
+):
+    def loader(cache_only, force):
+        raise CommunicationError("offline")
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+
+    with caplog.at_level(logging.ERROR):
+        controller.load(cache_only=True)
+
+    record = caplog.records[-1]
+    assert record.exc_info is None
+    assert "CommunicationError: offline" in record.getMessage()
+    assert len(caplog.records) == 1
+
+
+def test_already_logged_exception_is_not_logged_again_by_controller(caplog):
+    error = CommunicationError("offline")
+    log_exception(
+        logging.getLogger("test_controller_dedup"), error, "contexto anterior"
+    )
+
+    def loader(cache_only, force):
+        raise error
+
+    controller = TesouroAnaliseController(
+        kind=KIND_ESTOQUE, loader=loader
+    )
+    caplog.clear()
+
+    with caplog.at_level(logging.ERROR):
+        controller.load(cache_only=True)
+
+    assert caplog.records == []
 
 
 def test_retry_hides_previous_error_while_loading():

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+## [1.0.1] - 2026-10-24
+
+### [increase-b3-resilience](openspec/changes/archive/2026-10-24-increase-b3-resilience/) O acesso atual à B3 já repete respostas vazias, mas não repete timeouts nem falhas transientes de rede. Um timeout no `GetList` interrompe a consulta imediatamente e um timeout no `GetDownloadFile` nem sequer aciona o fallback para `GetList`, porque o fallback só captura `CommunicationError`. Além disso, o timeout de 30 s está duplicado em vários módulos e o TTL de 30 min para a data corrente força refetches frequentes.
+
+#### Changed
+
+- Centralizar o timeout padrão de acesso à B3 em **60 s**, usado por `GetList`, `GetDownloadFile` e pela seleção de fonte.
+- Generalizar o retry para repetir também falhas transientes (`TimeoutError`, `URLError`, `ConnectionError`, `HTTPException`, `SSLError`, `socket.gaierror`), além dos resultados vazios já cobertos.
+- Manter **6 tentativas** para resultados vazios e usar **3 tentativas** para falhas transientes, com o mesmo backoff exponencial com jitter, limitando o pior caso por página a aproximadamente 3 minutos.
+- Preservar a regra de que erros de dados (JSON/CSV inválido ou esquema inesperado) não são repetidos.
+- Garantir que uma falha transiente do `GetDownloadFile` em data passada permita o fallback para `GetList`, como já ocorre com resposta vazia.
+- Alterar o TTL padrão da data corrente de **30 min** para **6 h (360 min)**.
+- Atualizar testes, specs e documentação afetada.
+
 ## [1.0.0] - 2026-10-20
 
 ### [add-about-dialog](openspec/changes/archive/2026-10-20-add-about-dialog/) A aplicação expõe versão apenas no título da janela e no `--version`, sem um local que reúna identidade, licença, apresentação e caminhos úteis para o usuário.
@@ -798,6 +812,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disparar o workflow via push de tag `v*` ou manualmente (`workflow_dispatch`)
 - Executáveis em formato `--onefile` (único arquivo)
 
+[1.0.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v1.0.1
 [1.0.0]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v1.0.0
 [0.9.2]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.9.2
 [0.9.1]: https://github.com/amaurycarvalho/b3-selic-pre/releases/tag/v0.9.1

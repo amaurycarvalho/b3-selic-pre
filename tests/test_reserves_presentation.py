@@ -405,3 +405,15 @@ def test_reserves_sub_tab_wires_orientation_textbox():
     assert "ttk.PanedWindow" in source
     assert "self.paned.add(charts, weight=4)" in source
     assert "self.paned.add(orientation, weight=1)" in source
+
+def test_reserves_sub_tab_applies_shared_loading_feedback_decisions():
+    root = Path(__file__).resolve().parents[1] / "src" / "b3_selic_pre"
+    source = (
+        root / "presentation" / "gui" / "reserves_sub_tab.py"
+    ).read_text(encoding="utf-8")
+
+    assert "BUSY_TEXT" in source
+    assert "hide_charts" in source and "show_charts" in source
+    assert "draw_idle" in source
+    assert "progress_host" in source
+    assert "width=1" in source

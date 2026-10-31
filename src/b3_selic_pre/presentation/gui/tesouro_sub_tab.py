@@ -5,26 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from b3_selic_pre.presentation.charts_tesouro import (
-    render_current_comparison,
-    render_current_share,
-    render_evolution,
-    render_gap,
-)
+from b3_selic_pre.presentation.busy import BusyIndicator
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.tesouro_sub_tab_ui import SubTabUI
 from b3_selic_pre.presentation.logging_utils import log_exception_once
 from b3_selic_pre.presentation.tesouro_analise_controller import (
     TesouroAnaliseController,
-)
-from b3_selic_pre.presentation.tesouro_analise_view_model import (
-    TesouroAnaliseViewModel,
-)
-from b3_selic_pre.presentation.tesouro_chart_data import (
-    KIND_VISAO_GERAL,
-    SUB_TABS,
-    ComparisonChart,
-    GapChart,
 )
 from b3_selic_pre.presentation.tesouro_loaders import (
     cache_available,
@@ -62,6 +48,7 @@ class TesouroSubTab(SubTabUI):
         self._closed = False
         self._loading = False
         self._cache_loaded = False
+        self._busy = BusyIndicator(root)
         factory = dependencies.tesouro_provider_factory
         self._client = dependencies.tesouro_client
         self._series_cache = dependencies.tesouro_series_cache
@@ -89,20 +76,27 @@ class TesouroSubTab(SubTabUI):
         present = cache_available(
             self._client, self.kind, self._btd_client
         ) or series_available(self._series_cache, self.kind)
+        self.hide_charts()
+        started = False
         if not self._cache_loaded:
             self._cache_loaded = True
             self.controller.note_cache_presence(present)
-            self._start_load(cache_only=True)
-            self._draw()
-            return
-        if (
+            started = self._start_load(cache_only=True)
+        elif (
             not self.controller.has_data
             and self.controller.note_cache_presence(present)
         ):
-            self._start_load(cache_only=True)
+            started = self._start_load(cache_only=True)
+        if started or self._loading:
             self._draw()
             return
-        self._draw()
+        self._busy.enter()
+        try:
+            self._draw()
+            self.draw_idle()
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _on_window_change(self: TesouroSubTab, event: object = None) -> None:
         if self._closed:
@@ -111,7 +105,11 @@ class TesouroSubTab(SubTabUI):
             self.controller.set_window(self.window_var.get())
         except ValueError:
             return
-        self._draw()
+        self._busy.enter()
+        try:
+            self._draw()
+        finally:
+            self._busy.leave()
 
     def _start_refresh(self: TesouroSubTab, force: bool) -> None:
         ignore_cache = force or self.ignore_cache_var.get()
@@ -149,20 +147,28 @@ class TesouroSubTab(SubTabUI):
                 return
 
     def _finish_load(self: TesouroSubTab) -> None:
-        if self._closed or not self._root_alive():
+        if self._closed:
+            return
+        if not self._root_alive():
+            self._busy.reset()
             return
         self._loading = False
         self.controller.loading = False
         self.controller.loading_stage = None
         self.update_loading_state(False)
-        self._draw()
+        try:
+            self._draw()
+            self.draw_idle()
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _draw(self: TesouroSubTab) -> None:
         if self._closed:
             return
         view_model = self.controller.view_model()
-        self._draw_current(view_model)
-        self._draw_evolution(view_model)
+        self.draw_current(view_model)
+        self.draw_evolution(view_model)
         self.apply_status(view_model.status_text, view_model.status_kind)
         self.detail_var.set(view_model.fluxo_liquido or "")
         self.window_var.set(view_model.window)
@@ -174,45 +180,6 @@ class TesouroSubTab(SubTabUI):
             )
         )
 
-    def _draw_current(
-        self: TesouroSubTab, view_model: TesouroAnaliseViewModel
-    ) -> None:
-        current = view_model.current_chart()
-        if current is None:
-            _draw_empty(
-                self.current_panel.figure,
-                f"{self._title()}",
-                view_model.placeholder_message or view_model.empty_message,
-            )
-            self.current_panel.canvas.draw_idle()
-        elif isinstance(current, ComparisonChart):
-            self.current_panel.draw(render_current_comparison, current)
-        else:
-            self.current_panel.draw(render_current_share, current)
-
-    def _draw_evolution(
-        self: TesouroSubTab, view_model: TesouroAnaliseViewModel
-    ) -> None:
-        evolution = view_model.evolution_chart()
-        if evolution is None:
-            _draw_empty(
-                self.evolution_panel.figure,
-                f"{self._title()} — evolução",
-                view_model.placeholder_message or view_model.empty_message,
-                ylabel="p.p." if self.kind == KIND_VISAO_GERAL else "%",
-            )
-            self.evolution_panel.canvas.draw_idle()
-        elif isinstance(evolution, GapChart):
-            self.evolution_panel.draw(render_gap, evolution)
-        else:
-            self.evolution_panel.draw(render_evolution, evolution)
-
-    def _title(self: TesouroSubTab) -> str:
-        for kind, label in SUB_TABS:
-            if kind == self.kind:
-                return label
-        return self.kind
-
     def _root_alive(self: TesouroSubTab) -> bool:
         try:
             return bool(self.root.winfo_exists())
@@ -222,17 +189,4 @@ class TesouroSubTab(SubTabUI):
     def close(self: TesouroSubTab) -> None:
         """Mark the sub-tab closed so late callbacks are ignored."""
         self._closed = True
-
-
-def _draw_empty(
-    figure: Widget, title: str, message: str, ylabel: str = "%"
-) -> None:
-    figure.clf()
-    ax = figure.add_subplot(111)
-    ax.text(
-        0.5, 0.5, message, ha="center", va="center",
-        transform=ax.transAxes, fontsize=12, color="gray",
-    )
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.set_ylim(0, 100)
+        self._busy.reset()

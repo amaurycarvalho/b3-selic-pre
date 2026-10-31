@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from b3_selic_pre import __release_date__, __version__
-from b3_selic_pre.application.about import AboutInfo, build_about_info
+from b3_selic_pre.application.about import (
+    FEATURES_TITLE,
+    AboutInfo,
+    build_about_info,
+    features_text,
+)
 from b3_selic_pre.presentation.gui.about import AboutMixin
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 
@@ -20,6 +25,10 @@ ABOUT_SECTIONS = (
             "datasets do Tesouro Direto. Oferece interface gráfica, linha de "
             "comando e servidor MCP somente leitura."
         ),
+    ),
+    (
+        FEATURES_TITLE,
+        features_text(),
     ),
     (
         "Linha de comando",

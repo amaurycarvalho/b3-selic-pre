@@ -289,7 +289,7 @@ O registro SHALL seguir a classificação de `Falhas de comunicação em linha �
 - **THEN** o log ativo SHALL registrar a sub-aba e a operação de leitura de cache
 - **THEN** a statusbar SHALL continuar exibindo a falha ao usuário
 
-#### Scenario: Falha ao atualizar Câmbio e Reservas
+#### Scenario: Falha ao atualizar Câmbio e Reserva
 
 - **WHEN** o `Atualizar` da sub-aba Dólar e Ouro ou Reservas Internacionais falha
 - **THEN** o log ativo SHALL registrar a sub-aba e a operação de atualização

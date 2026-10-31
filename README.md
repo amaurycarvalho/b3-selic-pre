@@ -8,10 +8,10 @@ Curva de juros (taxa referencial SELIC) conforme a B3.
 
 ## Funcionalidades
 
-- Interface gráfica em abas para SELIC Pré, Tesouro Direto, Câmbio e Ouro, Reservas Internacionais, Feriados e Sobre.
+- Interface gráfica em abas para SELIC Pré, Tesouro Direto, Dólar e Ouro, Reservas Internacionais, Feriados e Sobre.
 - Consulta da curva SELIC Pré da B3 com curva curta e longa, evolução histórica, análise automática, cópia do gráfico e exportação.
 - Tesouro Direto com visão geral, estoque e apetite do mercado, incluindo evolução percentual por família de título.
-- Câmbio e Ouro com histórico de 12 meses, cenário estatístico, base 100, Fibonacci e sinais de política cambial.
+- Câmbio e Reserva com histórico de 12 meses, cenário estatístico, base 100, Fibonacci e sinais de política cambial.
 - Reservas Internacionais com série diária do BCB, janelas de 12 meses ou 3 anos, indicadores de deterioração, regime e aviso de defasagem.
 - Calendário de feriados da B3 para resolução de dias úteis.
 - Linha de comando para consulta, atualização, exportação e datasets do Tesouro, mercado e reservas.
@@ -58,19 +58,19 @@ Substitua `b3-selic-pre-linux` pelo nome do arquivo da sua plataforma.
 
 A CLI usa subcomandos de verbo. Os principais são:
 
-| Comando | Uso |
-| --- | --- |
-| `consultar` | Consulta as taxas de uma data (`--curva curta\|longa\|ambas`). |
-| `atualizar` | Carrega a evolução da curva e imprime a análise determinística. |
-| `exportar` | Exporta curvas, análise e/ou log da aplicação. |
-| `tesouro` | Consulta vendas do Tesouro Direto (`--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
-| `tesouro-resgates` | Consulta recompras, cupons e vencimentos (`--tipo`, `--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
-| `tesouro-estoque` | Consulta o estoque mensal (`--titulo`, `--inicio`, `--fim`, `--mes`, `--agregar`, `--json`, `--no-cache`, `--saida`). |
-| `mercado` | Consulta ou exporta dólar e ouro (`--ativo`, `--inicio`, `--fim`, `--resolucao`, `--prever`, `--formato`, `--saida`, `--no-cache`, `--atualizar`). |
-| `reservas` | Consulta ou exporta as reservas internacionais do BCB SGS 13621 (`--inicio`, `--fim`, `--janela`, `--formato`, `--indicadores`, `--saida`, `--no-cache`, `--atualizar`). |
-| `mcp` | Inicia o servidor MCP via `stdio`, somente leitura. |
-| `gui` | Abre a interface gráfica (também é o padrão sem argumentos). |
-| `criar-atalho` | Cria o atalho no desktop e no menu de aplicações. |
+| Comando            | Uso                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `consultar`        | Consulta as taxas de uma data (`--curva curta\|longa\|ambas`).                                                                                                           |
+| `atualizar`        | Carrega a evolução da curva e imprime a análise determinística.                                                                                                          |
+| `exportar`         | Exporta curvas, análise e/ou log da aplicação.                                                                                                                           |
+| `tesouro`          | Consulta vendas do Tesouro Direto (`--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`).                                                     |
+| `tesouro-resgates` | Consulta recompras, cupons e vencimentos (`--tipo`, `--titulo`, `--inicio`, `--fim`, `--agregar`, `--json`, `--no-cache`, `--saida`).                                    |
+| `tesouro-estoque`  | Consulta o estoque mensal (`--titulo`, `--inicio`, `--fim`, `--mes`, `--agregar`, `--json`, `--no-cache`, `--saida`).                                                    |
+| `mercado`          | Consulta ou exporta dólar e ouro (`--ativo`, `--inicio`, `--fim`, `--resolucao`, `--prever`, `--formato`, `--saida`, `--no-cache`, `--atualizar`).                       |
+| `reservas`         | Consulta ou exporta as reservas internacionais do BCB SGS 13621 (`--inicio`, `--fim`, `--janela`, `--formato`, `--indicadores`, `--saida`, `--no-cache`, `--atualizar`). |
+| `mcp`              | Inicia o servidor MCP via `stdio`, somente leitura.                                                                                                                      |
+| `gui`              | Abre a interface gráfica (também é o padrão sem argumentos).                                                                                                             |
+| `criar-atalho`     | Cria o atalho no desktop e no menu de aplicações.                                                                                                                        |
 
 Parâmetros comuns: `--data AAAA-MM-DD` (padrão: hoje), `--no-cache` e
 `--curva curta|longa|ambas`. A sintaxe antiga (`--today`, `--yearly`, `--gui`,
@@ -128,7 +128,7 @@ A janela principal organiza o conteúdo em abas por classe de ativo:
 - **Tesouro Direto**: sub-abas `Visão geral`, `Estoque` e `Apetite do mercado`,
   com gráficos de percentual atual e evolução, toolbar, hover sobre os pontos e
   texto orientativo redimensionável.
-- **Câmbio e Reservas**: sub-abas `Dólar e Ouro` e `Reservas Internacionais`,
+- **Câmbio e Reserva**: sub-abas `Dólar e Ouro` e `Reservas Internacionais`,
   nesta ordem. `Dólar e Ouro` traz histórico de 12 meses, cenário de 12 meses,
   sinais de política cambial, alternância base 100 e overlay de Fibonacci.
   `Reservas Internacionais` traz a série diária do BCB, janelas de 12 meses ou

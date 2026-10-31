@@ -20,6 +20,7 @@ from b3_selic_pre.application.chart_data import (
 )
 from b3_selic_pre.application.use_cases import average_rate_by_year
 from b3_selic_pre.domain.models import RateRecord
+from b3_selic_pre.presentation.chart_layout import apply_tight_layout
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -34,7 +35,7 @@ def _render_empty(fig: Figure, message: str, xlabel: str, ylabel: str) -> None:
             transform=ax.transAxes, fontsize=14, color="gray")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    fig.tight_layout()
+    apply_tight_layout(fig, context="SELIC: vazio")
 
 
 def _setup_xy_grid(
@@ -128,7 +129,7 @@ def render_chart(fig: Figure, records: list[RateRecord], consolidated: bool = Fa
         minor_22du = nearest_ticks(all_days, range(1, 757, 22), 22, set(major_66du))
         _setup_xy_grid(ax, "Dias úteis", 756, major_66du, minor_22du)
         ax.legend(loc="upper right")
-    fig.tight_layout()
+    apply_tight_layout(fig, context="SELIC: render_chart")
 
 
 def render_curve_evolution(fig: Figure, date_rates: dict[str, list[RateRecord]]) -> None:
@@ -166,7 +167,7 @@ def render_curve_evolution(fig: Figure, date_rates: dict[str, list[RateRecord]])
     _draw_evolution_arrows(ax, dates_sorted, all_years, plt.cm.Blues, sample)
     _setup_xy_grid(ax, "Ano", 20, major_3yr, minor_1yr)
     ax.legend(fontsize=8, loc="upper right")
-    fig.tight_layout()
+    apply_tight_layout(fig, context="SELIC: render_curve_evolution")
 
 
 def render_detailed_evolution(fig: Figure, date_rates: dict[str, list[RateRecord]]) -> None:
@@ -208,7 +209,9 @@ def render_detailed_evolution(fig: Figure, date_rates: dict[str, list[RateRecord
     _draw_evolution_arrows(ax, dates_sorted, minor_22du, plt.cm.Greens, sample)
     _setup_xy_grid(ax, "Dias úteis", 756, major_66du, minor_22du)
     ax.legend(fontsize=8, loc="upper right")
-    fig.tight_layout()
+    apply_tight_layout(
+        fig, context="SELIC: render_detailed_evolution"
+    )
 
 
 def _plot_3d_consolidated_lines(

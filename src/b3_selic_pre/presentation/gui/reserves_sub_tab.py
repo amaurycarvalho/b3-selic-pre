@@ -7,6 +7,7 @@ import queue
 import threading
 from typing import Any
 
+from b3_selic_pre.presentation.busy import BUSY_TEXT, BusyIndicator
 from b3_selic_pre.presentation.charts_reserves import render_reserves
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.market_chart_panel import MarketChartPanel
@@ -54,6 +55,7 @@ class ReservesSubTab:
         self._loaded = False
         self._payload: dict[str, Any] | None = None
         self._results: queue.Queue = queue.Queue()
+        self._busy = BusyIndicator(root)
         self.options = ReservesOptions()
         services = dependencies.reserves_services
         self.controller = (
@@ -112,12 +114,35 @@ class ReservesSubTab:
         self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
         charts = ttk.Frame(self.paned)
         self.paned.add(charts, weight=4)
+        self.loading_label = ttk.Label(
+            charts,
+            text=BUSY_TEXT,
+            anchor=tk.CENTER,
+            font=("TkDefaultFont", 12),
+        )
+        self.loading_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.panel = MarketChartPanel(
             charts, icons=self.icons, on_status=self._apply_status
         )
         self.panel.frame.pack(fill=tk.BOTH, expand=True)
+        self.loading_label.lower()
         orientation = build_reserves_orientation(self.paned, tk, ttk)
         self.paned.add(orientation, weight=1)
+
+    def hide_charts(self: ReservesSubTab) -> None:
+        """Hide the chart panel so the fixed processing text is visible."""
+        self.panel.frame.pack_forget()
+        self.loading_label.lower()
+
+    def show_charts(self: ReservesSubTab) -> None:
+        """Show the chart panel again, leaving the text behind it."""
+        if not self.panel.frame.winfo_manager():
+            self.panel.frame.pack(fill=self.tk.BOTH, expand=True)
+        self.loading_label.lower()
+
+    def draw_idle(self: ReservesSubTab) -> None:
+        """Schedule an additional repaint after the panel returns."""
+        self.panel.canvas.draw_idle()
 
     def _build_statusbar(self: ReservesSubTab) -> None:
         tk, ttk = self.tk, self.ttk
@@ -130,41 +155,66 @@ class ReservesSubTab:
         row.pack(fill=tk.X)
         self.status_var = tk.StringVar(value="")
         self.status_label = ttk.Label(
-            row, textvariable=self.status_var, anchor=tk.W
+            row, textvariable=self.status_var, anchor=tk.W, width=1
         )
         self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.progress = ttk.Progressbar(
             row, mode="indeterminate", length=140
         )
+        self.progress_host = ttk.Frame(
+            row,
+            width=140,
+            height=max(20, self.progress.winfo_reqheight()),
+        )
+        self.progress_host.pack(side=tk.RIGHT, padx=(8, 0))
+        self.progress_host.pack_propagate(False)
 
     def on_show(self: ReservesSubTab) -> None:
         """Load only the cache on first display and redraw afterwards."""
         if self._closed:
             return
+        self.hide_charts()
         if not self._loaded:
             self._loaded = True
-            self._start_load(cache_only=True)
+            if self._start_load(cache_only=True):
+                return
+            self.show_charts()
             return
-        self._draw()
+        if self._loading:
+            self._draw()
+            return
+        self._busy.enter()
+        try:
+            self._draw()
+            self.draw_idle()
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _on_option_change(self: ReservesSubTab, event: object = None) -> None:
         self.options.set_janela(
             JANELA_OPTIONS.get(self.window_var.get(), "12m")
         )
-        self._draw()
+        self._busy.enter()
+        try:
+            self._draw()
+        finally:
+            self._busy.leave()
 
     def _start_refresh(self: ReservesSubTab) -> None:
         self._start_load(cache_only=False)
 
-    def _start_load(self: ReservesSubTab, cache_only: bool) -> None:
+    def _start_load(self: ReservesSubTab, cache_only: bool) -> bool:
         if self._loading or self._closed:
-            return
+            return False
         if self.controller is None:
             self._apply_status(
                 "Serviço de reservas indisponível nesta execução.", "error"
             )
-            return
+            return False
         self._loading = True
+        self.hide_charts()
+        self._busy.enter()
         self.update_loading_state(True)
         self._apply_status(
             "Carregando cache..." if cache_only else "Atualizando reservas...",
@@ -174,6 +224,7 @@ class ReservesSubTab:
         threading.Thread(
             target=self._load_worker, args=(cache_only,), daemon=True
         ).start()
+        return True
 
     def _load_worker(self: ReservesSubTab, cache_only: bool) -> None:
         payload: dict[str, Any] | None = None
@@ -213,11 +264,16 @@ class ReservesSubTab:
             return
         self._loading = False
         self.update_loading_state(False)
-        if payload is not None:
-            self._payload = payload
-        self._draw()
-        if error:
-            self._apply_status(f"Falha ao atualizar: {error}", "error")
+        try:
+            if payload is not None:
+                self._payload = payload
+            self._draw()
+            self.draw_idle()
+            if error:
+                self._apply_status(f"Falha ao atualizar: {error}", "error")
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _draw(self: ReservesSubTab) -> None:
         if self._closed or self._payload is None:
@@ -251,7 +307,8 @@ class ReservesSubTab:
         if image is not None:
             self.refresh_button.configure(image=image, text="")
         if loading:
-            self.progress.pack(side=self.tk.RIGHT, padx=(8, 0))
+            if not self.progress.winfo_manager():
+                self.progress.pack(fill=self.tk.BOTH, expand=True)
             self.progress.start()
         elif self.progress.winfo_manager():
             self.progress.stop()
@@ -268,6 +325,7 @@ class ReservesSubTab:
     def close(self: ReservesSubTab) -> None:
         """Mark the sub-tab closed so late callbacks are ignored."""
         self._closed = True
+        self._busy.reset()
 
 
 __all__ = ["JANELA_OPTIONS", "ReservesSubTab"]

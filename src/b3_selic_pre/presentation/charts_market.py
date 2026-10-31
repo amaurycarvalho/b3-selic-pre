@@ -6,6 +6,7 @@ import textwrap
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from b3_selic_pre.presentation.chart_layout import apply_tight_layout
 from b3_selic_pre.presentation.charts_hover import HoverPoint, register_hover
 from b3_selic_pre.presentation.market_chart_data import (
     ChartPanelData,
@@ -37,7 +38,7 @@ def _empty(fig: Figure, message: str) -> None:
         transform=ax.transAxes, fontsize=12, color="gray",
     )
     ax.set_axis_off()
-    fig.tight_layout(pad=0.4)
+    apply_tight_layout(fig, context="Mercado: vazio", pad=0.4)
 
 
 def _draw_history(ax: object, panel: ChartPanelData) -> None:
@@ -229,7 +230,7 @@ def render_market(fig: Figure, data: MarketChartData) -> None:
         textwrap.fill(data.indicadores_texto, width=110),
         fontsize=7, va="center", transform=policy.transAxes,
     )
-    fig.tight_layout(pad=0.4)
+    apply_tight_layout(fig, context="Mercado: render_market", pad=0.4)
 
 
 __all__ = ["render_market"]

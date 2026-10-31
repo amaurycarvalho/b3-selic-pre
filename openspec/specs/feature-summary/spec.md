@@ -1,16 +1,16 @@
-# Spec Delta
+# feature-summary Specification
 
 ## Purpose
 
 Publicar um resumo único e conciso das funcionalidades da aplicação, usado tanto no início do README quanto na aba Sobre, para que o usuário descubra rapidamente o que o sistema oferece.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Resumo de funcionalidades no README
 
 O `README.md` SHALL conter uma seção `Funcionalidades` na parte inicial do documento, antes das seções de instalação e de uso.
 
-A seção SHALL apresentar, em poucos itens, as principais capacidades da aplicação: interface gráfica por abas, consulta da curva SELIC Pré, Tesouro Direto, Câmbio e Ouro, Reservas Internacionais, Feriados, linha de comando, servidor MCP somente leitura, cache local e exportação.
+A seção SHALL apresentar, em poucos itens, as principais capacidades da aplicação: interface gráfica por abas, consulta da curva SELIC Pré, Tesouro Direto, Dólar e Ouro, Reservas Internacionais, Feriados, linha de comando, servidor MCP somente leitura, cache local e exportação.
 
 #### Scenario: Resumo antes das seções de uso
 
@@ -23,7 +23,7 @@ A seção SHALL apresentar, em poucos itens, as principais capacidades da aplica
 - **WHEN** o usuário lê a seção `Funcionalidades`
 - **THEN** ela SHALL mencionar a interface gráfica por abas
 - **THEN** ela SHALL mencionar a consulta da curva SELIC Pré
-- **THEN** ela SHALL mencionar o Tesouro Direto, o Câmbio e Ouro e as Reservas Internacionais
+- **THEN** ela SHALL mencionar o Tesouro Direto, o Câmbio e Reserva e as Reservas Internacionais
 - **THEN** ela SHALL mencionar a linha de comando, o servidor MCP e o uso de cache local
 
 ### Requirement: Resumo replicado na aba Sobre

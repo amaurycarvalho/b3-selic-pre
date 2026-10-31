@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from b3_selic_pre.presentation.chart_layout import apply_tight_layout
 from b3_selic_pre.presentation.charts_hover import HoverPoint, register_hover
 from b3_selic_pre.presentation.tesouro_analise_view_model import (
     ComparisonChart,
@@ -29,7 +30,7 @@ def _empty(fig: Figure, title: str, message: str, ylabel: str = "%") -> None:
     ax.set_title(title)
     ax.set_ylabel(ylabel)
     ax.set_ylim(0, _YMAX)
-    fig.tight_layout()
+    apply_tight_layout(fig, context=f"Tesouro: vazio ({title})")
 
 
 def render_current_share(fig: Figure, chart: ShareChart) -> None:
@@ -75,7 +76,9 @@ def render_current_share(fig: Figure, chart: ShareChart) -> None:
     if titles:
         ax.legend(fontsize=7, loc="upper right", ncol=2)
     register_hover(ax, hover)
-    fig.tight_layout()
+    apply_tight_layout(
+        fig, context=f"render_current_share: {chart.title}"
+    )
 
 
 def render_current_comparison(fig: Figure, chart: ComparisonChart) -> None:
@@ -120,7 +123,9 @@ def render_current_comparison(fig: Figure, chart: ComparisonChart) -> None:
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend(fontsize=8, loc="upper right")
     register_hover(ax, hover)
-    fig.tight_layout()
+    apply_tight_layout(
+        fig, context=f"render_current_comparison: {chart.title}"
+    )
 
 
 def render_evolution(fig: Figure, chart: EvolutionChart) -> None:
@@ -160,7 +165,9 @@ def render_evolution(fig: Figure, chart: EvolutionChart) -> None:
     ax.legend(fontsize=7, loc="upper left", ncol=len(families) or 1)
     _rotate_labels(ax)
     register_hover(ax, hover)
-    fig.tight_layout()
+    apply_tight_layout(
+        fig, context=f"render_evolution: {chart.title}"
+    )
 
 
 def render_gap(fig: Figure, chart: GapChart) -> None:
@@ -194,7 +201,7 @@ def render_gap(fig: Figure, chart: GapChart) -> None:
     ax.legend(fontsize=7, loc="upper left")
     _rotate_labels(ax)
     register_hover(ax, hover)
-    fig.tight_layout()
+    apply_tight_layout(fig, context=f"render_gap: {chart.title}")
 
 
 def _categorical_x(ax: object, families: tuple[str, ...]) -> None:

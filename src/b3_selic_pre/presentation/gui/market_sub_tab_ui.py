@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from b3_selic_pre.presentation.busy import BUSY_TEXT
 from b3_selic_pre.presentation.gui.market_chart_panel import MarketChartPanel
 from b3_selic_pre.presentation.gui.market_orientation import (
     build_market_orientation,
@@ -85,12 +86,35 @@ class MarketSubTabUI:
         self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
         charts = ttk.Frame(self.paned)
         self.paned.add(charts, weight=3)
+        self.loading_label = ttk.Label(
+            charts,
+            text=BUSY_TEXT,
+            anchor=tk.CENTER,
+            font=("TkDefaultFont", 12),
+        )
+        self.loading_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.panel = MarketChartPanel(
             charts, icons=self.icons, on_status=self._apply_status
         )
         self.panel.frame.pack(fill=tk.BOTH, expand=True)
+        self.loading_label.lower()
         orientation = build_market_orientation(self.paned, tk, ttk)
         self.paned.add(orientation, weight=1)
+
+    def hide_charts(self: MarketSubTabUI) -> None:
+        """Hide the chart panel so the fixed processing text is visible."""
+        self.panel.frame.pack_forget()  # type: ignore[attr-defined]
+        self.loading_label.lower()  # type: ignore[attr-defined]
+
+    def show_charts(self: MarketSubTabUI) -> None:
+        """Show the chart panel again, leaving the text behind it."""
+        if not self.panel.frame.winfo_manager():  # type: ignore[attr-defined]
+            self.panel.frame.pack(fill=self.tk.BOTH, expand=True)  # type: ignore[attr-defined]
+        self.loading_label.lower()  # type: ignore[attr-defined]
+
+    def draw_idle(self: MarketSubTabUI) -> None:
+        """Schedule an additional repaint after the panel returns."""
+        self.panel.canvas.draw_idle()  # type: ignore[attr-defined]
 
     def _build_statusbar(self: MarketSubTabUI) -> None:
         tk, ttk = self.tk, self.ttk
@@ -103,12 +127,19 @@ class MarketSubTabUI:
         row.pack(fill=tk.X)
         self.status_var = tk.StringVar(value="")
         self.status_label = ttk.Label(
-            row, textvariable=self.status_var, anchor=tk.W
+            row, textvariable=self.status_var, anchor=tk.W, width=1
         )
         self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.progress = ttk.Progressbar(
             row, mode="indeterminate", length=140
         )
+        self.progress_host = ttk.Frame(
+            row,
+            width=140,
+            height=max(20, self.progress.winfo_reqheight()),
+        )
+        self.progress_host.pack(side=tk.RIGHT, padx=(8, 0))
+        self.progress_host.pack_propagate(False)
 
     def update_loading_state(self: MarketSubTabUI, loading: bool) -> None:
         """Enable/disable controls and animate the statusbar progress."""
@@ -124,7 +155,8 @@ class MarketSubTabUI:
         if image is not None:
             self.refresh_button.configure(image=image, text="")
         if loading:
-            self.progress.pack(side=self.tk.RIGHT, padx=(8, 0))
+            if not self.progress.winfo_manager():
+                self.progress.pack(fill=self.tk.BOTH, expand=True)
             self.progress.start()
         elif self.progress.winfo_manager():
             self.progress.stop()

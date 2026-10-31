@@ -9,8 +9,49 @@ LICENSE_TEXT = "Software livre e de código aberto (GNU GPLv3)"
 DESCRIPTION = "Curva de juros (taxa referencial SELIC) conforme a B3."
 REPOSITORY_URL = "https://github.com/amaurycarvalho/b3-selic-pre"
 RELEASES_URL = f"{REPOSITORY_URL}/releases"
+FEATURES_TITLE = "Funcionalidades"
+FEATURES_SUMMARY = (
+    (
+        "Interface gráfica em abas para SELIC Pré, Tesouro Direto, Dólar e "
+        "Ouro, Reservas Internacionais, Feriados e Sobre."
+    ),
+    (
+        "Consulta da curva SELIC Pré da B3 com curva curta e longa, evolução "
+        "histórica, análise automática, cópia do gráfico e exportação."
+    ),
+    (
+        "Tesouro Direto com visão geral, estoque e apetite do mercado, "
+        "incluindo evolução percentual por família de título."
+    ),
+    (
+        "Câmbio e Reserva com histórico de 12 meses, cenário estatístico, base "
+        "100, Fibonacci e sinais de política cambial."
+    ),
+    (
+        "Reservas Internacionais com série diária do BCB, janelas de 12 meses "
+        "ou 3 anos, indicadores de deterioração, regime e aviso de defasagem."
+    ),
+    "Calendário de feriados da B3 para resolução de dias úteis.",
+    (
+        "Linha de comando para consulta, atualização, exportação e datasets do "
+        "Tesouro, mercado e reservas."
+    ),
+    (
+        "Servidor MCP somente leitura para agentes externos, usando o cache "
+        "local."
+    ),
+    (
+        "Cache local em disco, logging diário, exportação CSV/JSON e "
+        "carregamento em segundo plano na interface."
+    ),
+)
 
 _VERSION_SEGMENTS = 3
+
+
+def features_text() -> str:
+    """Return the shared feature summary formatted as Markdown bullets."""
+    return "\n".join(f"- {item}" for item in FEATURES_SUMMARY)
 
 
 @dataclass(frozen=True)

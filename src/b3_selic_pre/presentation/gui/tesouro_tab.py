@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from b3_selic_pre.presentation.busy import BUSY_TEXT
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.tesouro_sub_tab import TesouroSubTab
 from b3_selic_pre.presentation.settings import Settings
@@ -44,10 +45,14 @@ class TesouroDiretoTab:
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.registry = LazyTabRegistry()
         self._frames: dict[str, Widget] = {}
+        self._warnings: dict[str, Widget] = {}
         for kind, label in SUB_TABS:
             frame = ttk.Frame(self.notebook)
             self.notebook.add(frame, text=label)
             self._frames[kind] = frame
+            self._warnings[kind] = ttk.Label(
+                frame, text=BUSY_TEXT, anchor=tk.CENTER
+            )
             self.registry.register(self._spec(kind, label, frame))
         self.notebook.select(self._frames[KIND_VISAO_GERAL])
         self.notebook.bind("<<NotebookTabChanged>>", self._on_changed)
@@ -58,14 +63,30 @@ class TesouroDiretoTab:
         return TabSpec(
             kind,
             label,
-            lambda: TesouroSubTab(
+            lambda: self._build_sub_tab(kind, frame),
+        )
+
+    def _build_sub_tab(
+        self: TesouroDiretoTab, kind: str, frame: Widget
+    ) -> TesouroSubTab:
+        """Show the construction warning while the heavy sub-tab is built."""
+        warning = self._warnings.pop(kind, None)
+        if warning is not None:
+            warning.place(relx=0.5, rely=0.5, anchor=self.tk.CENTER)
+            warning.lift()
+            frame.update_idletasks()
+        try:
+            return TesouroSubTab(
                 frame,
                 kind,
                 root=self.root,
                 dependencies=self.deps,
                 icons=self.icons,
-            ),
-        )
+            )
+        finally:
+            if warning is not None:
+                warning.place_forget()
+                warning.destroy()
 
     def on_show(self: TesouroDiretoTab) -> None:
         """Build the visible sub-tab the first time the tab is shown."""

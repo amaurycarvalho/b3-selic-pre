@@ -6,6 +6,7 @@ import textwrap
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from b3_selic_pre.presentation.chart_layout import apply_tight_layout
 from b3_selic_pre.presentation.charts_hover import (
     HoverPoint,
     register_hover,
@@ -44,7 +45,7 @@ def _empty(fig: Figure, message: str) -> None:
         color="gray",
     )
     ax.set_axis_off()
-    fig.tight_layout(pad=0.4)
+    apply_tight_layout(fig, context="Reservas: vazio", pad=0.4)
 
 
 def _draw_series(ax: object, data: ReservesChartData) -> None:
@@ -178,7 +179,7 @@ def render_reserves(fig: Figure, data: ReservesChartData) -> None:
         va="center",
         transform=footer.transAxes,
     )
-    fig.tight_layout(pad=0.4)
+    apply_tight_layout(fig, context="Reservas: render_reserves", pad=0.4)
 
 
 __all__ = ["render_reserves"]

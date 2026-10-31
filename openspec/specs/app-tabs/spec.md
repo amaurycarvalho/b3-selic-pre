@@ -8,14 +8,14 @@ Organizar a janela principal em abas por classe de ativo, com carregamento lazy 
 
 ### Requirement: Abas de nível superior
 
-A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre`, nesta ordem.
+A janela principal SHALL exibir um `ttk.Notebook` de nível superior com as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reserva`, `Feriados` e `Sobre`, nesta ordem.
 
 `SELIC Pré` SHALL ser a aba padrão. A antiga janela separada de Tesouro Direto NÃO SHALL existir.
 
 #### Scenario: Abas são exibidas
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre` SHALL estar visíveis
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reserva`, `Feriados` e `Sobre` SHALL estar visíveis
 - **THEN** `SELIC Pré` SHALL estar selecionada
 
 #### Scenario: Sem janela separada
@@ -56,7 +56,7 @@ A aba padrão SHALL ser construída no startup. Abas ocultas NÃO SHALL ser cons
 
 - **WHEN** a aplicação inicia
 - **THEN** `SELIC Pré` SHALL ser construída
-- **THEN** `Tesouro Direto`, `Câmbio e Ouro` e `Feriados` NÃO SHALL ser construídas
+- **THEN** `Tesouro Direto`, `Câmbio e Reserva` e `Feriados` NÃO SHALL ser construídas
 
 #### Scenario: Primeira exibição constrói
 
@@ -84,9 +84,9 @@ A aba padrão SHALL ser construída no startup. Abas ocultas NÃO SHALL ser cons
 
 O shell SHALL manter um registro determinístico de abas, com identificador único e rótulo.
 
-As abas `Câmbio e Ouro` e `Feriados` SHALL ser registradas sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
+As abas `Câmbio e Reserva` e `Feriados` SHALL ser registradas sem reestruturar o shell. Uma aba NÃO SHALL aparecer antes de ser registrada.
 
-O sub-notebook de `Câmbio e Ouro` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
+O sub-notebook de `Câmbio e Reserva` SHALL manter um registro determinístico de sub-abas, com identificador único e rótulo, rejeitando identificadores duplicados.
 
 #### Scenario: Aba registrada aparece
 
@@ -115,13 +115,13 @@ O sub-notebook de `Câmbio e Ouro` SHALL manter um registro determinístico de s
 
 #### Scenario: Câmbio registrada
 
-- **WHEN** a change de Câmbio e Ouro é aplicada
-- **THEN** a aba `Câmbio e Ouro` SHALL estar registrada entre `Tesouro Direto` e `Feriados`
+- **WHEN** a change de Câmbio e Reserva é aplicada
+- **THEN** a aba `Câmbio e Reserva` SHALL estar registrada entre `Tesouro Direto` e `Feriados`
 
 #### Scenario: Feriados registrada
 
 - **WHEN** a change de Calendário de Feriados é aplicada
-- **THEN** a aba `Feriados` SHALL estar registrada entre `Câmbio e Ouro` e `Sobre`
+- **THEN** a aba `Feriados` SHALL estar registrada entre `Câmbio e Reserva` e `Sobre`
 
 ### Requirement: Aba Sobre
 
@@ -141,7 +141,7 @@ o servidor.
 #### Scenario: Aba Sobre visível
 
 - **WHEN** a janela principal é aberta
-- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Ouro`, `Feriados` e `Sobre` SHALL estar disponíveis
+- **THEN** as abas `SELIC Pré`, `Tesouro Direto`, `Câmbio e Reserva`, `Feriados` e `Sobre` SHALL estar disponíveis
 - **THEN** `Sobre` SHALL estar à direita de `Feriados`
 
 #### Scenario: Funcionalidades preservadas
@@ -225,22 +225,22 @@ Fechar a aplicação durante uma carga assíncrona NÃO SHALL lançar exceção.
 - **THEN** callbacks pendentes SHALL ser ignorados
 - **THEN** nenhum widget inválido SHALL ser acessado
 
-### Requirement: Aba Câmbio e Reservas
+### Requirement: Aba Câmbio e Reserva
 
-A aba `Câmbio e Reservas` SHALL ser construída apenas na primeira vez que ficar visível e SHALL ler apenas o cache local nessa construção.
+A aba `Câmbio e Reserva` SHALL ser construída apenas na primeira vez que ficar visível e SHALL ler apenas o cache local nessa construção.
 
 A aba SHALL organizar o conteúdo em sub-abas lazy. A sub-aba `Dólar e Ouro` SHALL ser registrada nesta entrega. A futura sub-aba `Reservas Internacionais` SHALL entrar no mesmo sub-notebook sem reestruturar o shell.
 
 #### Scenario: Primeira exibição
 
-- **WHEN** o usuário seleciona `Câmbio e Reservas` pela primeira vez
+- **WHEN** o usuário seleciona `Câmbio e Reserva` pela primeira vez
 - **THEN** o conteúdo da sub-aba visível SHALL ser construído
 - **THEN** nenhuma requisição de rede SHALL ser iniciada
 
 #### Scenario: Aba oculta no startup
 
 - **WHEN** a aplicação inicia
-- **THEN** a aba `Câmbio e Reservas` NÃO SHALL ser construída
+- **THEN** a aba `Câmbio e Reserva` NÃO SHALL ser construída
 
 ### Requirement: Sub-aba Dólar e Ouro
 
@@ -285,13 +285,13 @@ A sub-aba SHALL seguir o padrão de usabilidade do Tesouro Direto: tooltips nos 
 
 ### Requirement: Sub-aba Reservas Internacionais
 
-A aba `Câmbio e Ouro` SHALL registrar a sub-aba `Reservas Internacionais` em seu sub-notebook lazy, após `Dólar e Ouro`.
+A aba `Câmbio e Reserva` SHALL registrar a sub-aba `Reservas Internacionais` em seu sub-notebook lazy, após `Dólar e Ouro`.
 
 A sub-aba SHALL ser construída apenas quando visível e NÃO SHALL acessar a rede na construção.
 
 #### Scenario: Sub-aba registrada na ordem
 
-- **WHEN** a aba `Câmbio e Ouro` é construída
+- **WHEN** a aba `Câmbio e Reserva` é construída
 - **THEN** o sub-notebook SHALL conter `Dólar e Ouro` e `Reservas Internacionais`, nesta ordem
 
 #### Scenario: Sub-aba lazy

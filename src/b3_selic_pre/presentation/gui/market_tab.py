@@ -1,4 +1,4 @@
-"""Sub-aba Dólar e Ouro e aba Câmbio e Reservas com sub-notebook lazy."""
+"""Sub-aba Dólar e Ouro e aba Câmbio e Reserva com sub-notebook lazy."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import queue
 import threading
 from typing import Any
 
+from b3_selic_pre.presentation.busy import BUSY_TEXT, BusyIndicator
 from b3_selic_pre.presentation.charts_market import render_market
 from b3_selic_pre.presentation.gui.dependencies import GuiDependencies
 from b3_selic_pre.presentation.gui.market_sub_tab_ui import (
@@ -57,6 +58,7 @@ class DolarOuroSubTab(MarketSubTabUI):
         self._loaded = False
         self._payload: dict[str, Any] | None = None
         self._results: queue.Queue = queue.Queue()
+        self._busy = BusyIndicator(root)
         self.options = MarketOptions()
         services = dependencies.market_services
         self.controller = (
@@ -70,11 +72,23 @@ class DolarOuroSubTab(MarketSubTabUI):
         """Load only the cache on the first display and redraw afterwards."""
         if self._closed:
             return
+        self.hide_charts()
         if not self._loaded:
             self._loaded = True
-            self._start_load(cache_only=True)
+            if self._start_load(cache_only=True):
+                return
+            self.show_charts()
             return
-        self._draw()
+        if self._loading:
+            self._draw()
+            return
+        self._busy.enter()
+        try:
+            self._draw()
+            self.draw_idle()
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _on_option_change(self: DolarOuroSubTab, event: object = None) -> None:
         self.options.set_ativo(
@@ -82,20 +96,26 @@ class DolarOuroSubTab(MarketSubTabUI):
         )
         self.options.base100 = self.base100_var.get()
         self.options.fibonacci = self.fibonacci_var.get()
-        self._draw()
+        self._busy.enter()
+        try:
+            self._draw()
+        finally:
+            self._busy.leave()
 
     def _start_refresh(self: DolarOuroSubTab) -> None:
         self._start_load(cache_only=False)
 
-    def _start_load(self: DolarOuroSubTab, cache_only: bool) -> None:
+    def _start_load(self: DolarOuroSubTab, cache_only: bool) -> bool:
         if self._loading or self._closed:
-            return
+            return False
         if self.controller is None:
             self._apply_status(
                 "Serviço de mercado indisponível nesta execução.", "error"
             )
-            return
+            return False
         self._loading = True
+        self.hide_charts()
+        self._busy.enter()
         self.update_loading_state(True)
         self._apply_status(
             "Carregando cache..." if cache_only else "Atualizando fontes...",
@@ -105,6 +125,7 @@ class DolarOuroSubTab(MarketSubTabUI):
         threading.Thread(
             target=self._load_worker, args=(cache_only,), daemon=True
         ).start()
+        return True
 
     def _load_worker(self: DolarOuroSubTab, cache_only: bool) -> None:
         payload: dict[str, Any] | None = None
@@ -144,11 +165,16 @@ class DolarOuroSubTab(MarketSubTabUI):
             return
         self._loading = False
         self.update_loading_state(False)
-        if payload is not None:
-            self._payload = payload
-        self._draw()
-        if error:
-            self._apply_status(f"Falha ao atualizar: {error}", "error")
+        try:
+            if payload is not None:
+                self._payload = payload
+            self._draw()
+            self.draw_idle()
+            if error:
+                self._apply_status(f"Falha ao atualizar: {error}", "error")
+        finally:
+            self.show_charts()
+            self._busy.leave()
 
     def _draw(self: DolarOuroSubTab) -> None:
         if self._closed or self._payload is None:
@@ -163,10 +189,11 @@ class DolarOuroSubTab(MarketSubTabUI):
     def close(self: DolarOuroSubTab) -> None:
         """Mark the sub-tab closed so late callbacks are ignored."""
         self._closed = True
+        self._busy.reset()
 
 
 class CambioOuroTab:
-    """Aba Câmbio e Reservas com sub-notebook lazy."""
+    """Aba Câmbio e Reserva com sub-notebook lazy."""
 
     def __init__(
         self: CambioOuroTab,
@@ -191,10 +218,14 @@ class CambioOuroTab:
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.registry = LazyTabRegistry()
         self._frames: dict[str, Widget] = {}
+        self._warnings: dict[str, Widget] = {}
         for sub_id, label in SUB_TABS:
             frame = ttk.Frame(self.notebook)
             self.notebook.add(frame, text=label)
             self._frames[sub_id] = frame
+            self._warnings[sub_id] = ttk.Label(
+                frame, text=BUSY_TEXT, anchor=tk.CENTER
+            )
             self.registry.register(
                 TabSpec(
                     sub_id,
@@ -211,19 +242,29 @@ class CambioOuroTab:
         self: CambioOuroTab, sub_id: str, frame: Widget, label: str
     ) -> object:
         _ = label
-        if sub_id == "reservas":
-            return ReservesSubTab(
+        warning = self._warnings.pop(sub_id, None)
+        if warning is not None:
+            warning.place(relx=0.5, rely=0.5, anchor=self.tk.CENTER)
+            warning.lift()
+            frame.update_idletasks()
+        try:
+            if sub_id == "reservas":
+                return ReservesSubTab(
+                    frame,
+                    root=self.root,
+                    dependencies=self.deps,
+                    icons=self.icons,
+                )
+            return DolarOuroSubTab(
                 frame,
                 root=self.root,
                 dependencies=self.deps,
                 icons=self.icons,
             )
-        return DolarOuroSubTab(
-            frame,
-            root=self.root,
-            dependencies=self.deps,
-            icons=self.icons,
-        )
+        finally:
+            if warning is not None:
+                warning.place_forget()
+                warning.destroy()
 
     def on_show(self: CambioOuroTab) -> None:
         """Build the visible sub-tab the first time the tab is shown."""

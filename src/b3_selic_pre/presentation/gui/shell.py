@@ -107,7 +107,7 @@ class AppShell(WindowMixin):
             TESOURO_TAB_ID, "Tesouro Direto", self._build_tesouro
         )
         self.register_tab(
-            CAMBIO_TAB_ID, "Câmbio e Ouro", self._build_cambio
+            CAMBIO_TAB_ID, "Câmbio e Reserva", self._build_cambio
         )
         self.register_tab(
             FERIADOS_TAB_ID, "Feriados", self._build_feriados

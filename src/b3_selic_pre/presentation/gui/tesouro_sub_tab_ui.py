@@ -5,9 +5,25 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+from b3_selic_pre.presentation.busy import BUSY_TEXT
+from b3_selic_pre.presentation.charts_tesouro import (
+    render_current_comparison,
+    render_current_share,
+    render_evolution,
+    render_gap,
+)
 from b3_selic_pre.presentation.gui.tesouro_chart_panel import ChartPanel
 from b3_selic_pre.presentation.gui.tesouro_orientation import build_orientation
 from b3_selic_pre.presentation.gui.tooltip import Tooltip
+from b3_selic_pre.presentation.tesouro_analise_view_model import (
+    TesouroAnaliseViewModel,
+)
+from b3_selic_pre.presentation.tesouro_chart_data import (
+    KIND_VISAO_GERAL,
+    SUB_TABS,
+    ComparisonChart,
+    GapChart,
+)
 
 Widget = Any
 
@@ -76,6 +92,7 @@ class SubTabUI:
             frame,
             textvariable=self.detail_var,  # type: ignore[attr-defined]
             anchor=tk.W,
+            width=1,
         )
         self.detail_label.pack(  # type: ignore[attr-defined]
             side=tk.LEFT, padx=(12, 0), fill=tk.X, expand=True
@@ -107,6 +124,15 @@ class SubTabUI:
         )
         charts = ttk.Frame(self.paned)  # type: ignore[attr-defined]
         self.paned.add(charts, weight=3)  # type: ignore[attr-defined]
+        self.loading_label = ttk.Label(  # type: ignore[attr-defined]
+            charts,
+            text=BUSY_TEXT,
+            anchor=tk.CENTER,
+            font=("TkDefaultFont", 12),
+        )
+        self.loading_label.place(  # type: ignore[attr-defined]
+            relx=0.5, rely=0.5, anchor=tk.CENTER
+        )
         self.current_panel = ChartPanel(  # type: ignore[attr-defined]
             charts,
             icons=self.icons,  # type: ignore[attr-defined]
@@ -123,10 +149,82 @@ class SubTabUI:
         self.evolution_panel.frame.pack(  # type: ignore[attr-defined]
             side=tk.TOP, fill=tk.BOTH, expand=True
         )
+        self.loading_label.lower()  # type: ignore[attr-defined]
         orientation = build_orientation(
             self.paned, self.kind, tk, ttk  # type: ignore[attr-defined]
         )
         self.paned.add(orientation, weight=1)  # type: ignore[attr-defined]
+
+    def hide_charts(self: SubTabUI) -> None:
+        """Hide both chart panels so the fixed processing text is visible."""
+        self.current_panel.frame.pack_forget()  # type: ignore[attr-defined]
+        self.evolution_panel.frame.pack_forget()  # type: ignore[attr-defined]
+        self.loading_label.lower()  # type: ignore[attr-defined]
+
+    def show_charts(self: SubTabUI) -> None:
+        """Show both chart panels again, leaving the text behind them."""
+        tk = self.tk  # type: ignore[attr-defined]
+        for panel in (  # type: ignore[attr-defined]
+            self.current_panel,  # type: ignore[attr-defined]
+            self.evolution_panel,  # type: ignore[attr-defined]
+        ):
+            if not panel.frame.winfo_manager():
+                panel.frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.loading_label.lower()  # type: ignore[attr-defined]
+
+    def draw_idle(self: SubTabUI) -> None:
+        """Schedule a repaint for both canvases."""
+        self.current_panel.canvas.draw_idle()  # type: ignore[attr-defined]
+        self.evolution_panel.canvas.draw_idle()  # type: ignore[attr-defined]
+
+    def draw_current(
+        self: SubTabUI, view_model: TesouroAnaliseViewModel
+    ) -> None:
+        """Draw the current chart or its empty state."""
+        current = view_model.current_chart()
+        if current is None:
+            draw_empty_chart(
+                self.current_panel.figure,  # type: ignore[attr-defined]
+                self.title(),  # type: ignore[attr-defined]
+                view_model.placeholder_message or view_model.empty_message,
+            )
+            self.current_panel.canvas.draw_idle()  # type: ignore[attr-defined]
+        elif isinstance(current, ComparisonChart):
+            self.current_panel.draw(  # type: ignore[attr-defined]
+                render_current_comparison, current
+            )
+        else:
+            self.current_panel.draw(  # type: ignore[attr-defined]
+                render_current_share, current
+            )
+
+    def draw_evolution(
+        self: SubTabUI, view_model: TesouroAnaliseViewModel
+    ) -> None:
+        """Draw the evolution chart or its empty state."""
+        evolution = view_model.evolution_chart()
+        if evolution is None:
+            kind = self.kind  # type: ignore[attr-defined]
+            draw_empty_chart(
+                self.evolution_panel.figure,  # type: ignore[attr-defined]
+                f"{self.title()} — evolução",  # type: ignore[attr-defined]
+                view_model.placeholder_message or view_model.empty_message,
+                ylabel="p.p." if kind == KIND_VISAO_GERAL else "%",
+            )
+            self.evolution_panel.canvas.draw_idle()  # type: ignore[attr-defined]
+        elif isinstance(evolution, GapChart):
+            self.evolution_panel.draw(render_gap, evolution)  # type: ignore[attr-defined]
+        else:
+            self.evolution_panel.draw(  # type: ignore[attr-defined]
+                render_evolution, evolution
+            )
+
+    def title(self: SubTabUI) -> str:
+        """Return the display title for this sub-tab kind."""
+        for kind, label in SUB_TABS:
+            if kind == self.kind:  # type: ignore[attr-defined]
+                return label
+        return self.kind  # type: ignore[attr-defined]
 
     def build_statusbar(self: SubTabUI) -> None:
         """Build the separator, statusbar and indeterminate progress bar."""
@@ -145,6 +243,7 @@ class SubTabUI:
             row,
             textvariable=self.status_var,  # type: ignore[attr-defined]
             anchor=tk.W,
+            width=1,
         )
         self.status_label.pack(  # type: ignore[attr-defined]
             side=tk.LEFT, fill=tk.X, expand=True
@@ -152,6 +251,13 @@ class SubTabUI:
         self.progress = ttk.Progressbar(  # type: ignore[attr-defined]
             row, mode="indeterminate", length=140
         )
+        self.progress_host = ttk.Frame(  # type: ignore[attr-defined]
+            row,
+            width=140,
+            height=max(20, self.progress.winfo_reqheight()),  # type: ignore[attr-defined]
+        )
+        self.progress_host.pack(side=tk.RIGHT, padx=(8, 0))  # type: ignore[attr-defined]
+        self.progress_host.pack_propagate(False)  # type: ignore[attr-defined]
 
     def update_loading_state(self: SubTabUI, loading: bool) -> None:
         """Enable/disable controls and move the progress bar in the statusbar."""
@@ -168,9 +274,10 @@ class SubTabUI:
             if image is not None:
                 self.refresh_button.configure(image=image)  # type: ignore[attr-defined]
         if loading:
-            self.progress.pack(  # type: ignore[attr-defined]
-                side=tk.RIGHT, padx=(8, 0)
-            )
+            if not self.progress.winfo_manager():  # type: ignore[attr-defined]
+                self.progress.pack(  # type: ignore[attr-defined]
+                    fill=tk.BOTH, expand=True
+                )
             self.progress.start()  # type: ignore[attr-defined]
         elif self.progress.winfo_manager():  # type: ignore[attr-defined]
             self.progress.stop()  # type: ignore[attr-defined]
@@ -178,11 +285,13 @@ class SubTabUI:
 
     def _start_load(
         self: SubTabUI, *, cache_only: bool = False, force: bool = False
-    ) -> None:
+    ) -> bool:
         """Start a load in the worker thread and show its initial status."""
         if self._loading or self._closed:  # type: ignore[attr-defined]
-            return
+            return False
         self._loading = True  # type: ignore[attr-defined]
+        self.hide_charts()
+        self._busy.enter()  # type: ignore[attr-defined]
         self.controller.begin_load(  # type: ignore[attr-defined]
             cache_only=cache_only
         )
@@ -194,6 +303,7 @@ class SubTabUI:
             args=(cache_only, force),
             daemon=True,
         ).start()
+        return True
 
     def _on_stage(self: SubTabUI, stage: str) -> None:
         """Marshal a worker stage callback to the UI thread."""
@@ -222,3 +332,17 @@ class SubTabUI:
         self.status_label.configure(  # type: ignore[attr-defined]
             foreground=_STATUS_COLORS.get(kind, "")
         )
+
+def draw_empty_chart(
+    figure: Widget, title: str, message: str, ylabel: str = "%"
+) -> None:
+    """Draw a centered empty-state message on a chart figure."""
+    figure.clf()
+    ax = figure.add_subplot(111)
+    ax.text(
+        0.5, 0.5, message, ha="center", va="center",
+        transform=ax.transAxes, fontsize=12, color="gray",
+    )
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(0, 100)

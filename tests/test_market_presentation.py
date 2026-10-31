@@ -483,7 +483,7 @@ def test_shell_registers_cambio_between_tesouro_and_sobre():
     assert labels == [
         "SELIC Pré",
         "Tesouro Direto",
-        "Câmbio e Ouro",
+        "Câmbio e Reserva",
         "Feriados",
         "Sobre",
     ]
@@ -527,3 +527,32 @@ def test_launch_wires_market_services():
     }
 
     assert "market_services" in keywords
+
+def test_market_tab_applies_shared_loading_feedback_decisions():
+    root = Path(__file__).resolve().parents[1]
+    tab_source = (
+        root
+        / "src"
+        / "b3_selic_pre"
+        / "presentation"
+        / "gui"
+        / "market_tab.py"
+    ).read_text(encoding="utf-8")
+    ui_source = (
+        root
+        / "src"
+        / "b3_selic_pre"
+        / "presentation"
+        / "gui"
+        / "market_sub_tab_ui.py"
+    ).read_text(encoding="utf-8")
+
+    assert "BUSY_TEXT" in ui_source
+    assert "hide_charts" in ui_source and "show_charts" in ui_source
+    assert "progress_host" in ui_source
+    assert "width=1" in ui_source
+    assert "hide_charts()" in tab_source
+    assert "show_charts()" in tab_source
+    assert "draw_idle()" in tab_source
+    assert "_warnings" in tab_source
+    assert "update_idletasks" in tab_source
